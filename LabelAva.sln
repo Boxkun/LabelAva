@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelAva", "LabelAva.csproj", "{20413409-46E2-6311-83C2-7F8C3E780B17}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20413409-46E2-6311-83C2-7F8C3E780B17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20413409-46E2-6311-83C2-7F8C3E780B17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20413409-46E2-6311-83C2-7F8C3E780B17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20413409-46E2-6311-83C2-7F8C3E780B17}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D12D9FF8-D778-48D4-BA75-83136FAC0EB4}
+	EndGlobalSection
+EndGlobal

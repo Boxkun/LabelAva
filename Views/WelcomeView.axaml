@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="LabelAva.Views.WelcomeView">
+    
+    <Border Background="#FFFFFF">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <!-- Logo/标题区域 -->
+            <StackPanel Spacing="10" HorizontalAlignment="Center" Margin="0,0,0,40">
+                <TextBlock Text="LabelAva" FontSize="56" FontWeight="Bold" Foreground="#444" HorizontalAlignment="Center"/>
+                <TextBlock Text="LabelPlus with Avalonia" FontSize="20" Foreground="#AAA" HorizontalAlignment="Center"/>
+            </StackPanel>
+            
+            <!-- 功能按钮区域 -->
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <Button x:Name="OpenFileBtn" Content="打开翻译" 
+                        Click="OnOpenTranslationFile"
+                        Classes="primary"
+                        HorizontalAlignment="Center"
+                        HorizontalContentAlignment="Center"
+                        MinWidth="200" Padding="16,10"/>
+            </StackPanel>
+            
+            <!-- 底部提示 -->
+            <StackPanel Spacing="4" HorizontalAlignment="Center" Margin="0,20,0,0">
+                <Grid ColumnDefinitions="Auto Auto Auto Auto" ColumnSpacing="4">
+                    <Border Grid.Column="0" Classes="keycap">
+                        <TextBlock Text="Ctrl"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="1"
+                            Text="+"
+                            VerticalAlignment="Center"/>
+
+                    <Border Grid.Column="2" Classes="keycap">
+                        <TextBlock Text="O"/>
+                    </Border>
+
+                    <Border Grid.Column="3" Classes="descbox">
+                            <TextBlock Text="打开文件"/>
+                    </Border>
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto Auto Auto Auto" ColumnSpacing="4">
+                    <Border Grid.Column="2" Classes="keycap">
+                        <TextBlock Text="鼠标滚轮"/>
+                    </Border>
+
+                    <Border Grid.Column="3" Classes="descbox">
+                            <TextBlock Text="缩放"/>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

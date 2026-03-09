@@ -1,0 +1,139 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LabelAva"
+        xmlns:models="clr-namespace:LabelAva.Models"
+        xmlns:views="clr-namespace:LabelAva.Views"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="LabelAva.MainWindow"
+        Title="LabelAva"
+        Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen">
+    
+    <DockPanel>
+        <!-- 菜单栏 -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="打开翻译" Click="OnOpenTranslationFile"/>
+                <MenuItem x:Name="CloseTranslationMenuItem" Header="关闭翻译" Click="OnCloseTranslation" IsEnabled="False"/>
+                <Separator/>
+                <MenuItem Header="退出" Click="OnExit"/>
+            </MenuItem>
+            <MenuItem Header="编辑(_E)">
+                <MenuItem Header="首选项" Click="OnPreferences"/>
+            </MenuItem>
+            <MenuItem Header="视图(_V)">
+                <MenuItem Header="放大" Click="OnZoomIn"/>
+                <MenuItem Header="缩小" Click="OnZoomOut"/>
+                <MenuItem Header="重置缩放" Click="OnResetZoom"/>
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于" Click="OnAbout"/>
+            </MenuItem>
+        </Menu>
+        
+        <!-- 状态栏 -->
+        <Border DockPanel.Dock="Bottom" Classes="statusbar">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="_StatusText" Text="就绪" Classes="status-text"/>
+                <TextBlock x:Name="_ZoomText" Grid.Column="1" Text="缩放: 100%" Classes="zoom-text" Margin="20,0,0,0"/>
+            </Grid>
+        </Border>
+        
+        <!-- 内容区域：欢迎屏幕或主界面 -->
+        <Grid>
+            <!-- 欢迎屏幕 -->
+            <views:WelcomeView x:Name="WelcomeViewControl" IsVisible="True"
+                                OpenTranslationRequested="OnOpenTranslationRequested"/>
+            
+            <!-- 主界面：左右两个 Panel（默认隐藏） -->
+            <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False">
+                <!-- 左侧 Panel：画布区域 -->
+                <Border Grid.Column="0" Background="#F5F5F5">
+                    <Border Name="ImageContainer" 
+                            ClipToBounds="True" 
+                            Background="Transparent"
+                            PointerPressed="OnImageContainerPointerPressed"
+                            PointerMoved="OnImageContainerPointerMoved"
+                            PointerReleased="OnImageContainerPointerReleased"
+                            PointerWheelChanged="OnImageContainerPointerWheelChanged">
+                        <Canvas x:Name="ImageCanvas">
+                            <Canvas x:Name="ImageWrapper" RenderTransformOrigin="0,0">
+                                 <Image x:Name="MainImage" 
+                                        Stretch="None" 
+                                        HorizontalAlignment="Left" 
+                                        VerticalAlignment="Top"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality" />
+                            </Canvas>
+                        </Canvas>
+                    </Border>
+                </Border>
+                
+                <!-- 右侧 Panel：属性面板 -->
+                <Border Grid.Column="1" Background="#FAFAFA">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="工作区" FontWeight="Bold" FontSize="16" Margin="12,12,12,8"/>
+                        <TreeView x:Name="ImageTreeView" 
+                                  SelectionChanged="OnTreeViewSelectionChanged"
+                                  KeyDown="OnTreeViewKeyDown"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  Classes="primary">
+                            <TreeView.Styles>
+                                <Style Selector="TreeViewItem" x:DataType="models:ImageTreeItem">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                </Style>
+                            </TreeView.Styles>
+                            <TreeView.DataTemplates>
+                                <DataTemplate x:DataType="models:TranslationTreeItem">
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,8,8">
+                                        <TextBlock Grid.Column="0" 
+                                                Text="{Binding Index, StringFormat='[{0}]'}" 
+                                                FontFamily="Sarasa Mono SC"
+                                                Foreground="Gray"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Top" />
+                                        <TextBlock Grid.Column="1" 
+                                                Text="{Binding Text}" 
+                                                TextWrapping="Wrap" 
+                                                LineHeight="20" 
+                                                VerticalAlignment="Top" />
+                                    </Grid>
+                                </DataTemplate>
+                                <TreeDataTemplate x:DataType="models:ImageTreeItem" ItemsSource="{Binding Translations}">
+                                    <TextBlock Text="{Binding ImageName}" FontWeight="Bold" />
+                                </TreeDataTemplate>
+                            </TreeView.DataTemplates>
+                        </TreeView>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </DockPanel>
+    
+    <Window.Styles>
+        <!-- 主按钮样式 -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}"/>
+        </Style>
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColorDark1}"/>
+        </Style>
+        
+        <!-- 主 TreeView 样式 -->
+        <Style Selector="TreeView.primary">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <!-- TreeView 子项样式 -->
+        <Style Selector="TreeViewItem.primary">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </Window.Styles>
+</Window>

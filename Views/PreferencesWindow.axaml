@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+        x:Class="LabelAva.Views.PreferencesWindow"
+        Title="首选项"
+        Width="500" Height="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+    
+    <DockPanel Margin="16">
+        
+        <!-- TabControl：快捷键页签 -->
+        <TabControl>
+            <!-- 快捷键页签 -->
+            <TabItem Header="快捷键">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12" Spacing="8">
+                        <!-- 列标题 -->
+                        <Border Background="#FCFCFC" CornerRadius="8" Padding="12" Margin="0,0,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="设置项" FontWeight="SemiBold" Foreground="#AAA"/>
+                                <TextBlock Grid.Column="2" Text="主要" HorizontalAlignment="Center" Foreground="#AAA"/>
+                                <TextBlock Grid.Column="4" Text="次要" HorizontalAlignment="Center" Foreground="#AAA"/>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- 导航设置组 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="导航" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="在树状视图中上下移动" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                
+                                <!-- 上导航 -->
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="向上移动" VerticalAlignment="Center"/>
+                                    <Button x:Name="NavigateUpButton" Grid.Row="0" Grid.Column="2" 
+                                            IsEnabled="False"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnNavigateUpClick">
+                                        <TextBlock x:Name="NavigateUpText" Text="方向键上" Foreground="#999"/>
+                                    </Button>
+                                    <Button x:Name="NavigateUpSecondaryButton" Grid.Row="0" Grid.Column="4" 
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnNavigateUpSecondaryClick">
+                                        <TextBlock x:Name="NavigateUpSecondaryText" Text="未设置" Foreground="#999"/>
+                                    </Button>
+                                </Grid>
+                                
+                                <!-- 下导航 -->
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="向下移动" VerticalAlignment="Center"/>
+                                    <Button x:Name="NavigateDownButton" Grid.Row="0" Grid.Column="2" 
+                                            IsEnabled="False"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnNavigateDownClick">
+                                        <TextBlock x:Name="NavigateDownText" Text="方向键下" Foreground="#999"/>
+                                    </Button>
+                                    <Button x:Name="NavigateDownSecondaryButton" Grid.Row="0" Grid.Column="4" 
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnNavigateDownSecondaryClick">
+                                        <TextBlock x:Name="NavigateDownSecondaryText" Text="未设置" Foreground="#999"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- 复制设置组 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="编辑" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="对翻译文本进行操作" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="复制文本" VerticalAlignment="Center"/>
+                                    <Button x:Name="CopyTextButton" Grid.Row="0" Grid.Column="2" 
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnCopyTextClick">
+                                        <TextBlock x:Name="CopyTextText" Text="Ctrl + C" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- 重置按钮 -->
+                        <Button Content="恢复默认设置" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetDefaults"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

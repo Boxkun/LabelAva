@@ -1,0 +1,74 @@
+<Styles xmlns="https://github.com/avaloniaui">
+    
+    <!-- 状态栏样式 -->
+    <Style Selector="Border.statusbar">
+        <Setter Property="Background" Value="#F0F0F0"/>
+        <Setter Property="BorderBrush" Value="#CCCCCC"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    
+    <Style Selector="TextBlock.status-text">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#555555"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    
+    <Style Selector="TextBlock.zoom-text">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#555555"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    
+    <!-- 按键样式 -->
+    <Style Selector="Border.keycap">
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Background" Value="#F3F3F3"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="MinWidth" Value="24"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Border.descbox">
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="MinWidth" Value="24"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Border.keycap TextBlock">
+        <Setter Property="Foreground" Value="#AAA"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Border.descbox TextBlock">
+        <Setter Property="Foreground" Value="#AAA"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    
+    <!-- 快捷键按钮样式 -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#DDD"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    
+    <Style Selector="Button:pointerover">
+        <Setter Property="Background" Value="#F0F0F0"/>
+        <Setter Property="BorderBrush" Value="#0078D4"/>
+    </Style>
+    
+    <Style Selector="Button:pressed">
+        <Setter Property="Background" Value="#E0E0E0"/>
+    </Style>
+</Styles>
