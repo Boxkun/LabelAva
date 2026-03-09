@@ -86,18 +86,22 @@
                             </TreeView.Styles>
                             <TreeView.DataTemplates>
                                 <DataTemplate x:DataType="models:TranslationTreeItem">
-                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,8,8">
-                                        <TextBlock Grid.Column="0" 
-                                                Text="{Binding Index, StringFormat='[{0}]'}" 
+                                    <Grid ColumnDefinitions="Auto,*" Margin="4,4,4,4">
+                                        <Border Grid.Column="0" CornerRadius="4" Padding="8,4" Margin="0,0,4,0"
+                                                Background="{Binding GroupIndex, Converter={x:Static local:GroupIndexToClassConverter.Instance}}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock 
+                                                Text="{Binding Index}" 
                                                 FontFamily="Sarasa Mono SC"
                                                 Foreground="Gray"
-                                                Margin="0,0,6,0"
-                                                VerticalAlignment="Top" />
+                                                VerticalAlignment="Center" />
+                                        </Border>
                                         <TextBlock Grid.Column="1" 
                                                 Text="{Binding Text}" 
                                                 TextWrapping="Wrap" 
                                                 LineHeight="20" 
-                                                VerticalAlignment="Top" />
+                                                Margin="4,0,4,0"
+                                                VerticalAlignment="Center" />
                                     </Grid>
                                 </DataTemplate>
                                 <TreeDataTemplate x:DataType="models:ImageTreeItem" ItemsSource="{Binding Translations}">

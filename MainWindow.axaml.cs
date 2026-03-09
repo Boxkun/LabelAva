@@ -916,7 +916,8 @@ public partial class MainWindow : Window
                 imageItem.Translations.Add(new TranslationTreeItem
                 {
                     Index = label.TextIndex,
-                    Text = label.Text
+                    Text = label.Text,
+                    GroupIndex = label.GroupIndex
                 });
             }
             
