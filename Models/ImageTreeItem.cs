@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -10,7 +11,9 @@ namespace LabelAva.Models;
 public class ImageTreeItem : INotifyPropertyChanged
 {
     public string ImageName { get; set; } = string.Empty;
-    public List<TranslationTreeItem> Translations { get; set; } = new();
+    
+    // 使用 ObservableCollection 以支持 UI 自动更新
+    public ObservableCollection<TranslationTreeItem> Translations { get; set; } = new();
 
     // 添加展开状态属性
     private bool _isExpanded;

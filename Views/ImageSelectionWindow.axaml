@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:LabelAva.Views"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+        x:Class="LabelAva.Views.ImageSelectionWindow"
+        Title="图片选择"
+        Width="800" Height="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+    
+    <DockPanel Margin="16">
+        <!-- 文件名输入区域 -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+            <TextBlock Text="文件名:" VerticalAlignment="Center" FontSize="14"/>
+            <TextBox x:Name="FileNameTextBox" Width="250" FontSize="14" Watermark="输入文件名" TextChanged="OnFileNameTextChanged"/>
+            <TextBlock Text=".txt" VerticalAlignment="Center" FontSize="14" Foreground="#666"/>
+        </StackPanel>
+        
+        <!-- 底部按钮区域 -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,12,0,0">
+            <Button x:Name="SelectAllButton" Content="全选" Click="OnSelectAll" MinWidth="80" Padding="12,8"/>
+            <Button x:Name="DeselectAllButton" Content="全不选" Click="OnDeselectAll" MinWidth="80" Padding="12,8"/>
+            <Button x:Name="ConfirmButton" Content="确认" Click="OnConfirm" Classes="primary" MinWidth="80" Padding="12,8"/>
+            <Button x:Name="CancelButton" Content="取消" Click="OnCancel" MinWidth="80" Padding="12,8"/>
+        </StackPanel>
+        
+        <!-- 主内容区：左栏列表 + 右栏图片预览 -->
+        <Grid ColumnDefinitions="250,*">
+            <!-- 左栏：图片列表 -->
+            <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
+                <ListBox x:Name="ImageListControl" Margin="4" Background="Transparent" FontFamily="Sarasa Mono SC" FontSize="14" SelectionMode="Toggle" SelectionChanged="OnImageSelectionChanged">
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="4,0"/>
+                            <Setter Property="Margin" Value="0"/>
+                        </Style>
+                    </ListBox.Styles>
+
+                    <!-- <views:ImageSelectionItem FileName="1.png" IsSelected="True"/>
+                    <views:ImageSelectionItem FileName="2.png" IsSelected="False"/>
+                    <views:ImageSelectionItem FileName="3.jpg" IsSelected="True"/> -->
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="views:ImageSelectionItem">
+                            <Border Margin="0,0,0,0" Background="Transparent">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FileName}" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+            
+            <!-- 右栏：图片预览 -->
+            <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Background="Transparent">
+                <Panel>
+                    <TextBlock Text="选择图片以预览" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AAA" FontSize="16"/>
+                    <Image x:Name="PreviewImage" Stretch="Uniform" Margin="8"/>
+                </Panel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

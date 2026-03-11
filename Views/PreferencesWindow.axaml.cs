@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using LabelAva.Models;
 using LabelAva.Services;
 
@@ -11,10 +12,10 @@ public partial class PreferencesWindow : Window
 {
     // 快捷键设置
     private ShortcutSettings _settings = new();
-    
+
     // 当前正在捕获按键的按钮
     private Button? _capturingButton;
-    
+
     // 静态事件用于通知 MainWindow 设置已更改
     public static event EventHandler<ShortcutSettings>? SettingsChanged;
     
@@ -44,18 +45,162 @@ public partial class PreferencesWindow : Window
     {
         // 更新导航上
         UpdateButtonDisplay(NavigateUpButton, NavigateUpText, _settings.NavigateUp);
-        
+
         // 更新导航上（次要）
         UpdateButtonDisplay(NavigateUpSecondaryButton, NavigateUpSecondaryText, _settings.NavigateUpSecondary);
-        
+
         // 更新导航下
         UpdateButtonDisplay(NavigateDownButton, NavigateDownText, _settings.NavigateDown);
-        
+
         // 更新导航下（次要）
         UpdateButtonDisplay(NavigateDownSecondaryButton, NavigateDownSecondaryText, _settings.NavigateDownSecondary);
-        
+
         // 更新复制文本
         UpdateButtonDisplay(CopyTextButton, CopyTextText, _settings.CopyText);
+
+        // 更新分组切换
+        UpdateButtonDisplay(ToggleGroup0Button, ToggleGroup0Text, _settings.ToggleGroup0);
+        UpdateButtonDisplay(ToggleGroup1Button, ToggleGroup1Text, _settings.ToggleGroup1);
+
+        // 更新颜色设置
+        UpdateColorUI();
+
+        // 更新自动聚焦设置
+        if (AutoFocusCheckBox != null)
+        {
+            AutoFocusCheckBox.IsChecked = _settings.AutoFocusTextBox;
+        }
+    }
+
+    /// <summary>
+    /// 更新颜色设置界面
+    /// </summary>
+    private void UpdateColorUI()
+    {
+        var colors = _settings.Colors;
+
+        // 框内颜色 (GroupIndex 1)
+        if (colors.GroupColors.TryGetValue(1, out var group0Color))
+        {
+            Group0ColorTextBox.Text = group0Color;
+            UpdateColorPreview(Group0ColorPreview, group0Color);
+        }
+
+        // 框外颜色 (GroupIndex 2)
+        if (colors.GroupColors.TryGetValue(2, out var group1Color))
+        {
+            Group1ColorTextBox.Text = group1Color;
+            UpdateColorPreview(Group1ColorPreview, group1Color);
+        }
+
+        // 选中高亮颜色
+        SelectedColorTextBox.Text = colors.SelectedColor;
+        UpdateColorPreview(SelectedColorPreview, colors.SelectedColor);
+    }
+
+    /// <summary>
+    /// 更新颜色预览边框的背景色
+    /// </summary>
+    private void UpdateColorPreview(Border border, string? colorHex)
+    {
+        if (border == null) return;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(colorHex) && colorHex.StartsWith("#"))
+            {
+                var color = Color.Parse(colorHex);
+                border.Background = new SolidColorBrush(color);
+            }
+            else
+            {
+                // 默认颜色
+                border.Background = new SolidColorBrush(Colors.LightGray);
+            }
+        }
+        catch
+        {
+            border.Background = new SolidColorBrush(Colors.LightGray);
+        }
+    }
+
+    /// <summary>
+    /// 框内颜色变更事件
+    /// </summary>
+    private void OnGroup0ColorChanged(object? sender, TextChangedEventArgs e)
+    {
+        var textBox = sender as TextBox;
+        if (textBox == null) return;
+
+        var colorHex = textBox.Text;
+        if (IsValidColorHex(colorHex))
+        {
+            _settings.Colors.GroupColors[1] = colorHex!;
+            UpdateColorPreview(Group0ColorPreview, colorHex);
+            SaveAndNotify();
+        }
+    }
+
+    /// <summary>
+    /// 框外颜色变更事件
+    /// </summary>
+    private void OnGroup1ColorChanged(object? sender, TextChangedEventArgs e)
+    {
+        var textBox = sender as TextBox;
+        if (textBox == null) return;
+
+        var colorHex = textBox.Text;
+        if (IsValidColorHex(colorHex))
+        {
+            _settings.Colors.GroupColors[2] = colorHex!;
+            UpdateColorPreview(Group1ColorPreview, colorHex);
+            SaveAndNotify();
+        }
+    }
+
+    /// <summary>
+    /// 选中高亮颜色变更事件
+    /// </summary>
+    private void OnSelectedColorChanged(object? sender, TextChangedEventArgs e)
+    {
+        var textBox = sender as TextBox;
+        if (textBox == null) return;
+
+        var colorHex = textBox.Text;
+        if (IsValidColorHex(colorHex))
+        {
+            _settings.Colors.SelectedColor = colorHex!;
+            UpdateColorPreview(SelectedColorPreview, colorHex);
+            SaveAndNotify();
+        }
+    }
+
+    /// <summary>
+    /// 验证颜色代码是否有效
+    /// </summary>
+    private bool IsValidColorHex(string? colorHex)
+    {
+        if (string.IsNullOrEmpty(colorHex)) return false;
+
+        try
+        {
+            Color.Parse(colorHex);
+            return colorHex.StartsWith("#") && (colorHex.Length == 7 || colorHex.Length == 9);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 重置颜色为默认
+    /// </summary>
+    private void OnResetColorDefaults(object? sender, RoutedEventArgs e)
+    {
+        _settings.Colors = ColorSettings.CreateDefaults();
+        UpdateColorUI();
+        SaveAndNotify();
     }
     
     /// <summary>
@@ -143,6 +288,43 @@ public partial class PreferencesWindow : Window
             SaveAndNotify();
         });
     }
+
+    /// <summary>
+    /// 处理自动聚焦开关变更
+    /// </summary>
+    private void OnAutoFocusChanged(object? sender, RoutedEventArgs e)
+    {
+        if (AutoFocusCheckBox == null) return;
+
+        _settings.AutoFocusTextBox = AutoFocusCheckBox.IsChecked == true;
+        SaveAndNotify();
+    }
+    
+    /// <summary>
+    /// 处理切换框内分组快捷键按钮点击
+    /// </summary>
+    private void OnToggleGroup0Click(object? sender, RoutedEventArgs e)
+    {
+        StartCapture(ToggleGroup0Button, (gesture) =>
+        {
+            _settings.ToggleGroup0 = gesture;
+            UpdateUI();
+            SaveAndNotify();
+        });
+    }
+    
+    /// <summary>
+    /// 处理切换框外分组快捷键按钮点击
+    /// </summary>
+    private void OnToggleGroup1Click(object? sender, RoutedEventArgs e)
+    {
+        StartCapture(ToggleGroup1Button, (gesture) =>
+        {
+            _settings.ToggleGroup1 = gesture;
+            UpdateUI();
+            SaveAndNotify();
+        });
+    }
     
     /// <summary>
     /// 开始捕获按键
@@ -162,14 +344,16 @@ public partial class PreferencesWindow : Window
             button.Content as TextBlock;
         if (textBlock != null)
         {
-            textBlock.Text = "请按键...";
+            textBlock.Text = "请按键或鼠标...";
             textBlock.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0078D4"));
         }
         
         button.Classes.Add("capturing");
         
-        // 订阅键盘事件
+        // 订阅键盘和鼠标事件
         this.KeyDown += OnKeyDown;
+        this.PointerPressed += OnPointerPressed;
+        this.PointerWheelChanged += OnPointerWheelChanged;
         this.Focus();
         
         // 保存回调
@@ -210,6 +394,84 @@ public partial class PreferencesWindow : Window
     }
     
     /// <summary>
+    /// 处理鼠标按键事件
+    /// </summary>
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var properties = e.GetCurrentPoint(this).Properties;
+        var updateKind = properties.PointerUpdateKind;
+        
+        // 检查是否为黑名单中的鼠标按钮（左键、右键、滚轮中键）
+        if (ShortcutSettings.IsBlacklistedMouseButton(updateKind))
+        {
+            // 显示不支持的提示，但不结束捕获
+            ShowBlacklistedMessage();
+            return;
+        }
+        
+        // 尝试从鼠标按钮创建手势
+        var gesture = CreateMouseGesture(updateKind);
+        if (gesture != null)
+        {
+            e.Handled = true;
+            CompleteCapture(gesture);
+        }
+    }
+    
+    /// <summary>
+    /// 处理鼠标滚轮事件
+    /// </summary>
+    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        e.Handled = true;
+        
+        // 滚轮不支持作为快捷键
+        ShowBlacklistedMessage();
+    }
+    
+    /// <summary>
+    /// 显示黑名单提示
+    /// </summary>
+    private void ShowBlacklistedMessage()
+    {
+        // 可以在此处显示提示，但为了不打断捕获流程，这里仅输出日志
+        System.Console.WriteLine("左键、右键、滚轮中键不支持作为快捷键");
+    }
+    
+    /// <summary>
+    /// 从鼠标按键创建手势（用于支持有侧键的鼠标）
+    /// 只支持 XButton1、XButton2 侧键
+    /// </summary>
+    private static KeyGesture? CreateMouseGesture(PointerUpdateKind updateKind)
+    {
+        // 只处理按下事件，不处理释放事件
+        var isPressed = updateKind switch
+        {
+            PointerUpdateKind.XButton1Pressed => true,
+            PointerUpdateKind.XButton2Pressed => true,
+            _ => false
+        };
+        
+        if (!isPressed)
+            return null;
+        
+        // 根据按键类型创建手势
+        // 注意：Avalonia 的 Key 枚举没有 XButton1/XButton2
+        // 使用 F13/F14 作为占位符，因为这些键很少使用
+        var key = updateKind switch
+        {
+            PointerUpdateKind.XButton1Pressed => Key.F13,
+            PointerUpdateKind.XButton2Pressed => Key.F14,
+            _ => Key.None
+        };
+        
+        if (key == Key.None)
+            return null;
+        
+        return new KeyGesture(key);
+    }
+    
+    /// <summary>
     /// 完成按键捕获
     /// </summary>
     private void CompleteCapture(KeyGesture gesture)
@@ -224,8 +486,10 @@ public partial class PreferencesWindow : Window
             _capturingButton = null;
             _captureCallback = null;
             
-            // 取消订阅
+            // 取消订阅所有事件
             this.KeyDown -= OnKeyDown;
+            this.PointerPressed -= OnPointerPressed;
+            this.PointerWheelChanged -= OnPointerWheelChanged;
         }
     }
     
@@ -240,8 +504,10 @@ public partial class PreferencesWindow : Window
             _capturingButton = null;
             _captureCallback = null;
             
-            // 取消订阅
+            // 取消订阅所有事件
             this.KeyDown -= OnKeyDown;
+            this.PointerPressed -= OnPointerPressed;
+            this.PointerWheelChanged -= OnPointerWheelChanged;
             
             // 更新界面
             UpdateUI();

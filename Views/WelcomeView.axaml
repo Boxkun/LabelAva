@@ -14,7 +14,14 @@
             </StackPanel>
             
             <!-- 功能按钮区域 -->
+             
             <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <Button x:Name="NewFileBtn" Content="新建翻译" 
+                        Click="OnNewFile"
+                        Classes="primary"
+                        HorizontalAlignment="Center"
+                        HorizontalContentAlignment="Center"
+                        MinWidth="200" Padding="16,10"/>
                 <Button x:Name="OpenFileBtn" Content="打开翻译" 
                         Click="OnOpenTranslationFile"
                         Classes="primary"
@@ -24,35 +31,61 @@
             </StackPanel>
             
             <!-- 底部提示 -->
-            <StackPanel Spacing="4" HorizontalAlignment="Center" Margin="0,20,0,0">
-                <Grid ColumnDefinitions="Auto Auto Auto Auto" ColumnSpacing="4">
-                    <Border Grid.Column="0" Classes="keycap">
+            <Grid Margin="0,20,0,0"
+                HorizontalAlignment="Center"
+                ColumnDefinitions="Auto 16 Auto"
+                RowDefinitions="Auto Auto"
+                RowSpacing="4">
+
+                <!-- 第一行：Ctrl + O -->
+                <StackPanel Grid.Row="0"
+                            Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            HorizontalAlignment="Right">
+
+                    <Border Classes="keycap">
                         <TextBlock Text="Ctrl"/>
                     </Border>
 
-                    <TextBlock Grid.Column="1"
-                            Text="+"
-                            VerticalAlignment="Center"/>
+                    <Border Classes="descbox">
+                        <TextBlock Text="+"/>
+                    </Border>
 
-                    <Border Grid.Column="2" Classes="keycap">
+                    <Border Classes="keycap">
                         <TextBlock Text="O"/>
                     </Border>
 
-                    <Border Grid.Column="3" Classes="descbox">
-                            <TextBlock Text="打开文件"/>
-                    </Border>
-                </Grid>
+                </StackPanel>
 
-                <Grid ColumnDefinitions="Auto Auto Auto Auto" ColumnSpacing="4">
-                    <Border Grid.Column="2" Classes="keycap">
+                <Border Grid.Row="0"
+                        Grid.Column="2"
+                        Classes="descbox"
+                        HorizontalAlignment="Left">
+                    <TextBlock Text="打开文件"/>
+                </Border>
+
+
+                <!-- 第二行：鼠标滚轮 -->
+                <StackPanel Grid.Row="1"
+                            Grid.Column="0"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+
+                    <Border Classes="keycap">
                         <TextBlock Text="鼠标滚轮"/>
                     </Border>
 
-                    <Border Grid.Column="3" Classes="descbox">
-                            <TextBlock Text="缩放"/>
-                    </Border>
-                </Grid>
-            </StackPanel>
+                </StackPanel>
+
+                <Border Grid.Row="1"
+                        Grid.Column="2"
+                        Classes="descbox"
+                        HorizontalAlignment="Left">
+                    <TextBlock Text="缩放"/>
+                </Border>
+
+            </Grid>
         </StackPanel>
     </Border>
 </UserControl>

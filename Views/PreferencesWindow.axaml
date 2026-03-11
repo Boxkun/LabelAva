@@ -2,15 +2,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+        xmlns:ui="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
         x:Class="LabelAva.Views.PreferencesWindow"
         Title="首选项"
-        Width="500" Height="400"
+        Width="500" Height="450"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
     
     <DockPanel Margin="16">
-        
+
         <!-- TabControl：快捷键页签 -->
         <TabControl>
             <!-- 快捷键页签 -->
@@ -32,13 +33,13 @@
                                 <TextBlock Grid.Column="4" Text="次要" HorizontalAlignment="Center" Foreground="#AAA"/>
                             </Grid>
                         </Border>
-                        
+
                         <!-- 导航设置组 -->
                         <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="导航" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="在树状视图中上下移动" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-                                
+
                                 <!-- 上导航 -->
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
@@ -49,19 +50,19 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="向上移动" VerticalAlignment="Center"/>
-                                    <Button x:Name="NavigateUpButton" Grid.Row="0" Grid.Column="2" 
+                                    <Button x:Name="NavigateUpButton" Grid.Row="0" Grid.Column="2"
                                             IsEnabled="False"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateUpClick">
                                         <TextBlock x:Name="NavigateUpText" Text="方向键上" Foreground="#999"/>
                                     </Button>
-                                    <Button x:Name="NavigateUpSecondaryButton" Grid.Row="0" Grid.Column="4" 
+                                    <Button x:Name="NavigateUpSecondaryButton" Grid.Row="0" Grid.Column="4"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateUpSecondaryClick">
                                         <TextBlock x:Name="NavigateUpSecondaryText" Text="未设置" Foreground="#999"/>
                                     </Button>
                                 </Grid>
-                                
+
                                 <!-- 下导航 -->
                                 <Grid RowDefinitions="Auto" Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
@@ -72,13 +73,13 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="向下移动" VerticalAlignment="Center"/>
-                                    <Button x:Name="NavigateDownButton" Grid.Row="0" Grid.Column="2" 
+                                    <Button x:Name="NavigateDownButton" Grid.Row="0" Grid.Column="2"
                                             IsEnabled="False"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateDownClick">
                                         <TextBlock x:Name="NavigateDownText" Text="方向键下" Foreground="#999"/>
                                     </Button>
-                                    <Button x:Name="NavigateDownSecondaryButton" Grid.Row="0" Grid.Column="4" 
+                                    <Button x:Name="NavigateDownSecondaryButton" Grid.Row="0" Grid.Column="4"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateDownSecondaryClick">
                                         <TextBlock x:Name="NavigateDownSecondaryText" Text="未设置" Foreground="#999"/>
@@ -86,13 +87,13 @@
                                 </Grid>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- 复制设置组 -->
                         <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="编辑" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="对翻译文本进行操作" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-                                
+
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="80"/>
@@ -102,17 +103,145 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="复制文本" VerticalAlignment="Center"/>
-                                    <Button x:Name="CopyTextButton" Grid.Row="0" Grid.Column="2" 
+                                    <Button x:Name="CopyTextButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnCopyTextClick">
                                         <TextBlock x:Name="CopyTextText" Text="Ctrl + C" Foreground="#333"/>
                                     </Button>
                                 </Grid>
+
+                                <!-- 自动聚焦开关 -->
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="自动聚焦" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="AutoFocusCheckBox" Grid.Row="0" Grid.Column="2"
+                                              IsChecked="True" VerticalAlignment="Center"
+                                              Checked="OnAutoFocusChanged" Unchecked="OnAutoFocusChanged">
+                                        <TextBlock Text="选中标签后自动聚焦到文本框" FontSize="12" Foreground="#666"/>
+                                    </CheckBox>
+                                </Grid>
+                                <TextBlock Text="按 Ctrl+Enter 提交更改" FontSize="11" Foreground="#999" Margin="92,0,0,0"/>
                             </StackPanel>
                         </Border>
-                        
+
+                        <!-- 分组切换设置组 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="分组切换" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="切换当前激活的分组（框内/框外）" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="切换框内" VerticalAlignment="Center"/>
+                                    <Button x:Name="ToggleGroup0Button" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnToggleGroup0Click">
+                                        <TextBlock x:Name="ToggleGroup0Text" Text="Ctrl + 1" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
+
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="切换框外" VerticalAlignment="Center"/>
+                                    <Button x:Name="ToggleGroup1Button" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnToggleGroup1Click">
+                                        <TextBlock x:Name="ToggleGroup1Text" Text="Ctrl + 2" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
                         <!-- 重置按钮 -->
                         <Button Content="恢复默认设置" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetDefaults"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 颜色设置页签 -->
+            <TabItem Header="颜色">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12" Spacing="12">
+                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="自定义左侧树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,8"/>
+
+                        <!-- 框内颜色设置 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <Grid RowDefinitions="Auto">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="40"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="框内颜色" VerticalAlignment="Center"/>
+                                <TextBox x:Name="Group0ColorTextBox" Grid.Row="0" Grid.Column="2"
+                                         Watermark="#FFE6E6" TextChanged="OnGroup0ColorChanged"
+                                         VerticalAlignment="Center"/>
+                                <Border x:Name="Group0ColorPreview" Grid.Row="0" Grid.Column="4"
+                                        CornerRadius="4" Width="36" Height="24"
+                                        Background="#FFE6E6" BorderBrush="#CCC" BorderThickness="1"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- 框外颜色设置 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <Grid RowDefinitions="Auto">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="40"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="框外颜色" VerticalAlignment="Center"/>
+                                <TextBox x:Name="Group1ColorTextBox" Grid.Row="0" Grid.Column="2"
+                                         Watermark="#E6E6FF" TextChanged="OnGroup1ColorChanged"
+                                         VerticalAlignment="Center"/>
+                                <Border x:Name="Group1ColorPreview" Grid.Row="0" Grid.Column="4"
+                                        CornerRadius="4" Width="36" Height="24"
+                                        Background="#E6E6FF" BorderBrush="#CCC" BorderThickness="1"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- 选中高亮颜色设置 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <Grid RowDefinitions="Auto">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="40"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="选中高亮" VerticalAlignment="Center"/>
+                                <TextBox x:Name="SelectedColorTextBox" Grid.Row="0" Grid.Column="2"
+                                         Watermark="#1E90FF" TextChanged="OnSelectedColorChanged"
+                                         VerticalAlignment="Center"/>
+                                <Border x:Name="SelectedColorPreview" Grid.Row="0" Grid.Column="4"
+                                        CornerRadius="4" Width="36" Height="24"
+                                        Background="#1E90FF" BorderBrush="#CCC" BorderThickness="1"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- 颜色格式提示 -->
+                        <TextBlock Text="提示：使用十六进制颜色代码，如 #FF0000 表示红色" FontSize="11" Foreground="#999" Margin="0,4,0,0"/>
+
+                        <!-- 重置按钮 -->
+                        <Button Content="恢复默认颜色" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetColorDefaults"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

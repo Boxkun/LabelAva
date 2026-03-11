@@ -10,10 +10,20 @@ public partial class WelcomeView : UserControl
         RoutedEvent.Register<WelcomeView, RoutedEventArgs>(
             nameof(OpenTranslationRequested), RoutingStrategies.Bubble);
 
+    public static readonly RoutedEvent NewTranslationRequestedEvent =
+        RoutedEvent.Register<WelcomeView, RoutedEventArgs>(
+            nameof(NewTranslationRequested), RoutingStrategies.Bubble);
+
     public event EventHandler<RoutedEventArgs> OpenTranslationRequested
     {
         add => AddHandler(OpenTranslationRequestedEvent, value);
         remove => RemoveHandler(OpenTranslationRequestedEvent, value);
+    }
+
+    public event EventHandler<RoutedEventArgs> NewTranslationRequested
+    {
+        add => AddHandler(NewTranslationRequestedEvent, value);
+        remove => RemoveHandler(NewTranslationRequestedEvent, value);
     }
 
     public WelcomeView()
@@ -24,5 +34,10 @@ public partial class WelcomeView : UserControl
     private void OnOpenTranslationFile(object? sender, RoutedEventArgs e)
     {
         RaiseEvent(new RoutedEventArgs(OpenTranslationRequestedEvent, this));
+    }
+
+    private void OnNewFile(object? sender, RoutedEventArgs e)
+    {
+        RaiseEvent(new RoutedEventArgs(NewTranslationRequestedEvent, this));
     }
 }

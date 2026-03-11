@@ -9,18 +9,37 @@
         x:Class="LabelAva.MainWindow"
         Title="LabelAva"
         Width="1200" Height="800"
-        WindowStartupLocation="CenterScreen">
-    
+        WindowStartupLocation="CenterScreen"
+        DragDrop.AllowDrop="True">
+
+    <Window.Resources>
+        <!-- 默认分组颜色资源 -->
+        <SolidColorBrush x:Key="Group0ColorBrush" Color="#FFE6E6"/>
+        <SolidColorBrush x:Key="Group1ColorBrush" Color="#E6E6FF"/>
+        <SolidColorBrush x:Key="Group0ColorHoverBrush" Color="#FFEEEE"/>
+        <SolidColorBrush x:Key="Group1ColorHoverBrush" Color="#EEEEFF"/>
+        <SolidColorBrush x:Key="Group0ColorPressedBrush" Color="#FFCCCC"/>
+        <SolidColorBrush x:Key="Group1ColorPressedBrush" Color="#CCCCFF"/>
+    </Window.Resources>
+
     <DockPanel>
         <!-- 菜单栏 -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="文件(_F)">
+                <MenuItem Header="新建翻译" Click="OnNewTranslation"/>
                 <MenuItem Header="打开翻译" Click="OnOpenTranslationFile"/>
+                <MenuItem x:Name="SaveTranslationMenuItem" Header="保存(_S)" Click="OnSaveTranslation" IsEnabled="False" InputGesture="Ctrl+S"/>
+                <MenuItem x:Name="SaveAsTranslationMenuItem" Header="另存为(_A)" Click="OnSaveAsTranslation" IsEnabled="False" InputGesture="Ctrl+Shift+S"/>
                 <MenuItem x:Name="CloseTranslationMenuItem" Header="关闭翻译" Click="OnCloseTranslation" IsEnabled="False"/>
                 <Separator/>
                 <MenuItem Header="退出" Click="OnExit"/>
             </MenuItem>
             <MenuItem Header="编辑(_E)">
+                <MenuItem x:Name="UndoMenuItem" Header="撤销(_U)" Click="OnUndo" IsEnabled="False" InputGesture="Ctrl+Z"/>
+                <MenuItem x:Name="RedoMenuItem" Header="重做(_R)" Click="OnRedo" IsEnabled="False" InputGesture="Ctrl+Y"/>
+                <Separator/>
+                <MenuItem x:Name="EditModeMenuItem" Header="编辑模式" ToggleType="CheckBox" Click="OnToggleEditMode" IsEnabled="False"/>
+                <Separator/>
                 <MenuItem Header="首选项" Click="OnPreferences"/>
             </MenuItem>
             <MenuItem Header="视图(_V)">
@@ -34,10 +53,14 @@
         </Menu>
         
         <!-- 状态栏 -->
-        <Border DockPanel.Dock="Bottom" Classes="statusbar">
+        <Border DockPanel.Dock="Bottom" Classes="statusbar" Padding="4">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock x:Name="_StatusText" Text="就绪" Classes="status-text"/>
-                <TextBlock x:Name="_ZoomText" Grid.Column="1" Text="缩放: 100%" Classes="zoom-text" Margin="20,0,0,0"/>
+                <!-- 修改这里：加入 HorizontalAlignment、CornerRadius 和 Padding -->
+                <Border x:Name="_StatusBar" Classes="status-bar" 
+                        HorizontalAlignment="Left" CornerRadius="4" Padding="8,2">
+                    <TextBlock x:Name="_StatusText" Text="就绪" Classes="status-text" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock x:Name="_ZoomText" Grid.Column="1" Text="缩放: 100%" Classes="zoom-text" VerticalAlignment="Center" Margin="20,0,4,0"/>
             </Grid>
         </Border>
         
@@ -45,10 +68,12 @@
         <Grid>
             <!-- 欢迎屏幕 -->
             <views:WelcomeView x:Name="WelcomeViewControl" IsVisible="True"
-                                OpenTranslationRequested="OnOpenTranslationRequested"/>
+                                Background="Transparent"
+                                OpenTranslationRequested="OnOpenTranslationRequested"
+                                NewTranslationRequested="OnNewTranslationRequested"/>
             
             <!-- 主界面：左右两个 Panel（默认隐藏） -->
-            <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False">
+            <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False" Background="#88FF0000">
                 <!-- 左侧 Panel：画布区域 -->
                 <Border Grid.Column="0" Background="#F5F5F5">
                     <Border Name="ImageContainer" 
@@ -71,45 +96,110 @@
                 </Border>
                 
                 <!-- 右侧 Panel：属性面板 -->
-                <Border Grid.Column="1" Background="#FAFAFA">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="工作区" FontWeight="Bold" FontSize="16" Margin="12,12,12,8"/>
-                        <TreeView x:Name="ImageTreeView" 
-                                  SelectionChanged="OnTreeViewSelectionChanged"
-                                  KeyDown="OnTreeViewKeyDown"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                  Classes="primary">
-                            <TreeView.Styles>
-                                <Style Selector="TreeViewItem" x:DataType="models:ImageTreeItem">
-                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                                </Style>
-                            </TreeView.Styles>
-                            <TreeView.DataTemplates>
-                                <DataTemplate x:DataType="models:TranslationTreeItem">
-                                    <Grid ColumnDefinitions="Auto,*" Margin="4,4,4,4">
-                                        <Border Grid.Column="0" CornerRadius="4" Padding="8,4" Margin="0,0,4,0"
-                                                Background="{Binding GroupIndex, Converter={x:Static local:GroupIndexToClassConverter.Instance}}"
-                                                VerticalAlignment="Center">
-                                            <TextBlock 
-                                                Text="{Binding Index}" 
-                                                FontFamily="Sarasa Mono SC"
-                                                Foreground="Gray"
-                                                VerticalAlignment="Center" />
-                                        </Border>
-                                        <TextBlock Grid.Column="1" 
-                                                Text="{Binding Text}" 
-                                                TextWrapping="Wrap" 
-                                                LineHeight="20" 
-                                                Margin="4,0,4,0"
-                                                VerticalAlignment="Center" />
-                                    </Grid>
-                                </DataTemplate>
-                                <TreeDataTemplate x:DataType="models:ImageTreeItem" ItemsSource="{Binding Translations}">
-                                    <TextBlock Text="{Binding ImageName}" FontWeight="Bold" />
-                                </TreeDataTemplate>
-                            </TreeView.DataTemplates>
-                        </TreeView>
-                    </DockPanel>
+                <Border Grid.Column="1" Background="#FAFAFA" DragDrop.AllowDrop="True">
+                    <Grid RowDefinitions="*,Auto">
+                        <!-- 上半部分：树状视图 -->
+                        <DockPanel Grid.Row="0">
+                            <!-- 工具栏：标题 + 模式切换 + 分组选择 -->
+                            <Border DockPanel.Dock="Top" Background="Transparent" Padding="12,4" Height="48">
+                                <DockPanel>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="8">
+                                        <Button x:Name="EditModeToggleButton" 
+                                                Content="查看模式" 
+                                                FontSize="12"
+                                                Click="OnToggleEditMode"
+                                                Classes="mode-toggle"
+                                                VerticalAlignment="Center"/>
+                                        <RadioButton x:Name="Group0RadioButton"
+                                                     Classes="no-dot group0"
+                                                     Content="框内"
+                                                     GroupName="GroupSelection"
+                                                     IsChecked="True"
+                                                     Click="OnGroupSelectionChanged"
+                                                     IsVisible="False"
+                                                     VerticalAlignment="Center"
+                                                     MinHeight="30"/>
+                                        <RadioButton x:Name="Group1RadioButton"
+                                                     Classes="no-dot group1"
+                                                     Content="框外"
+                                                     GroupName="GroupSelection"
+                                                     Click="OnGroupSelectionChanged"
+                                                     IsVisible="False"
+                                                     VerticalAlignment="Center"
+                                                     MinHeight="30"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                            <TreeView x:Name="ImageTreeView" 
+                                      SelectionChanged="OnTreeViewSelectionChanged"
+                                      KeyDown="OnTreeViewKeyDown"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      Classes="primary">
+                                <!-- <TreeView.Styles>
+                                    <Style Selector="TreeViewItem" x:DataType="models:ImageTreeItem">
+                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                    </Style>
+                                </TreeView.Styles> -->
+                                <TreeView.DataTemplates>
+                                    <TreeDataTemplate x:DataType="models:TranslationTreeItem" ItemsSource="{x:Null}">
+                                        <Grid ColumnDefinitions="Auto,*" Margin="4,4,4,4" Background="Transparent"
+                                              PointerPressed="OnTreeViewItemPointerPressed"
+                                              PointerMoved="OnTreeViewItemPointerMoved"
+                                              PointerReleased="OnTreeViewItemPointerReleased">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="复制文本" Click="OnCopySelectedText"/>
+                                                    <MenuItem Header="删除此标记" Click="OnDeleteSelectedLabel"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="切换分组" Click="OnToggleGroup"/>
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
+                                            <Border Grid.Column="0" CornerRadius="4" Padding="8,4" Margin="0,0,4,0"
+                                                    Background="{Binding GroupIndex, Converter={x:Static local:GroupIndexToBrushConverter.Instance}}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock 
+                                                    Text="{Binding Index}" 
+                                                    FontFamily="Sarasa Mono SC"
+                                                    Foreground="White"
+                                                    VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" 
+                                                    Text="{Binding Text}" 
+                                                    TextWrapping="Wrap" 
+                                                    LineHeight="20" 
+                                                    Margin="4,0,4,0"
+                                                    VerticalAlignment="Center" />
+                                        </Grid>
+                                    </TreeDataTemplate>
+                                    <TreeDataTemplate x:DataType="models:ImageTreeItem" ItemsSource="{Binding Translations}">
+                                        <TextBlock Text="{Binding ImageName}" FontWeight="Bold" FontFamily="Sarasa Mono SC" />
+                                    </TreeDataTemplate>
+                                </TreeView.DataTemplates>
+                            </TreeView>
+                        </DockPanel>
+
+                        <!-- 下半部分：文本编辑区域 (默认隐藏) -->
+                        <Border x:Name="EditPanel" Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10" IsVisible="False">
+                            <DockPanel>
+                                <!-- 工具栏：快捷输入按钮 -->
+                                <Border DockPanel.Dock="Top" Background="#F8F8F8" Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Button x:Name="QuickInputBtn1" Content="占位1" Click="OnQuickInputButtonClick" Classes="toolbar-button"/>
+                                        <Button x:Name="QuickInputBtn2" Content="占位2" Click="OnQuickInputButtonClick" Classes="toolbar-button"/>
+                                        <Button x:Name="QuickInputBtn3" Content="占位3" Click="OnQuickInputButtonClick" Classes="toolbar-button"/>
+                                    </StackPanel>
+                                </Border>
+                                <TextBox x:Name="TranslationTextBox" 
+                                         AcceptsReturn="True" 
+                                         TextWrapping="Wrap" 
+                                         MinHeight="120"
+                                         MaxHeight="300"
+                                         IsEnabled="False"
+                                         Watermark="选中文本节点以编辑"
+                                         TextChanged="OnTranslationTextChanged"/>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
                 </Border>
             </Grid>
         </Grid>
@@ -123,11 +213,36 @@
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="CornerRadius" Value="4"/>
         </Style>
-        <Style Selector="Button.primary:pointerover">
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}"/>
+            <Setter Property="Foreground" Value="White"/>
         </Style>
-        <Style Selector="Button.primary:pressed">
+        <Style Selector="Button.primary:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SystemAccentColorDark1}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <!-- 模式切换按钮样式 -->
+        <Style Selector="Button.mode-toggle">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#CCC"/>
+        </Style>
+        <Style Selector="Button.mode-toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FFF"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}"/>
+        </Style>
+        <Style Selector="Button.mode-toggle.active">
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        <Style Selector="Button.mode-toggle.active:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FFF"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}"/>
         </Style>
         
         <!-- 主 TreeView 样式 -->
@@ -138,6 +253,87 @@
         <!-- TreeView 子项样式 -->
         <Style Selector="TreeViewItem.primary">
             <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- 状态栏样式 -->
+        <Style Selector="Border.status-bar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:1" /> 
+                </Transitions>
+            </Setter>
+        </Style>
+        
+        <!-- 定义不同状态的背景色 -->
+        <Style Selector="Border.status-success">
+            <Setter Property="Background" Value="#4CAF50"/> <!-- 绿色 -->
+        </Style>
+        <Style Selector="Border.status-warn">
+            <Setter Property="Background" Value="#FF9800"/> <!-- 橙色 -->
+        </Style>
+        <Style Selector="Border.status-error">
+            <Setter Property="Background" Value="#F44336"/> <!-- 红色 -->
+        </Style>
+        <Style Selector="Border.status-info">
+            <Setter Property="Background" Value="#2196F3"/> <!-- 蓝色 -->
+        </Style>
+
+        <!-- 关键修改：当处于提示状态时，将背景渐变时间强制覆盖为 0，实现瞬间变色(取消淡入) -->
+        <Style Selector="Border.status-success, Border.status-warn, Border.status-error, Border.status-info">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0" />
+                </Transitions>
+            </Setter>
+        </Style>
+        
+        <!-- 文字的基础样式：同样设置恢复的淡出时间为1秒 -->
+        <Style Selector="TextBlock.status-text">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        
+        <!-- 文字的高亮状态：字变白，且瞬间生效 -->
+        <Style Selector="TextBlock.status-success, TextBlock.status-warn, TextBlock.status-error, TextBlock.status-info">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0" />
+                </Transitions>
+            </Setter>
+        </Style>
+        
+        <!-- 标签标注的悬停样式 -->
+        <Style Selector="Border.label-marker">
+            <Setter Property="Background" Value="Coral"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+        <Style Selector="Border.label-marker:pointerover">
+            <Setter Property="Background" Value="Orange"/>
+            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- 工具栏按钮样式 -->
+        <Style Selector="Button.toolbar-button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#CCC"/>
+        </Style>
+        <Style Selector="Button.toolbar-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#F0F0F0"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}"/>
+        </Style>
+        <Style Selector="Button.toolbar-button:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E0E0E0"/>
         </Style>
     </Window.Styles>
 </Window>

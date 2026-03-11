@@ -8,6 +8,42 @@
         <Setter Property="Padding" Value="8,6"/>
     </Style>
     
+    <Style Selector="Border.status-bar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+    
+    <!-- 状态栏成功（绿色） -->
+    <Style Selector="Border.status-bar.status-success">
+        <Setter Property="Background" Value="#4CAF50"/>
+    </Style>
+    
+    <!-- 状态栏警告（黄色） -->
+    <Style Selector="Border.status-bar.status-warn">
+        <Setter Property="Background" Value="#FFC107"/>
+    </Style>
+    
+    <!-- 状态栏错误（红色） -->
+    <Style Selector="Border.status-bar.status-error">
+        <Setter Property="Background" Value="#F44336"/>
+    </Style>
+    
+    <!-- 成功状态文字颜色 -->
+    <Style Selector="TextBlock.status-success">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    
+    <!-- 警告状态文字颜色 -->
+    <Style Selector="TextBlock.status-warn">
+        <Setter Property="Foreground" Value="#333333"/>
+    </Style>
+    
+    <!-- 错误状态文字颜色 -->
+    <Style Selector="TextBlock.status-error">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    
     <Style Selector="TextBlock.status-text">
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Foreground" Value="#555555"/>
@@ -61,6 +97,7 @@
         <Setter Property="BorderBrush" Value="#DDD"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     
     <Style Selector="Button:pointerover">
@@ -70,5 +107,91 @@
     
     <Style Selector="Button:pressed">
         <Setter Property="Background" Value="#E0E0E0"/>
+    </Style>
+
+    <!-- 基础模板（去掉圆点） -->
+    <Style Selector="RadioButton.no-dot">
+        <Setter Property="Template">
+            <ControlTemplate TargetType="RadioButton">
+                <Border Name="border"
+                        Background="Transparent"
+                        BorderBrush="#ccc"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12,6"
+                        Height="30">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontSize="12" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- 选中状态高亮 -->
+    <Style Selector="RadioButton.no-dot:checked /template/ Border#border">
+        <!-- <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" /> -->
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <!-- Hover 效果 -->
+    <Style Selector="RadioButton.no-dot:pointerover /template/ Border#border">
+        <Setter Property="TextElement.Foreground" Value="White" />
+        <!-- <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+        <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight2}" /> -->
+    </Style>
+
+    <!-- 按下效果 -->
+    <Style Selector="RadioButton.no-dot:pressed /template/ Border#border">
+        <!-- <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorDark1}" /> -->
+    </Style>
+
+    <!-- 选中 + Hover -->
+    <Style Selector="RadioButton.no-dot:checked:pointerover /template/ Border#border">
+        <!-- <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorLight1}" /> -->
+    </Style>
+
+    <!-- 选中 + 按下 -->
+    <Style Selector="RadioButton.no-dot:checked:pressed /template/ Border#border">
+        <!-- <Setter Property="Background" Value="{DynamicResource SystemAccentColorDark1}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorDark1}" /> -->
+    </Style>
+
+    <!-- Group0 (框内) 自定义颜色样式 -->
+    <Style Selector="RadioButton.group0:checked /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group0ColorBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group0:pointerover /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group0ColorHoverBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group0:pressed /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group0ColorPressedBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group0:checked:pointerover /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group0ColorHoverBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group0:checked:pressed /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group0ColorPressedBrush}" />
+    </Style>
+
+    <!-- Group1 (框外) 自定义颜色样式 -->
+    <Style Selector="RadioButton.group1:checked /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group1ColorBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group1:pointerover /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group1ColorHoverBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group1:pressed /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group1ColorPressedBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group1:checked:pointerover /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group1ColorHoverBrush}" />
+    </Style>
+    <Style Selector="RadioButton.group1:checked:pressed /template/ Border#border">
+        <Setter Property="Background" Value="{DynamicResource Group1ColorPressedBrush}" />
     </Style>
 </Styles>

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Avalonia.Input;
 
@@ -7,14 +8,17 @@ namespace LabelAva.Services;
 
 /// <summary>
 /// 快捷键设置持久化服务
+/// 
+/// 【绿色软件规则】
+/// 所有配置文件与可执行文件保存在同一目录，便于程序整体复制移动。
+/// 配置目录：与入口程序集(.exe)相同目录下的 config.json
 /// </summary>
 public static class ShortcutSettingsService
 {
-    private static readonly string SettingsFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "LabelAva");
+    // 【绿色软件规则】配置保存在可执行文件同一目录
+    private static readonly string ConfigFolder = AppContext.BaseDirectory;
     
-    private static readonly string SettingsFile = Path.Combine(SettingsFolder, "shortcuts.json");
+    private static readonly string SettingsFile = Path.Combine(ConfigFolder, "config.json");
     
     /// <summary>
     /// 保存快捷键设置
@@ -23,11 +27,7 @@ public static class ShortcutSettingsService
     {
         try
         {
-            // 确保目录存在
-            if (!Directory.Exists(SettingsFolder))
-            {
-                Directory.CreateDirectory(SettingsFolder);
-            }
+            // 【绿色软件规则】配置保存在可执行文件同一目录，无需额外创建目录
             
             var json = JsonSerializer.Serialize(new ShortcutSettingsDto(settings), new JsonSerializerOptions
             {
@@ -72,6 +72,52 @@ public static class ShortcutSettingsService
 }
 
 /// <summary>
+/// 用于 JSON 序列化的颜色设置 DTO
+/// </summary>
+public class ColorSettingsDto
+{
+    /// <summary>
+    /// 分组颜色字典（字符串格式以便JSON序列化）
+    /// </summary>
+    public Dictionary<string, string> GroupColors { get; set; } = new();
+
+    /// <summary>
+    /// 选中高亮颜色
+    /// </summary>
+    public string? SelectedColor { get; set; }
+
+    public ColorSettingsDto() { }
+
+    public ColorSettingsDto(Models.ColorSettings settings)
+    {
+        // 将int key转换为string key以便JSON序列化
+        GroupColors = settings.GroupColors.ToDictionary(
+            kvp => kvp.Key.ToString(),
+            kvp => kvp.Value
+        );
+        SelectedColor = settings.SelectedColor;
+    }
+
+    public Models.ColorSettings ToSettings()
+    {
+        var settings = new Models.ColorSettings();
+
+        // 转换字符串key回int key
+        foreach (var kvp in GroupColors)
+        {
+            if (int.TryParse(kvp.Key, out int groupIndex))
+            {
+                settings.GroupColors[groupIndex] = kvp.Value;
+            }
+        }
+
+        settings.SelectedColor = SelectedColor ?? "#1E90FF";
+
+        return settings;
+    }
+}
+
+/// <summary>
 /// 用于 JSON 序列化的 DTO
 /// </summary>
 public class ShortcutSettingsDto
@@ -79,21 +125,31 @@ public class ShortcutSettingsDto
     // 导航快捷键 - 主要
     public string? NavigateUp { get; set; }
     public string? NavigateDown { get; set; }
-    
+
     // 导航快捷键 - 次要
     public string? NavigateUpSecondary { get; set; }
     public string? NavigateDownSecondary { get; set; }
-    
+
     // 复制快捷键
     public string? CopyText { get; set; }
-    
+
     // 缩放快捷键
     public string? ZoomIn { get; set; }
     public string? ZoomOut { get; set; }
     public string? ResetZoom { get; set; }
-    
+
+    // 分组切换快捷键
+    public string? ToggleGroup0 { get; set; }
+    public string? ToggleGroup1 { get; set; }
+
+    // 颜色设置
+    public ColorSettingsDto? Colors { get; set; }
+
+    // 编辑行为设置
+    public bool AutoFocusTextBox { get; set; } = true;
+
     public ShortcutSettingsDto() { }
-    
+
     public ShortcutSettingsDto(Models.ShortcutSettings settings)
     {
         NavigateUp = GestureToString(settings.NavigateUp);
@@ -104,10 +160,16 @@ public class ShortcutSettingsDto
         ZoomIn = GestureToString(settings.ZoomIn);
         ZoomOut = GestureToString(settings.ZoomOut);
         ResetZoom = GestureToString(settings.ResetZoom);
+        ToggleGroup0 = GestureToString(settings.ToggleGroup0);
+        ToggleGroup1 = GestureToString(settings.ToggleGroup1);
+        Colors = new ColorSettingsDto(settings.Colors);
+        AutoFocusTextBox = settings.AutoFocusTextBox;
     }
-    
+
     public Models.ShortcutSettings ToSettings()
     {
+        var colors = Colors?.ToSettings() ?? Models.ColorSettings.CreateDefaults();
+
         return new Models.ShortcutSettings
         {
             NavigateUp = StringToGesture(NavigateUp),
@@ -117,7 +179,11 @@ public class ShortcutSettingsDto
             CopyText = StringToGesture(CopyText),
             ZoomIn = StringToGesture(ZoomIn),
             ZoomOut = StringToGesture(ZoomOut),
-            ResetZoom = StringToGesture(ResetZoom)
+            ResetZoom = StringToGesture(ResetZoom),
+            ToggleGroup0 = StringToGesture(ToggleGroup0),
+            ToggleGroup1 = StringToGesture(ToggleGroup1),
+            Colors = colors,
+            AutoFocusTextBox = AutoFocusTextBox
         };
     }
     

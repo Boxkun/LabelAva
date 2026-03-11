@@ -18,29 +18,10 @@ public partial class App : Application
         {
             desktop.MainWindow = new MainWindow();
             
-            // 订阅应用关闭事件，确保窗口正确关闭
-            desktop.ShutdownRequested += OnDesktopShutdownRequested;
+            // 设置关闭模式：主窗口关闭时退出进程
+            desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-    
-    /// <summary>
-    /// 应用关闭时清理资源
-    /// </summary>
-    private void OnDesktopShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            // 确保主窗口已关闭并释放资源
-            if (desktop.MainWindow != null)
-            {
-                // 窗口的 Closing 事件会处理资源清理
-                desktop.MainWindow.Close();
-            }
-            
-            // 取消订阅
-            desktop.ShutdownRequested -= OnDesktopShutdownRequested;
-        }
     }
 }

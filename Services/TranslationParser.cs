@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Globalization;
 using LabelAva.Models;
 
 namespace LabelAva.Services;
@@ -102,8 +103,8 @@ public class TranslationParser
                 continue;
             }
             
-            // 注释开始（非数字开头的行）
-            if (!char.IsDigit(line[0]))
+            // 防越界保护。如果遇到了图片名区域，说明文件缺少闭合的分组 '-' 标记，强制跳出
+            if (ImagePattern.IsMatch(line))
             {
                 break;
             }
@@ -271,5 +272,112 @@ public class TranslationParser
         return data.ImageLabels.TryGetValue(imageName, out var labels) 
             ? labels 
             : new List<LabelItem>();
+    }
+
+    /// <summary>
+    /// 保存翻译数据到文件
+    /// </summary>
+    /// <param name="filePath">文件路径</param>
+    /// <param name="data">翻译数据</param>
+    public void Save(string filePath, TranslationData data)
+    {
+        var content = GenerateFileContent(data);
+        // 使用 UTF8 编码保存
+        File.WriteAllText(filePath, content, Encoding.UTF8);
+    }
+
+    /// <summary>
+    /// 根据翻译数据生成文件内容
+    /// </summary>
+    /// <param name="data">翻译数据</param>
+    /// <returns>文件内容字符串</returns>
+    public string GenerateFileContent(TranslationData data)
+    {
+        var sb = new StringBuilder();
+
+        // 1. 写入未知参数 (第一行)
+        sb.AppendLine(data.UnknownParam ?? string.Empty);
+
+        // 2. 写入分组区域 (如果有分组)
+        // 【修复点】：必须在分组名称的上方和下方各写一个 "-"，作为分组块的起始和结束标记。
+        if (data.Groups.Any())
+        {
+            sb.AppendLine("-"); // <--- 分组区域开始标记
+            
+            foreach (var group in data.Groups.OrderBy(g => g.Index))
+            {
+                sb.AppendLine(group.Name);
+            }
+            
+            sb.AppendLine("-"); // 分组区域结束标记
+        }
+        else
+        {
+            // 即使没有分组名称，为了保持格式兼容性，某些标准可能也需要空的分组块。
+            // 如果原标准允许完全省略，则保留空白；
+            // 但如果必须保留格式骨架，请确保至少输出：
+            // sb.AppendLine("-");
+            // sb.AppendLine("-");
+        }
+
+        // 3. 写入注释区域
+        if (data.Comments.Any())
+        {
+            foreach (var comment in data.Comments)
+            {
+                sb.AppendLine(comment);
+            }
+            // 不添加额外空行，由数据区域前空行统一处理
+        }
+
+        // 4. 写入数据区域
+        // 文件头与数据区域之间的空行
+        if (data.ImageLabels.Any())
+        {
+            sb.AppendLine();
+        }
+
+        bool isFirstImage = true;
+        foreach (var kvp in data.ImageLabels)
+        {
+            if (!isFirstImage)
+            {
+                sb.AppendLine(); // 图片之间的空行
+            }
+            isFirstImage = false;
+
+            var imageName = kvp.Key;
+            var labels = kvp.Value;
+
+            // 图片头: >>>>>>>>[01.jpeg]<<<<<<<< (即使没有标注也写入，用于标定哪些图片在工程中)
+            sb.AppendLine($">>>>>>>>[{imageName}]<<<<<<<<");
+
+            // 空图片：不添加额外空行
+            if (labels == null || labels.Count == 0)
+            {
+                continue;
+            }
+
+            // 重新生成标注序号（从1开始）
+            int textIndex = 1;
+            foreach (var label in labels)
+            {
+                // 标签头: ----------------[1]----------------[0.252,0.077,1]
+                // 归一化坐标保留三位小数，使用 InvariantCulture 确保格式一致
+                string xStr = label.X.ToString("F3", CultureInfo.InvariantCulture);
+                string yStr = label.Y.ToString("F3", CultureInfo.InvariantCulture);
+
+                sb.AppendLine($"----------------[{textIndex}]----------------[{xStr},{yStr},{label.GroupIndex}]");
+
+                // 标签文本 (多行文本原样输出)
+                sb.AppendLine(label.Text);
+
+                // 每个标注后留一空行
+                sb.AppendLine();
+                textIndex++;
+            }
+        }
+
+        return sb.ToString();
     }
 }
