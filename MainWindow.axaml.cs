@@ -85,7 +85,6 @@ public partial class MainWindow : Window
     
     // Dirty State & Undo/Redo 相关
     private bool _isDirty = false;
-    private HistoryManager? _historyManager;
     private DispatcherTimer? _autoSaveTimer;
     private bool _forceClose = false;
     
@@ -180,9 +179,10 @@ public partial class MainWindow : Window
         // 订阅鼠标按键事件（用于处理鼠标侧键快捷键）
         this.PointerPressed += OnMainWindowPointerPressed;
         
-        // 初始化历史记录管理器
-        _historyManager = new HistoryManager();
-        _historyManager.HistoryChanged += OnHistoryChanged;
+        // 初始化历史记录管理器（通过 HistoryViewModel 封装）
+        var historyManager = new HistoryManager();
+        ViewModel.History = new HistoryViewModel(historyManager, CommitCurrentEdit, StatusBar);
+        ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
         
         // 初始化自动保存定时器（3分钟间隔）
         _autoSaveTimer = new DispatcherTimer
@@ -303,10 +303,7 @@ public partial class MainWindow : Window
         }
         
         // 清空历史记录
-        if (_historyManager != null)
-        {
-            _historyManager.Clear();
-        }
+        ViewModel.History.Clear();
         
         // 释放图片资源
         if (_currentImage != null)
@@ -831,29 +828,11 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 撤销操作 (由菜单栏点击触发)
+    /// 历史状态变化事件处理（由 HistoryViewModel.HistoryStateChanged 触发）
     /// </summary>
-    private void OnUndo(object? sender, RoutedEventArgs e)
-    {
-        ExecuteGlobalUndo();
-    }
-
-    /// <summary>
-    /// 重做操作 (由菜单栏点击触发)
-    /// </summary>
-    private void OnRedo(object? sender, RoutedEventArgs e)
-    {
-        ExecuteGlobalRedo();
-    }
-    
-    /// <summary>
-    /// 历史记录变化事件处理
-    /// </summary>
-    private void OnHistoryChanged(object? sender, EventArgs e)
+    private void OnHistoryStateChanged(object? sender, EventArgs e)
     {
         SetDirty(true);
-        UpdateUndoRedoMenuState();
-        UpdateHistoryMenuItems();
 
         // 【核心修复】将视图重建推迟到更晚执行，确保 SelectionChanged 等事件完全处理完毕
         // 使用更低的优先级，确保在 TextBox 值设置和光标定位之后执行
@@ -965,41 +944,6 @@ public partial class MainWindow : Window
             _pendingNewLabelIndex = null;
         }
         
-        // 更新 Undo/Redo 菜单项状态
-        UpdateUndoRedoMenuState();
-    }
-    
-    /// <summary>
-    /// 更新撤销/重做菜单项的可用状态
-    /// </summary>
-    private void UpdateUndoRedoMenuState()
-    {
-        if (_historyManager != null)
-        {
-            ViewModel.CanUndo = _historyManager.CanUndo;
-            ViewModel.CanRedo = _historyManager.CanRedo;
-        }
-    }
-    
-    /// <summary>
-    /// 更新历史记录菜单项（显示最近两次操作）
-    /// </summary>
-    private void UpdateHistoryMenuItems()
-    {
-        if (_historyManager == null) return;
-        
-        // 获取栈顶（最近一次）的撤销和重做描述
-        var recentUndo = _historyManager.GetRecentUndoDescriptions(1);
-        var recentRedo = _historyManager.GetRecentRedoDescriptions(1);
-        
-        // 更新撤销菜单项的Header
-        var undoHeader = (_historyManager.CanUndo && recentUndo.Count > 0)
-            ? $"撤销 {recentUndo[0]}"
-            : null;
-        var redoHeader = (_historyManager.CanRedo && recentRedo.Count > 0)
-            ? $"重做 {recentRedo[0]}"
-            : null;
-        ViewModel.SetUndoRedoState(_historyManager.CanUndo, _historyManager.CanRedo, undoHeader, redoHeader);
     }
     
     /// <summary>
@@ -1371,45 +1315,16 @@ public partial class MainWindow : Window
 
                     // 只有发生了实质性修改，才推入历史栈
                     // 注意：如果文本没有变化，就不会触发 HistoryChanged，避免 RebuildCurrentView 清空 TextBox
-                    if (oldText != newText && _historyManager != null)
+                    if (oldText != newText)
                     {
                         var command = new ChangeTextCommand(labelItem, oldText, newText);
-                        _historyManager.ExecuteCommand(command);
+                        ViewModel.History.ExecuteCommand(command);
                     }
                 }
             }
         }
     }
 
-    /// <summary>
-    /// 执行全局撤销（强制切断焦点冲突）
-    /// </summary>
-    private void ExecuteGlobalUndo()
-    {
-        // 无论当前焦点在哪里，先强制提交正在编辑的文本状态！
-        CommitCurrentEdit();
-
-        if (_historyManager != null && _historyManager.CanUndo)
-        {
-            _historyManager.Undo();
-            StatusBar.UpdateStatus("已撤销", StatusBarViewModel.StatusType.Info);
-        }
-    }
-
-    /// <summary>
-    /// 执行全局重做
-    /// </summary>
-    private void ExecuteGlobalRedo()
-    {
-        // 如果用户正在编辑时执行重做，同样先提交并清空状态
-        CommitCurrentEdit();
-
-        if (_historyManager != null && _historyManager.CanRedo)
-        {
-            _historyManager.Redo();
-            StatusBar.UpdateStatus("已重做", StatusBarViewModel.StatusType.Info);
-        }
-    }
 
     /// <summary>
     /// 全局快捷键拦截（隧道路由，在子控件处理前触发）
@@ -1443,28 +1358,24 @@ public partial class MainWindow : Window
             }
         }
 
-        // ========== 原有撤销重做逻辑保持不变 ==========
-        if (isCtrlPressed)
+        // ========== 撤销/重做：通过隧道拦截，手动路由到 HistoryViewModel Command ==========
+        // 必须在隧道阶段拦截，防止 TextBox 等原生控件触发内置撤销逻辑
+        if (isCtrlPressed && e.Key == Key.Z)
         {
-            if (e.Key == Key.Z)
+            if (isShiftPressed)
             {
-                if (isShiftPressed)
-                {
-                    ExecuteGlobalRedo(); // Ctrl+Shift+Z -> 重做
-                }
-                else
-                {
-                    ExecuteGlobalUndo(); // Ctrl+Z -> 撤销
-                }
-
-                // 【核心】吞掉事件，禁止 TextBox 等原生控件触发它们自己的内置撤销逻辑
-                e.Handled = true;
+                ViewModel.History.RedoCommand.Execute(null);
             }
-            else if (e.Key == Key.Y)
+            else
             {
-                ExecuteGlobalRedo(); // Ctrl+Y -> 重做
-                e.Handled = true;
+                ViewModel.History.UndoCommand.Execute(null);
             }
+            e.Handled = true;
+        }
+        else if (isCtrlPressed && e.Key == Key.Y)
+        {
+            ViewModel.History.RedoCommand.Execute(null);
+            e.Handled = true;
         }
         
         // 创建当前按键的 KeyGesture 用于比较（与树图导航相同的处理方式）
@@ -1661,7 +1572,7 @@ public partial class MainWindow : Window
                 UpdateDraggedLabelData(_draggedLabel, currentLeft, currentTop);
                 
                 // 检查是否真的移动了（使用新的交互状态字段）
-                if (_draggingLabelItem != null && _historyManager != null)
+                if (_draggingLabelItem != null)
                 {
                     double currentX = _draggingLabelItem.X;
                     double currentY = _draggingLabelItem.Y;
@@ -1670,7 +1581,7 @@ public partial class MainWindow : Window
                     {
                         // 真的移动了，创建 MoveLabelCommand
                         var command = new MoveLabelCommand(_draggingLabelItem, _dragStartNormX, _dragStartNormY, currentX, currentY);
-                        _historyManager.ExecuteCommand(command);
+                        ViewModel.History.ExecuteCommand(command);
                     }
                 }
                 
@@ -1737,7 +1648,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void AddNewLabel(double imageX, double imageY)
     {
-        if (_currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath) || _currentTreeItem == null || _historyManager == null) 
+        if (_currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath) || _currentTreeItem == null)
             return;
 
         string imageName = Path.GetFileName(_currentImagePath);
@@ -1772,7 +1683,7 @@ public partial class MainWindow : Window
         
         // 创建并执行 AddLabelCommand（命令会自动刷新 UI）
         var command = new AddLabelCommand(labels, newLabel);
-        _historyManager.ExecuteCommand(command);
+        ViewModel.History.ExecuteCommand(command);
 
         // 注意：UI 刷新由 HistoryManager.HistoryChanged 事件处理
     }
@@ -1972,10 +1883,7 @@ public partial class MainWindow : Window
         // 重置脏标记和历史记录
         _isDirty = false;
         UpdateTitle();
-        if (_historyManager != null)
-        {
-            _historyManager.Clear();
-        }
+        ViewModel.History.Clear();
         
         // 切换回欢迎屏幕
         ShowWelcomeScreen();
@@ -2892,7 +2800,7 @@ public partial class MainWindow : Window
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
 
-        if (_translationData == null || string.IsNullOrEmpty(_currentImagePath) || _historyManager == null)
+        if (_translationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
 
         string imageName = Path.GetFileName(_currentImagePath);
@@ -2909,7 +2817,7 @@ public partial class MainWindow : Window
             
             // 创建并执行 ChangeGroupCommand
             var command = new ChangeGroupCommand(labelToToggle, oldGroupIndex, newGroupIndex);
-            _historyManager.ExecuteCommand(command);
+            ViewModel.History.ExecuteCommand(command);
         }
     }
     
@@ -2925,7 +2833,7 @@ public partial class MainWindow : Window
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
         
-        if (_translationData == null || string.IsNullOrEmpty(_currentImagePath) || _historyManager == null)
+        if (_translationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
         
         string imageName = Path.GetFileName(_currentImagePath);
@@ -2941,7 +2849,7 @@ public partial class MainWindow : Window
         
         // 创建并执行 DeleteLabelCommand
         var command = new DeleteLabelCommand(labels, labelToRemove);
-        _historyManager.ExecuteCommand(command);
+        ViewModel.History.ExecuteCommand(command);
     }
     
     // ==================== 树视图相关方法 ====================
@@ -3598,7 +3506,7 @@ public partial class MainWindow : Window
         System.Diagnostics.Debug.WriteLine($"[TreeView Drag] Drop: {sourceItem.Index} -> {targetItem.Index}");
 
         // 获取底层数据并执行命令
-        if (_translationData != null && _historyManager != null)
+        if (_translationData != null)
         {
             string imageName = parentImageItem.ImageName;
             if (_translationData.ImageLabels.TryGetValue(imageName, out var labels))
@@ -3617,7 +3525,7 @@ public partial class MainWindow : Window
 
                     // 执行拖拽重排命令
                     var command = new ReorderLabelsCommand(labels, sourceModel, targetIndex);
-                    _historyManager.ExecuteCommand(command);
+                    ViewModel.History.ExecuteCommand(command);
                 }
             }
         }

@@ -5,6 +5,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private StatusBarViewModel _statusBar = new();
 
+    [ObservableProperty]
+    private HistoryViewModel _history = null!; // 由 MainWindow 构造时注入
+
     // ========================
     // 文件菜单
     // ========================
@@ -22,18 +25,6 @@ public partial class MainWindowViewModel : ObservableObject
     // ========================
     // 编辑菜单
     // ========================
-
-    [ObservableProperty]
-    private bool _canUndo;
-
-    [ObservableProperty]
-    private bool _canRedo;
-
-    [ObservableProperty]
-    private string _undoHeader = "撤销(_U)";
-
-    [ObservableProperty]
-    private string _redoHeader = "重做(_R)";
 
     [ObservableProperty]
     private bool _isEditMode;
@@ -65,14 +56,5 @@ public partial class MainWindowViewModel : ObservableObject
         CanSave = hasDocument;
         CanSaveAs = hasDocument;
         CanCloseTranslation = hasDocument;
-    }
-
-    public void SetUndoRedoState(bool canUndo, bool canRedo, string? undoName, string? redoName)
-    {
-        CanUndo = canUndo;
-        CanRedo = canRedo;
-
-        UndoHeader = undoName ?? "撤销(_U)";
-        RedoHeader = redoName ?? "重做(_R)";
     }
 }

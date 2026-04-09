@@ -54,7 +54,7 @@ graph TD
 
 **变更文件**：`MainWindowViewModel.cs`, `MainWindow.axaml`, `MainWindow.axaml.cs`
 
-### Phase 1：HistoryViewModel ⬜ 待执行
+### Phase 1：HistoryViewModel ✅ 已完成
 
 > 详见下方第三节
 
@@ -306,15 +306,15 @@ public partial class MainWindowViewModel : ObservableObject
 
 ### 3.8 迁移步骤清单
 
-- [ ] 创建 `ViewModels/HistoryViewModel.cs`
-- [ ] 在 `MainWindowViewModel` 中添加 `History` 属性，移除 `CanUndo`/`CanRedo`/`UndoHeader`/`RedoHeader`/`SetUndoRedoState`
-- [ ] 在 `MainWindow.axaml.cs` 构造函数中创建 `HistoryViewModel` 实例并注入
-- [ ] 更新 `MainWindow.axaml` 菜单绑定：`Click` → `Command`
-- [ ] 移除 `MainWindow.axaml.cs` 中的 `OnUndo`/`OnRedo`/`ExecuteGlobalUndo`/`ExecuteGlobalRedo`/`UpdateUndoRedoMenuState`/`UpdateHistoryMenuItems`
-- [ ] 将所有 `_historyManager.ExecuteCommand(cmd)` 替换为 `ViewModel.History.ExecuteCommand(cmd)`
-- [ ] 将所有 `_historyManager.Clear()` 替换为 `ViewModel.History.Clear()`
-- [ ] 订阅 `ViewModel.History.HistoryStateChanged` 处理脏标记
-- [ ] 移除全局快捷键中 Ctrl+Z/Y 的手动处理（验证 Command + KeyBinding 自动路由）
+- [x] 创建 `ViewModels/HistoryViewModel.cs`
+- [x] 在 `MainWindowViewModel` 中添加 `History` 属性，移除 `CanUndo`/`CanRedo`/`UndoHeader`/`RedoHeader`/`SetUndoRedoState`
+- [x] 在 `MainWindow.axaml.cs` 构造函数中创建 `HistoryViewModel` 实例并注入
+- [x] 更新 `MainWindow.axaml` 菜单绑定：`Click` → `Command`
+- [x] 移除 `MainWindow.axaml.cs` 中的 `OnUndo`/`OnRedo`/`ExecuteGlobalUndo`/`ExecuteGlobalRedo`/`UpdateUndoRedoMenuState`/`UpdateHistoryMenuItems`
+- [x] 将所有 `_historyManager.ExecuteCommand(cmd)` 替换为 `ViewModel.History.ExecuteCommand(cmd)`
+- [x] 将所有 `_historyManager.Clear()` 替换为 `ViewModel.History.Clear()`
+- [x] 订阅 `ViewModel.History.HistoryStateChanged` 处理脏标记
+- [x] 移除全局快捷键中 Ctrl+Z/Y 的手动处理（改为隧道拦截手动路由到 Command）
 - [ ] 测试：撤销/重做功能、菜单状态、快捷键、脏标记
 
 ### 3.9 风险与注意事项

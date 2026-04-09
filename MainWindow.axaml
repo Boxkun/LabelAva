@@ -38,8 +38,8 @@
                 <MenuItem Header="退出" Click="OnExit"/>
             </MenuItem>
             <MenuItem Header="编辑(_E)">
-                <MenuItem Header="{Binding UndoHeader}" Click="OnUndo" IsEnabled="{Binding CanUndo}" InputGesture="Ctrl+Z"/>
-                <MenuItem Header="{Binding RedoHeader}" Click="OnRedo" IsEnabled="{Binding CanRedo}" InputGesture="Ctrl+Y"/>
+                <MenuItem Header="{Binding History.UndoHeader}" Command="{Binding History.UndoCommand}" InputGesture="Ctrl+Z"/>
+                <MenuItem Header="{Binding History.RedoHeader}" Command="{Binding History.RedoCommand}" InputGesture="Ctrl+Y"/>
                 <Separator/>
                 <MenuItem Header="编辑模式" ToggleType="CheckBox" Click="OnToggleEditMode" IsEnabled="{Binding CanToggleEditMode}" IsChecked="{Binding IsEditMode, Mode=TwoWay}"/>
                 <Separator/>
