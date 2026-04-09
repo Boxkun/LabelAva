@@ -5,6 +5,9 @@
         xmlns:local="clr-namespace:LabelAva"
         xmlns:models="clr-namespace:LabelAva.Models"
         xmlns:views="clr-namespace:LabelAva.Views"
+        xmlns:vm="using:LabelAva.ViewModels"
+        x:DataType="vm:MainWindowViewModel"
+        
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="LabelAva.MainWindow"
         Title="LabelAva"
@@ -28,17 +31,17 @@
             <MenuItem Header="文件(_F)">
                 <MenuItem Header="新建翻译" Click="OnNewTranslation"/>
                 <MenuItem Header="打开翻译" Click="OnOpenTranslationFile"/>
-                <MenuItem x:Name="SaveTranslationMenuItem" Header="保存(_S)" Click="OnSaveTranslation" IsEnabled="False" InputGesture="Ctrl+S"/>
-                <MenuItem x:Name="SaveAsTranslationMenuItem" Header="另存为(_A)" Click="OnSaveAsTranslation" IsEnabled="False" InputGesture="Ctrl+Shift+S"/>
-                <MenuItem x:Name="CloseTranslationMenuItem" Header="关闭翻译" Click="OnCloseTranslation" IsEnabled="False"/>
+                <MenuItem Header="保存(_S)" Click="OnSaveTranslation" IsEnabled="{Binding CanSave}" InputGesture="Ctrl+S"/>
+                <MenuItem Header="另存为(_A)" Click="OnSaveAsTranslation" IsEnabled="{Binding CanSaveAs}" InputGesture="Ctrl+Shift+S"/>
+                <MenuItem Header="关闭翻译" Click="OnCloseTranslation" IsEnabled="{Binding CanCloseTranslation}"/>
                 <Separator/>
                 <MenuItem Header="退出" Click="OnExit"/>
             </MenuItem>
             <MenuItem Header="编辑(_E)">
-                <MenuItem x:Name="UndoMenuItem" Header="撤销(_U)" Click="OnUndo" IsEnabled="False" InputGesture="Ctrl+Z"/>
-                <MenuItem x:Name="RedoMenuItem" Header="重做(_R)" Click="OnRedo" IsEnabled="False" InputGesture="Ctrl+Y"/>
+                <MenuItem Header="{Binding UndoHeader}" Click="OnUndo" IsEnabled="{Binding CanUndo}" InputGesture="Ctrl+Z"/>
+                <MenuItem Header="{Binding RedoHeader}" Click="OnRedo" IsEnabled="{Binding CanRedo}" InputGesture="Ctrl+Y"/>
                 <Separator/>
-                <MenuItem x:Name="EditModeMenuItem" Header="编辑模式" ToggleType="CheckBox" Click="OnToggleEditMode" IsEnabled="False"/>
+                <MenuItem Header="编辑模式" ToggleType="CheckBox" Click="OnToggleEditMode" IsEnabled="{Binding CanToggleEditMode}" IsChecked="{Binding IsEditMode, Mode=TwoWay}"/>
                 <Separator/>
                 <MenuItem Header="首选项" Click="OnPreferences"/>
             </MenuItem>
@@ -53,14 +56,22 @@
         </Menu>
         
         <!-- 状态栏 -->
-        <Border DockPanel.Dock="Bottom" Classes="statusbar" Padding="4">
+        <Border DockPanel.Dock="Bottom" Classes="statusbar" Padding="4" DataContext="{Binding StatusBar}" x:DataType="vm:StatusBarViewModel">
             <Grid ColumnDefinitions="*,Auto">
-                <!-- 修改这里：加入 HorizontalAlignment、CornerRadius 和 Padding -->
-                <Border x:Name="_StatusBar" Classes="status-bar" 
+                <Border x:Name="_StatusBar" 
+                        Classes="status-bar"
+                        Classes.status-success="{Binding IsSuccess}"
+                        Classes.status-warn="{Binding IsWarn}"
+                        Classes.status-error="{Binding IsError}"
                         HorizontalAlignment="Left" CornerRadius="4" Padding="8,2">
-                    <TextBlock x:Name="_StatusText" Text="就绪" Classes="status-text" VerticalAlignment="Center"/>
+                     <TextBlock Text="{Binding StatusText}"
+                                Classes="status-text"
+                                Classes.status-success="{Binding IsSuccess}"
+                                Classes.status-warn="{Binding IsWarn}"
+                                Classes.status-error="{Binding IsError}"
+                                FontFamily="Sarasa Mono SC"/>
                 </Border>
-                <TextBlock x:Name="_ZoomText" Grid.Column="1" Text="缩放: 100%" Classes="zoom-text" VerticalAlignment="Center" Margin="20,0,4,0"/>
+                <TextBlock x:Name="_ZoomText" Grid.Column="1" Text="{Binding ZoomText}" Classes="zoom-text" VerticalAlignment="Center" Margin="20,0,4,0"/>
             </Grid>
         </Border>
         
@@ -135,11 +146,11 @@
                                       KeyDown="OnTreeViewKeyDown"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                       Classes="primary">
-                                <!-- <TreeView.Styles>
+                                <TreeView.Styles>
                                     <Style Selector="TreeViewItem" x:DataType="models:ImageTreeItem">
                                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                     </Style>
-                                </TreeView.Styles> -->
+                                </TreeView.Styles>
                                 <TreeView.DataTemplates>
                                     <TreeDataTemplate x:DataType="models:TranslationTreeItem" ItemsSource="{x:Null}">
                                         <Grid ColumnDefinitions="Auto,*" Margin="4,4,4,4" Background="Transparent"
@@ -255,58 +266,6 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-        <!-- 状态栏样式 -->
-        <Style Selector="Border.status-bar">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:1" /> 
-                </Transitions>
-            </Setter>
-        </Style>
-        
-        <!-- 定义不同状态的背景色 -->
-        <Style Selector="Border.status-success">
-            <Setter Property="Background" Value="#4CAF50"/> <!-- 绿色 -->
-        </Style>
-        <Style Selector="Border.status-warn">
-            <Setter Property="Background" Value="#FF9800"/> <!-- 橙色 -->
-        </Style>
-        <Style Selector="Border.status-error">
-            <Setter Property="Background" Value="#F44336"/> <!-- 红色 -->
-        </Style>
-        <Style Selector="Border.status-info">
-            <Setter Property="Background" Value="#2196F3"/> <!-- 蓝色 -->
-        </Style>
-
-        <!-- 关键修改：当处于提示状态时，将背景渐变时间强制覆盖为 0，实现瞬间变色(取消淡入) -->
-        <Style Selector="Border.status-success, Border.status-warn, Border.status-error, Border.status-info">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0" />
-                </Transitions>
-            </Setter>
-        </Style>
-        
-        <!-- 文字的基础样式：同样设置恢复的淡出时间为1秒 -->
-        <Style Selector="TextBlock.status-text">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Foreground" Duration="0:0:1" />
-                </Transitions>
-            </Setter>
-        </Style>
-        
-        <!-- 文字的高亮状态：字变白，且瞬间生效 -->
-        <Style Selector="TextBlock.status-success, TextBlock.status-warn, TextBlock.status-error, TextBlock.status-info">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Foreground" Duration="0:0:0" />
-                </Transitions>
-            </Setter>
-        </Style>
-        
         <!-- 标签标注的悬停样式 -->
         <Style Selector="Border.label-marker">
             <Setter Property="Background" Value="Coral"/>

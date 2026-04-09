@@ -1,0 +1,103 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Uncomment if you have tasks that create the documents:
+#*.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Mono Auto Generated Files
+mono_crash.*
+
+# Build results
+[Tt]est/
+[Rr]elease/
+[Ss]tream[Ss]ensitivity/
+# Visual Studio files
+.vs/
+# JetBrains Rider
+.idea/
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+# NuGet Symbol packages
+*.snupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if you have NuGet Package Restore enabled
+#!**/[Pp]ackagesRestore/.*
+
+# Optional NuGet .gitignore
+# Uncomment if NuGet Package Restore is enabled
+#**/[Pp]ackages.legal/
+
+# Optional REPL history
+.pyre/
+
+# Optional VS Code specific files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Avalonia
+[Aa]valonia/[Mm]etadata.ide
+[Aa]valonia/[Mm]etadata.ide.lock
+[Aa]valonia/[Bb]in/
+[Aa]valonia/[Oo]bj/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
