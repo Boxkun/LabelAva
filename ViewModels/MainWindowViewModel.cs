@@ -14,6 +14,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private DocumentViewModel _document = null!; // 由 MainWindow 构造时注入
 
+    [ObservableProperty]
+    private NavigationViewModel _navigation = null!; // 由 MainWindow 构造时注入
+
 
     // ========================
     // 视图菜单

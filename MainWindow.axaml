@@ -141,7 +141,8 @@
                                     </StackPanel>
                                 </DockPanel>
                             </Border>
-                            <TreeView x:Name="ImageTreeView" 
+                            <TreeView x:Name="ImageTreeView"
+                                      ItemsSource="{Binding Navigation.TreeItems}"
                                       SelectionChanged="OnTreeViewSelectionChanged"
                                       KeyDown="OnTreeViewKeyDown"
                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"

@@ -85,10 +85,18 @@ graph TD
 - [x] 文件菜单 XAML 绑定：`Click` → `Command`
 - [x] 窗口标题 XAML 绑定：`Title="{Binding Document.WindowTitle}"`
 
-### Phase 4：NavigationViewModel ⬜ 待规划
+### Phase 4：NavigationViewModel ✅ 已完成
 
-- 迁移树视图构建和选择逻辑
-- 迁移图片导航（上一张/下一张）
+> 详见 `plans/Phase4-NavigationViewModel迁移方案.md`
+
+- [x] 迁移树视图数据状态（_treeItems, _currentTreeItem, _currentImageIndex 等）→ NavigationViewModel
+- [x] 迁移 BuildTreeView 逻辑 → NavigationViewModel.BuildTreeView
+- [x] 迁移 OnTreeViewSelectionChanged 中的导航状态逻辑（图片切换、手风琴展开/收起）
+- [x] 迁移键盘/鼠标导航命令 → NavigateUp / NavigateDown
+- [x] 迁移辅助方法（GetParentImageItem, SelectLabelByIndex, GetVisibleItems）
+- [x] 迁移树视图拖拽数据验证逻辑
+- [x] XAML 绑定 TreeView ItemsSource
+- [x] 清理 MainWindow 过渡期引用
 
 ### Phase 5：ImageViewportViewModel ⬜ 待规划
 

@@ -30,24 +30,11 @@ public partial class MainWindow : Window
     private Bitmap? _currentImage;
     private string? _currentImagePath;
     
-    // 翻译数据（过渡期保留，后续 Phase 4/5 逐步迁移到 Document.TranslationData）
-    private TranslationData? _translationData;
-    private string? _imageFolderPath;
-    private int _currentImageIndex = 0;
-    private List<string> _imageNames = new();
+    // 翻译数据已迁入 DocumentViewModel（通过 Document.TranslationData 访问）
     
     // 矩阵变换
     private Matrix _transformMatrix = Matrix.Identity;
     private MatrixTransform? _matrixTransform;
-    
-    // 树视图数据
-    private ObservableCollection<ImageTreeItem> _treeItems = new();
-    
-    // 记录上一次焦点的根节点（用于键盘导航时收起旧节点）
-    private ImageTreeItem? _lastFocusedRootItem;
-    
-    // 当前图片对应的树视图项（用于保存和读取 FitScale）
-    private ImageTreeItem? _currentTreeItem;
     
     // 拖动状态
     private bool _isPanning = false;
@@ -98,6 +85,9 @@ public partial class MainWindow : Window
     private Point _treeDragStartPoint;
     private bool _isTreeItemDragging = false;
     private TranslationTreeItem? _draggedTreeItem;
+    
+    // 选中项同步防重入标志
+    private bool _isSyncingSelection = false;
 
     // 分组单选按钮（Avalonia 自动生成 x:Name 字段）
     
@@ -105,6 +95,7 @@ public partial class MainWindow : Window
     public StatusBarViewModel StatusBar => ViewModel.StatusBar;
     public EditViewModel Edit => ViewModel.Edit;
     public DocumentViewModel Document => ViewModel.Document;
+    public NavigationViewModel Navigation => ViewModel.Navigation;
 
     public MainWindow()
     {
@@ -157,8 +148,7 @@ public partial class MainWindow : Window
             ImageWrapper.RenderTransform = _matrixTransform;
         }
         
-        // 绑定树视图
-        ImageTreeView.ItemsSource = _treeItems;
+        // 树视图 ItemsSource 已通过 XAML 绑定 Navigation.TreeItems
 
         // 初始化树视图拖放事件（仅用于 DragOver/Drop，Pointer 事件在 DataTemplate 中处理）
         DragDrop.SetAllowDrop(ImageTreeView, true);
@@ -183,6 +173,11 @@ public partial class MainWindow : Window
         ViewModel.Edit = new EditViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
         ViewModel.Edit.EditModeChanged += OnEditModeChanged;
         ViewModel.Edit.GroupChanged += OnGroupChanged;
+        
+        // 初始化导航视图模型
+        ViewModel.Navigation = new NavigationViewModel(StatusBar);
+        ViewModel.Navigation.CurrentImageChanged += OnNavigationCurrentImageChanged;
+        ViewModel.Navigation.SelectedItemChanged += OnNavigationSelectedItemChanged;
         
         // 初始化文档视图模型
         var fileService = new FileDialogService(() => GetTopLevel(this));
@@ -270,13 +265,11 @@ public partial class MainWindow : Window
         ClearLabelControls();
         
         // 清空树视图数据
-        _treeItems.Clear();
-        ImageTreeView.ItemsSource = null;
+        Navigation.TreeItems.Clear();
         
-        // 清空其他数据
-        _translationData = null;
-        _imageFolderPath = null;
-        _imageNames.Clear();
+        // 清空其他数据（TranslationData 由 DocumentViewModel 管理，无需手动清理）
+        Navigation.ImageFolderPath = null;
+        Navigation.ImageNames.Clear();
         
         // 重置状态
         _isFirstImageLoaded = false;
@@ -364,16 +357,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnDocumentOpened(object? sender, DocumentOpenedEventArgs e)
     {
-        // 同步过渡期引用
-        _translationData = e.TranslationData;
-        _imageFolderPath = e.ImageFolderPath;
-        _imageNames = e.ImageNames;
+        // 初始化导航（TranslationData 由 DocumentViewModel 管理，通过 Document.TranslationData 访问）
+        Navigation.InitializeNavigation(e.ImageFolderPath, e.ImageNames);
 
-        if (_imageNames.Count > 0)
+        if (Navigation.ImageNames.Count > 0)
         {
-            _currentImageIndex = 0;
+            Navigation.CurrentImageIndex = 0;
             LoadCurrentImage();
-            BuildTreeView();
+            Navigation.BuildTreeView(Document.TranslationData);
             ShowMainContent();
             _ = SetFocusAfterDelayAsync();
         }
@@ -396,14 +387,44 @@ public partial class MainWindow : Window
 
         ClearLabelControls();
 
-        // 清理过渡期引用
-        _translationData = null;
-        _imageFolderPath = null;
-        _imageNames.Clear();
-        _treeItems.Clear();
+        // 清理导航状态（TranslationData 由 DocumentViewModel 管理）
+        Navigation.ClearNavigation();
         _isFirstImageLoaded = false;
 
         ShowWelcomeScreen();
+    }
+    
+    /// <summary>
+    /// NavigationViewModel.CurrentImageChanged 事件处理
+    /// </summary>
+    private void OnNavigationCurrentImageChanged(object? sender, EventArgs e)
+    {
+        LoadCurrentImage();
+        CalculateFitTransform();
+        ApplyTransform();
+        StatusBar.UpdateZoom(GetZoomText());
+        UpdateLabels();
+    }
+    
+    /// <summary>
+    /// NavigationViewModel.SelectedItemChanged 事件处理（由 VM 侧发起的选中项变更）
+    /// </summary>
+    private void OnNavigationSelectedItemChanged(object? sender, EventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnNavigationSelectedItemChanged: _isSyncingSelection={_isSyncingSelection}, Nav.SelectedItem={Navigation.SelectedItem}, TreeView.SelectedItem={ImageTreeView.SelectedItem}");
+        if (_isSyncingSelection) return;
+        if (Navigation.SelectedItem != null && ImageTreeView.SelectedItem != Navigation.SelectedItem)
+        {
+            _isSyncingSelection = true;
+            try
+            {
+                ImageTreeView.SelectedItem = Navigation.SelectedItem;
+            }
+            finally
+            {
+                _isSyncingSelection = false;
+            }
+        }
     }
     
     /// <summary>
@@ -447,18 +468,18 @@ public partial class MainWindow : Window
     /// </summary>
     private void FocusFirstTreeViewItem()
     {
-        if (_treeItems.Count == 0) return;
+        if (Navigation.TreeItems.Count == 0) return;
 
         // 展开第一个项（如果需要）
-        _treeItems[0].IsExpanded = true;
+        Navigation.TreeItems[0].IsExpanded = true;
 
         // 选中第一个项
-        ImageTreeView.SelectedItem = _treeItems[0];
+        ImageTreeView.SelectedItem = Navigation.TreeItems[0];
 
         // 等待布局，再获取容器并设置焦点
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var container = ImageTreeView.ContainerFromItem(_treeItems[0]);
+            var container = ImageTreeView.ContainerFromItem(Navigation.TreeItems[0]);
             if (container != null)
             {
                 (container as Control)?.Focus();
@@ -521,7 +542,7 @@ public partial class MainWindow : Window
         UpdateGroupButtonColors();
 
         // 如果有选中的标签，刷新高亮颜色
-        if (ImageTreeView.SelectedItem is TranslationTreeItem selectedItem)
+        if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
         {
             HighlightLabel(selectedItem.Index);
         }
@@ -536,16 +557,16 @@ public partial class MainWindow : Window
     private void RefreshTreeView()
     {
         // 触发 TreeView 重新渲染 - 简单方式是重新设置 ItemsSource
-        var currentSelectedItem = ImageTreeView.SelectedItem;
+        var currentSelectedItem = Navigation.SelectedItem;
 
         // 重新设置 ItemsSource 以触发刷新
         ImageTreeView.ItemsSource = null;
-        ImageTreeView.ItemsSource = _treeItems;
+        ImageTreeView.ItemsSource = Navigation.TreeItems;
 
         // 恢复选中状态
         if (currentSelectedItem != null)
         {
-            ImageTreeView.SelectedItem = currentSelectedItem;
+            Navigation.SelectedItem = currentSelectedItem;
         }
     }
     
@@ -577,12 +598,12 @@ public partial class MainWindow : Window
     /// </summary>
     private void RebuildCurrentView()
     {
-        if (_translationData == null)
+        if (Document.TranslationData == null)
             return;
         
         // 在重建前记住当前选中的标签索引
         int? previouslySelectedLabelIndex = null;
-        if (ImageTreeView.SelectedItem is TranslationTreeItem currentItem)
+        if (Navigation.SelectedItem is TranslationTreeItem currentItem)
         {
             previouslySelectedLabelIndex = currentItem.Index;
         }
@@ -594,7 +615,7 @@ public partial class MainWindow : Window
         }
         
         // 重新构建树视图
-        BuildTreeView();
+        Navigation.BuildTreeView(Document.TranslationData);
 
         // 不清空 TextBox，保留用户正在编辑的内容
         // TextBox 的值会在后续的 SelectionChanged 中被正确设置
@@ -621,10 +642,10 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(_currentImagePath))
         {
             var imageName = Path.GetFileName(_currentImagePath);
-            var treeItem = _treeItems.FirstOrDefault(t => t.ImageName == imageName);
+            var treeItem = Navigation.TreeItems.FirstOrDefault(t => t.ImageName == imageName);
             if (treeItem != null)
             {
-                _currentTreeItem = treeItem;
+                Navigation.CurrentTreeItem = treeItem;
                 treeItem.IsExpanded = true;
 
                 if (previouslySelectedLabelIndex.HasValue)
@@ -633,16 +654,16 @@ public partial class MainWindow : Window
                     var labelItem = treeItem.Translations.FirstOrDefault(t => t.Index == previouslySelectedLabelIndex.Value);
                     if (labelItem != null)
                     {
-                        ImageTreeView.SelectedItem = labelItem;
+                        Navigation.SelectedItem = labelItem;
                     }
                     else
                     {
-                        ImageTreeView.SelectedItem = treeItem;
+                        Navigation.SelectedItem = treeItem;
                     }
                 }
                 else
                 {
-                    ImageTreeView.SelectedItem = treeItem;
+                    Navigation.SelectedItem = treeItem;
                 }
             }
         }
@@ -916,7 +937,7 @@ public partial class MainWindow : Window
         // 在 UI 重建期间，忽略文本改变事件
         if (_isUpdatingUI || !Edit.IsEditMode || _translationTextBox == null) return;
 
-        if (ImageTreeView.SelectedItem is TranslationTreeItem selectedTreeItem)
+        if (Navigation.SelectedItem is TranslationTreeItem selectedTreeItem)
         {
             // 仅同步修改树节点的显示文本（注意：这里不修改底层数据模型，底层修改由 Commit 负责）
             selectedTreeItem.Text = _translationTextBox.Text ?? string.Empty;
@@ -941,14 +962,14 @@ public partial class MainWindow : Window
     private void CommitCurrentEdit()
     {
         // 如果没有处于编辑模式，或者没有焦点/数据，直接返回
-        if (!Edit.IsEditMode || _translationTextBox == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (!Edit.IsEditMode || _translationTextBox == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
 
         // 只有当前树状图选中的是文本节点时，才需要结算
-        if (ImageTreeView.SelectedItem is TranslationTreeItem currentTreeItem)
+        if (Navigation.SelectedItem is TranslationTreeItem currentTreeItem)
         {
             string imageName = Path.GetFileName(_currentImagePath);
-            if (_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+            if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             {
                 var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
                 if (labelItem != null)
@@ -1112,10 +1133,10 @@ public partial class MainWindow : Window
             this.Focus();
 
             // 先记录拖拽开始时的数据模型坐标并设置拖动状态（在 SelectLabelByIndex 之前）
-            if (_translationData != null && _currentImagePath != null)
+            if (Document.TranslationData != null && _currentImagePath != null)
             {
                 string imageName = Path.GetFileName(_currentImagePath);
-                if (_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+                if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
                 {
                     var labelItem = labels.FirstOrDefault(l => l.TextIndex == labelIndex);
                     if (labelItem != null)
@@ -1230,11 +1251,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateDraggedLabelData(Border labelBorder, double left, double top)
     {
-        if (labelBorder.Tag is not int labelIndex || _currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (labelBorder.Tag is not int labelIndex || _currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
 
         string imageName = Path.GetFileName(_currentImagePath);
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
 
         var labelItem = labels.FirstOrDefault(l => l.TextIndex == labelIndex);
@@ -1254,18 +1275,18 @@ public partial class MainWindow : Window
     /// </summary>
     private void SelectLabelByIndex(int labelIndex)
     {
-        if (_currentTreeItem == null) return;
+        if (Navigation.CurrentTreeItem == null) return;
         
         // 在当前图片的翻译列表中查找对应索引的项
-        var translationItem = _currentTreeItem.Translations.FirstOrDefault(t => t.Index == labelIndex);
+        var translationItem = Navigation.CurrentTreeItem.Translations.FirstOrDefault(t => t.Index == labelIndex);
         
         if (translationItem != null)
         {
             // 选中树视图中的节点
-            ImageTreeView.SelectedItem = translationItem;
+            Navigation.SelectedItem = translationItem;
             
             // 确保树节点已展开
-            _currentTreeItem.IsExpanded = true;
+            Navigation.CurrentTreeItem.IsExpanded = true;
             
             // 聚焦到树视图，以便键盘导航
             ImageTreeView.Focus();
@@ -1279,16 +1300,16 @@ public partial class MainWindow : Window
     /// </summary>
     private void AddNewLabel(double imageX, double imageY)
     {
-        if (_currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath) || _currentTreeItem == null)
+        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath) || Navigation.CurrentTreeItem == null)
             return;
 
         string imageName = Path.GetFileName(_currentImagePath);
         
         // 确保字典中有该图片的数据列表
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
         {
             labels = new List<LabelItem>();
-            _translationData.ImageLabels[imageName] = labels;
+            Document.TranslationData.ImageLabels[imageName] = labels;
         }
 
         // 计算新的编号 (TextIndex)，取当前最大值 + 1
@@ -1487,11 +1508,11 @@ public partial class MainWindow : Window
     /// </summary>
     private int? FindLabelAtPosition(double x, double y)
     {
-        if (_currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return null;
 
         string imageName = Path.GetFileName(_currentImagePath);
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return null;
 
         double imageWidth = _currentImage.Size.Width;
@@ -1704,17 +1725,17 @@ public partial class MainWindow : Window
     /// </summary>
     private void SaveCurrentFitScale(double fitScale)
     {
-        if (_currentImagePath == null || _treeItems.Count == 0) return;
+        if (_currentImagePath == null || Navigation.TreeItems.Count == 0) return;
         
         string imageName = Path.GetFileName(_currentImagePath);
         
         // 找到对应的 ImageTreeItem 并保存 fit 比例
-        foreach (var item in _treeItems)
+        foreach (var item in Navigation.TreeItems)
         {
             if (item.ImageName == imageName)
             {
                 item.FitScale = fitScale;
-                _currentTreeItem = item;
+                Navigation.CurrentTreeItem = item;
                 break;
             }
         }
@@ -1739,12 +1760,12 @@ public partial class MainWindow : Window
         ClearLabelControls();
 
         // 没有图片或翻译数据时返回
-        if (_currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
 
         // 获取当前图片的文件名（作为键）
         string imageName = Path.GetFileName(_currentImagePath);
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
 
         double imageWidth = _currentImage.Size.Width;
@@ -1797,7 +1818,7 @@ public partial class MainWindow : Window
         }
         
         // 如果当前恰好有选中的翻译文本子项，则在新生成的标注中自动高亮它
-        if (ImageTreeView.SelectedItem is TranslationTreeItem selectedTranslation)
+        if (Navigation.SelectedItem is TranslationTreeItem selectedTranslation)
         {
             HighlightLabel(selectedTranslation.Index);
         }
@@ -1928,14 +1949,14 @@ public partial class MainWindow : Window
     
     private void LoadCurrentImage()
     {
-        if (_imageNames.Count == 0 || string.IsNullOrEmpty(_imageFolderPath))
+        if (Navigation.ImageNames.Count == 0 || string.IsNullOrEmpty(Navigation.ImageFolderPath))
             return;
         
-        if (_currentImageIndex < 0 || _currentImageIndex >= _imageNames.Count)
+        if (Navigation.CurrentImageIndex < 0 || Navigation.CurrentImageIndex >= Navigation.ImageNames.Count)
             return;
         
-        var imageName = _imageNames[_currentImageIndex];
-        var imagePath = Path.Combine(_imageFolderPath!, imageName);
+        var imageName = Navigation.ImageNames[Navigation.CurrentImageIndex];
+        var imagePath = Path.Combine(Navigation.ImageFolderPath!, imageName);
         
         if (File.Exists(imagePath))
         {
@@ -1971,11 +1992,11 @@ public partial class MainWindow : Window
             
             // 找到当前图片对应的树视图项
             string imageName = Path.GetFileName(imagePath);
-            foreach (var item in _treeItems)
+            foreach (var item in Navigation.TreeItems)
             {
                 if (item.ImageName == imageName)
                 {
-                    _currentTreeItem = item;
+                    Navigation.CurrentTreeItem = item;
                     break;
                 }
             }
@@ -2016,9 +2037,9 @@ public partial class MainWindow : Window
             }
             
             // 更新状态栏显示当前图片信息
-            if (_imageNames.Count > 0)
+            if (Navigation.ImageNames.Count > 0)
             {
-                StatusBar.UpdateStatus($"[{_currentImageIndex + 1}/{_imageNames.Count}] {Path.GetFileName(imagePath)}", StatusBarViewModel.StatusType.Info);
+                StatusBar.UpdateStatus($"[{Navigation.CurrentImageIndex + 1}/{Navigation.ImageNames.Count}] {Path.GetFileName(imagePath)}", StatusBarViewModel.StatusType.Info);
             }
             else
             {
@@ -2116,7 +2137,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnCopySelectedText(object? sender, RoutedEventArgs e)
     {
-        var selectedItem = ImageTreeView.SelectedItem;
+        var selectedItem = Navigation.SelectedItem;
         if (selectedItem is TranslationTreeItem translationItem)
         {
             CopyToClipboard(translationItem.Text);
@@ -2140,16 +2161,16 @@ public partial class MainWindow : Window
         // 切换分组前先提交当前正在编辑的文本
         CommitCurrentEdit();
         
-        var selectedItem = ImageTreeView.SelectedItem;
+        var selectedItem = Navigation.SelectedItem;
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
 
-        if (_translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
 
         string imageName = Path.GetFileName(_currentImagePath);
 
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
 
         var labelToToggle = labels.FirstOrDefault(l => l.TextIndex == translationItem.Index);
@@ -2173,17 +2194,17 @@ public partial class MainWindow : Window
         // 删除前先提交当前正在编辑的文本
         CommitCurrentEdit();
         
-        var selectedItem = ImageTreeView.SelectedItem;
+        var selectedItem = Navigation.SelectedItem;
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
         
-        if (_translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
         
         string imageName = Path.GetFileName(_currentImagePath);
         
         // 获取当前图片的所有标签
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
         
         // 找到要删除的项
@@ -2198,40 +2219,7 @@ public partial class MainWindow : Window
     
     // ==================== 树视图相关方法 ====================
     
-    /// <summary>
-    /// 构建树视图数据
-    /// </summary>
-    private void BuildTreeView()
-    {
-        _treeItems.Clear();
-        
-        if (_translationData == null) return;
-        
-        bool isFirstItem = true; // 标记是否为第一个元素
-        
-        foreach (var kvp in _translationData.ImageLabels)
-        {
-            var imageItem = new ImageTreeItem
-            {
-                ImageName = kvp.Key,
-                IsExpanded = isFirstItem // 初次加载时，只有第一个元素设为 true
-            };
-            
-            isFirstItem = false;
-            
-            foreach (var label in kvp.Value)
-            {
-                imageItem.Translations.Add(new TranslationTreeItem
-                {
-                    Index = label.TextIndex,
-                    Text = label.Text,
-                    GroupIndex = label.GroupIndex
-                });
-            }
-            
-            _treeItems.Add(imageItem);
-        }
-    }
+    // BuildTreeView 已迁移到 NavigationViewModel.BuildTreeView()
     
     /// <summary>
     /// 树视图选择变更事件（处理图片切换 & 自动折叠展开）
@@ -2239,6 +2227,13 @@ public partial class MainWindow : Window
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         var selectedItem = ImageTreeView.SelectedItem;
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewSelectionChanged: _isSyncingSelection={_isSyncingSelection}, TreeView.SelectedItem={selectedItem}");
+        
+        // 同步选中项到 NavigationViewModel（防重入：仅在非同步期间更新 VM，避免循环触发）
+        if (!_isSyncingSelection)
+        {
+            Navigation.SelectedItem = selectedItem;
+        }
         
         // 重置文本框占位符
         if (_translationTextBox != null)
@@ -2254,59 +2249,26 @@ public partial class MainWindow : Window
         if (selectedItem is ImageTreeItem rootItem)
         {
             targetRootItem = rootItem;
-            
-            // 切换图片
-            var index = _imageNames.IndexOf(rootItem.ImageName);
-            if (index >= 0 && _currentImageIndex != index)
-            {
-                _currentImageIndex = index;
-                LoadCurrentImage();
-                CalculateFitTransform();
-                ApplyTransform();
-                // UpdateZoomText();
-                StatusBar.UpdateZoom(GetZoomText());
-                UpdateLabels();
-            }
         }
         else if (selectedItem is TranslationTreeItem childItem)
         {
-            // 如果通过方向键选到了子节点，我们需要找到它对应的父节点
-            foreach (var root in _treeItems)
-            {
-                if (root.Translations.Contains(childItem))
-                {
-                    targetRootItem = root;
-                    break;
-                }
-            }
-            
-            // 如果子节点对应的图片还没加载，则切换图片
-            if (targetRootItem != null)
-            {
-                var index = _imageNames.IndexOf(targetRootItem.ImageName);
-                if (index >= 0 && _currentImageIndex != index)
-                {
-                    _currentImageIndex = index;
-                    LoadCurrentImage();
-                    CalculateFitTransform();
-                    ApplyTransform();
-                    // UpdateZoomText();
-                    StatusBar.UpdateZoom(GetZoomText());
-                    UpdateLabels();
-                }
-            }
+            targetRootItem = Navigation.GetParentImageItem(childItem);
+        }
+
+        // 2. 图片切换（委托给 NavigationViewModel 判断）
+        if (targetRootItem != null && Navigation.TrySwitchToImage(targetRootItem.ImageName))
+        {
+            LoadCurrentImage();
+            CalculateFitTransform();
+            ApplyTransform();
+            StatusBar.UpdateZoom(GetZoomText());
+            UpdateLabels();
         }
 
         // 2. 动态展开/收起逻辑 (手风琴效果)
         if (targetRootItem != null)
         {
-            foreach (var item in _treeItems)
-            {
-                // 如果是当前焦点所在的父节点，展开它；其他的全部收起
-                item.IsExpanded = (item == targetRootItem);
-            }
-            // 更新上一次焦点的根节点
-            _lastFocusedRootItem = targetRootItem;
+            Navigation.ApplyAccordion(targetRootItem);
         }
         
         // 3. 高亮与视野居中处理
@@ -2388,7 +2350,7 @@ public partial class MainWindow : Window
             return;
         
         // 检查树视图是否有选中项，如果有则处理快捷键
-        var selectedItem = ImageTreeView.SelectedItem;
+        var selectedItem = Navigation.SelectedItem;
         if (selectedItem != null)
         {
             // 检查是否匹配复制快捷键
@@ -2432,27 +2394,22 @@ public partial class MainWindow : Window
             // 执行导航
             if (isNavigateUp || isNavigateDown)
             {
-                var visibleItems = new List<object>();
-                foreach (var root in _treeItems)
-                {
-                    visibleItems.Add(root);
-                    if (root.IsExpanded)
-                    {
-                        foreach (var child in root.Translations)
-                            visibleItems.Add(child);
-                    }
-                }
+                var visibleItems = Navigation.GetVisibleItems();
                 
                 int currentIndex = visibleItems.IndexOf(selectedItem);
                 if (currentIndex >= 0)
                 {
                     if (isNavigateUp && currentIndex > 0)
                     {
-                        ImageTreeView.SelectedItem = visibleItems[currentIndex - 1];
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置 Navigation.SelectedItem = {visibleItems[currentIndex - 1]}");
+                        Navigation.SelectedItem = visibleItems[currentIndex - 1];
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置后 Nav.SelectedItem={Navigation.SelectedItem}, TreeView.SelectedItem={ImageTreeView.SelectedItem}");
                     }
                     else if (isNavigateDown && currentIndex < visibleItems.Count - 1)
                     {
-                        ImageTreeView.SelectedItem = visibleItems[currentIndex + 1];
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置 Navigation.SelectedItem = {visibleItems[currentIndex + 1]}");
+                        Navigation.SelectedItem = visibleItems[currentIndex + 1];
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置后 Nav.SelectedItem={Navigation.SelectedItem}, TreeView.SelectedItem={ImageTreeView.SelectedItem}");
                     }
                 }
                 e.Handled = true;
@@ -2478,7 +2435,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTreeViewKeyDown(object? sender, KeyEventArgs e)
     {
-        var selectedItem = ImageTreeView.SelectedItem;
+        var selectedItem = Navigation.SelectedItem;
         if (selectedItem == null) return;
 
         // 创建当前按键的 KeyGesture 用于比较
@@ -2543,7 +2500,7 @@ public partial class MainWindow : Window
         else if (selectedItem is TranslationTreeItem currentChildItem)
         {
             // 找到当前子节点对应的父节点
-            foreach (var root in _treeItems)
+            foreach (var root in Navigation.TreeItems)
             {
                 if (root.Translations.Contains(currentChildItem))
                 {
@@ -2584,28 +2541,23 @@ public partial class MainWindow : Window
         // 如果匹配自定义导航快捷键，手动执行选中项切换
         if (isNavigateUp || isNavigateDown)
         {
-            var visibleItems = new List<object>();
-            foreach (var root in _treeItems)
-            {
-                visibleItems.Add(root);
-                if (root.IsExpanded)
-                {
-                    foreach (var child in root.Translations)
-                        visibleItems.Add(child);
-                }
-            }
+            var visibleItems = Navigation.GetVisibleItems();
             
             int currentIndex = visibleItems.IndexOf(selectedItem);
             if (currentIndex >= 0)
             {
                 if (isNavigateUp && currentIndex > 0)
                 {
-                    ImageTreeView.SelectedItem = visibleItems[currentIndex - 1];
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置 Navigation.SelectedItem = {visibleItems[currentIndex - 1]}");
+                    Navigation.SelectedItem = visibleItems[currentIndex - 1];
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置后 Navigation.SelectedItem = {Navigation.SelectedItem}, ImageTreeView.SelectedItem = {ImageTreeView.SelectedItem}");
                     e.Handled = true;
                 }
                 else if (isNavigateDown && currentIndex < visibleItems.Count - 1)
                 {
-                    ImageTreeView.SelectedItem = visibleItems[currentIndex + 1];
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置 Navigation.SelectedItem = {visibleItems[currentIndex + 1]}");
+                    Navigation.SelectedItem = visibleItems[currentIndex + 1];
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置后 Navigation.SelectedItem = {Navigation.SelectedItem}, ImageTreeView.SelectedItem = {ImageTreeView.SelectedItem}");
                     e.Handled = true;
                 }
             }
@@ -2618,7 +2570,7 @@ public partial class MainWindow : Window
             // 延迟执行，等待SelectionChanged事件完成
             Dispatcher.UIThread.Post(() =>
             {
-                var newSelectedItem = ImageTreeView.SelectedItem;
+                var newSelectedItem = Navigation.SelectedItem;
                 if (newSelectedItem == null) return;
 
                 ImageTreeItem? newRootItem = null;
@@ -2628,7 +2580,7 @@ public partial class MainWindow : Window
                 }
                 else if (newSelectedItem is TranslationTreeItem newChildItem)
                 {
-                    foreach (var root in _treeItems)
+                    foreach (var root in Navigation.TreeItems)
                     {
                         if (root.Translations.Contains(newChildItem))
                         {
@@ -2648,7 +2600,7 @@ public partial class MainWindow : Window
                 if (newRootItem != null)
                 {
                     newRootItem.IsExpanded = true;
-                    _lastFocusedRootItem = newRootItem;
+                    Navigation.LastFocusedRootItem = newRootItem;
                 }
                 
                 // 确保新选中的项获得焦点，触发视图滚动
@@ -2663,12 +2615,12 @@ public partial class MainWindow : Window
     /// </summary>
     private void CenterOnLabel(int labelIndex)
     {
-        if (_currentImage == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
         
         // 获取当前图片的标注数据
         string imageName = Path.GetFileName(_currentImagePath);
-        if (!_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
         
         // 找到对应编号的标注
@@ -2721,7 +2673,7 @@ public partial class MainWindow : Window
     /// </summary>
     private ImageTreeItem? GetParentImageItem(TranslationTreeItem child)
     {
-        return _treeItems.FirstOrDefault(root => root.Translations.Contains(child));
+        return Navigation.GetParentImageItem(child);
     }
 
     // ==================== TreeViewItem 拖拽事件处理（直接在 DataTemplate 中的元素上绑定）====================
@@ -2850,10 +2802,10 @@ public partial class MainWindow : Window
         System.Diagnostics.Debug.WriteLine($"[TreeView Drag] Drop: {sourceItem.Index} -> {targetItem.Index}");
 
         // 获取底层数据并执行命令
-        if (_translationData != null)
+        if (Document.TranslationData != null)
         {
             string imageName = parentImageItem.ImageName;
-            if (_translationData.ImageLabels.TryGetValue(imageName, out var labels))
+            if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             {
                 // 找到对应的底层模型
                 var sourceModel = labels.FirstOrDefault(l => l.TextIndex == sourceItem.Index);
