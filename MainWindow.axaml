@@ -10,7 +10,7 @@
         
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="LabelAva.MainWindow"
-        Title="LabelAva"
+        Title="{Binding Document.WindowTitle}"
         Width="1200" Height="800"
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">
@@ -29,11 +29,11 @@
         <!-- 菜单栏 -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="文件(_F)">
-                <MenuItem Header="新建翻译" Click="OnNewTranslation"/>
-                <MenuItem Header="打开翻译" Click="OnOpenTranslationFile"/>
-                <MenuItem Header="保存(_S)" Click="OnSaveTranslation" IsEnabled="{Binding CanSave}" InputGesture="Ctrl+S"/>
-                <MenuItem Header="另存为(_A)" Click="OnSaveAsTranslation" IsEnabled="{Binding CanSaveAs}" InputGesture="Ctrl+Shift+S"/>
-                <MenuItem Header="关闭翻译" Click="OnCloseTranslation" IsEnabled="{Binding CanCloseTranslation}"/>
+                <MenuItem Header="新建翻译" Command="{Binding Document.NewCommand}"/>
+                <MenuItem Header="打开翻译" Command="{Binding Document.OpenCommand}"/>
+                <MenuItem Header="保存(_S)" Command="{Binding Document.SaveCommand}" InputGesture="Ctrl+S"/>
+                <MenuItem Header="另存为(_A)" Command="{Binding Document.SaveAsCommand}" InputGesture="Ctrl+Shift+S"/>
+                <MenuItem Header="关闭翻译" Command="{Binding Document.CloseCommand}"/>
                 <Separator/>
                 <MenuItem Header="退出" Click="OnExit"/>
             </MenuItem>
@@ -41,7 +41,7 @@
                 <MenuItem Header="{Binding History.UndoHeader}" Command="{Binding History.UndoCommand}" InputGesture="Ctrl+Z"/>
                 <MenuItem Header="{Binding History.RedoHeader}" Command="{Binding History.RedoCommand}" InputGesture="Ctrl+Y"/>
                 <Separator/>
-                <MenuItem Header="编辑模式" ToggleType="CheckBox" Command="{Binding Edit.ToggleEditModeCommand}" IsChecked="{Binding Edit.IsEditMode, Mode=TwoWay}"/>
+                <MenuItem Header="编辑模式" ToggleType="CheckBox" IsChecked="{Binding Edit.IsEditMode, Mode=TwoWay}" IsEnabled="{Binding Edit.CanToggleEditMode}"/>
                 <Separator/>
                 <MenuItem Header="首选项" Click="OnPreferences"/>
             </MenuItem>

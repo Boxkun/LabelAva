@@ -69,11 +69,21 @@ graph TD
 - [x] 迁移 `_pendingNewLabelIndex` → `Edit.PendingNewLabelIndex`
 - [x] 移除 `OnToggleEditMode`/`UpdateEditModeButton`/`UpdateGroupButtonsVisibility`
 
-### Phase 3：DocumentViewModel ⬜ 待规划
+### Phase 3：DocumentViewModel ✅ 已完成
 
-- 引入 IFileService 抽象（解决 StorageProvider 依赖）
-- 迁移新建/打开/保存/另存为/关闭逻辑
-- 迁移脏状态管理和自动保存
+> 详见 `plans/Phase3-DocumentViewModel迁移方案.md`
+
+- [x] 引入 IFileService 抽象（解决 StorageProvider 依赖）
+- [x] 迁移新建/打开/保存/另存为/关闭逻辑 → `DocumentViewModel.New/Open/Save/SaveAs/Close`
+- [x] 迁移脏状态管理和自动保存 → `DocumentViewModel.IsDirty` + 自动保存定时器
+- [x] 迁移窗口标题管理 → `DocumentViewModel.WindowTitle` 绑定
+- [x] 移除 `OnNewTranslation`/`OnOpenTranslationFile`/`OnSaveTranslation`/`OnSaveAsTranslation`/`OnCloseTranslation`
+- [x] 移除 `CreateNewTranslationAsync`/`OpenTranslationFileAsync`/`GenerateTranslationFileContent`
+- [x] 移除 `ShowUnsavedChangesDialogAsync`/`ShowCloseTranslationDialogAsync`/`CloseTranslationInternal`
+- [x] 移除 `SetDirty`/`UpdateTitle`/`OnAutoSaveTimerTick`
+- [x] 移除 `_isDirty`/`_autoSaveTimer`/`_forceClose`/`_currentTranslationFilePath` 字段
+- [x] 文件菜单 XAML 绑定：`Click` → `Command`
+- [x] 窗口标题 XAML 绑定：`Title="{Binding Document.WindowTitle}"`
 
 ### Phase 4：NavigationViewModel ⬜ 待规划
 

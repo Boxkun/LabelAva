@@ -57,14 +57,7 @@ public partial class EditViewModel : ObservableObject
     private void ToggleEditMode()
     {
         IsEditMode = !IsEditMode;
-        UpdateDerivedProperties();
-        EditModeChanged?.Invoke(this, EventArgs.Empty);
-
-        _statusBar.UpdateStatus(
-            IsEditMode ? "已进入编辑模式：左键点击图片以新建标签，中键/右键拖动平移"
-                       : "已退出编辑模式",
-            IsEditMode ? StatusBarViewModel.StatusType.Success
-                       : StatusBarViewModel.StatusType.Info);
+        // 副作用（状态栏通知、EditModeChanged 事件）由 OnIsEditModeChanged 处理
     }
 
     [RelayCommand]
@@ -134,6 +127,18 @@ public partial class EditViewModel : ObservableObject
     {
         UpdateDerivedProperties();
         ToggleEditModeCommand.NotifyCanExecuteChanged();
+
+        // 仅在文档已打开时触发副作用（避免初始化时误触发）
+        if (CanToggleEditMode)
+        {
+            EditModeChanged?.Invoke(this, EventArgs.Empty);
+
+            _statusBar.UpdateStatus(
+                value ? "已进入编辑模式：左键点击图片以新建标签，中键/右键拖动平移"
+                       : "已退出编辑模式",
+                value ? StatusBarViewModel.StatusType.Success
+                       : StatusBarViewModel.StatusType.Info);
+        }
     }
 
     partial void OnCanToggleEditModeChanged(bool value)

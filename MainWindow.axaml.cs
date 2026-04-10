@@ -30,9 +30,8 @@ public partial class MainWindow : Window
     private Bitmap? _currentImage;
     private string? _currentImagePath;
     
-    // 翻译数据
+    // 翻译数据（过渡期保留，后续 Phase 4/5 逐步迁移到 Document.TranslationData）
     private TranslationData? _translationData;
-    private string? _currentTranslationFilePath; // 记录当前翻译文本的完整路径
     private string? _imageFolderPath;
     private int _currentImageIndex = 0;
     private List<string> _imageNames = new();
@@ -82,10 +81,7 @@ public partial class MainWindow : Window
     private TextBox? _translationTextBox;
     private Border? _editPanel;
     
-    // Dirty State & Undo/Redo 相关
-    private bool _isDirty = false;
-    private DispatcherTimer? _autoSaveTimer;
-    private bool _forceClose = false;
+    // Dirty State 已迁入 DocumentViewModel（通过 Document.IsDirty 访问）
     
     // UI 锁：防止命令执行时触发 UI 事件污染历史栈
     private bool _isUpdatingUI = false;
@@ -108,6 +104,7 @@ public partial class MainWindow : Window
     public MainWindowViewModel ViewModel => ((MainWindowViewModel)DataContext!);
     public StatusBarViewModel StatusBar => ViewModel.StatusBar;
     public EditViewModel Edit => ViewModel.Edit;
+    public DocumentViewModel Document => ViewModel.Document;
 
     public MainWindow()
     {
@@ -187,69 +184,23 @@ public partial class MainWindow : Window
         ViewModel.Edit.EditModeChanged += OnEditModeChanged;
         ViewModel.Edit.GroupChanged += OnGroupChanged;
         
-        // 初始化自动保存定时器（3分钟间隔）
-        _autoSaveTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMinutes(3)
-        };
-        _autoSaveTimer.Tick += OnAutoSaveTimerTick;
-        _autoSaveTimer.Start();
+        // 初始化文档视图模型
+        var fileService = new FileDialogService(() => GetTopLevel(this));
+        ViewModel.Document = new DocumentViewModel(
+            fileService,
+            ViewModel.History,
+            StatusBar,
+            ShowUnsavedChangesDialogAsync,
+            ShowImageSelectionDialogAsync
+        );
+        ViewModel.Document.DocumentOpened += OnDocumentOpened;
+        ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
         // 【新增】注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
         // Ctrl+Enter 提交功能也在这里处理（兼容主键盘 Return 和数字小键盘 Enter）
         this.AddHandler(InputElement.KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
     }
     
-    /// <summary>
-    /// 自动保存定时器触发事件
-    /// </summary>
-    private void OnAutoSaveTimerTick(object? sender, EventArgs e)
-    {
-        if (_isDirty && !string.IsNullOrEmpty(_currentTranslationFilePath) && _translationData != null)
-        {
-            try
-            {
-                var parser = new TranslationParser();
-                parser.Save(_currentTranslationFilePath, _translationData);
-                _isDirty = false;
-                UpdateTitle();
-                StatusBar.UpdateStatus("自动保存成功", StatusBarViewModel.StatusType.Success);
-            }
-            catch
-            {
-                // 自动保存失败，静默处理
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 更新窗口标题以反映 Dirty 状态和当前翻译文件名
-    /// </summary>
-    private void UpdateTitle()
-    {
-        var title = "LabelAva";
-        
-        // 如果有打开的翻译文件，显示文件名
-        if (!string.IsNullOrEmpty(_currentTranslationFilePath))
-        {
-            var fileName = Path.GetFileName(_currentTranslationFilePath);
-            title = $"LabelAva - {fileName}";
-        }
-        
-        // 添加 Dirty 标记
-        title += (_isDirty ? " *" : "");
-        
-        Title = title;
-    }
-    
-    /// <summary>
-    /// 设置脏标记状态
-    /// </summary>
-    private void SetDirty(bool isDirty)
-    {
-        _isDirty = isDirty;
-        UpdateTitle();
-    }
     
     /// <summary>
     /// 处理快捷键设置更改事件
@@ -285,25 +236,25 @@ public partial class MainWindow : Window
     /// <summary>
     /// 窗口关闭时清理所有资源
     /// </summary>
-    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    private async void OnWindowClosing(object? sender, WindowClosingEventArgs e)
     {
         // 检查是否有未保存的更改
-        if (_isDirty && !_forceClose && _translationData != null)
+        if (Document.HasDocument && Document.IsDirty)
         {
             e.Cancel = true; // 阻止立即关闭
-            Dispatcher.UIThread.InvokeAsync(ShowUnsavedChangesDialogAsync);
+            var canClose = await Document.ConfirmAndSaveAsync();
+            if (canClose)
+            {
+                // 确认后强制关闭
+                Document.ForceCloseDocument();
+                Close();
+            }
             return;
         }
         
         // 取消订阅事件
         ImageContainer.SizeChanged -= OnImageContainerSizeChanged;
         this.Closing -= OnWindowClosing;
-        
-        // 停止自动保存定时器
-        if (_autoSaveTimer != null)
-        {
-            _autoSaveTimer.Stop();
-        }
         
         // 清空历史记录
         ViewModel.History.Clear();
@@ -336,18 +287,12 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 显示未保存更改对话框
+    /// 未保存更改确认对话框（作为回调注入 DocumentViewModel）
     /// </summary>
-    private async Task ShowUnsavedChangesDialogAsync()
+    private async Task<UnsavedChangesResult> ShowUnsavedChangesDialogAsync(string message)
     {
-        var topLevel = GetTopLevel(this);
-        if (topLevel == null)
-        {
-            _forceClose = true;
-            Close();
-            return;
-        }
-        
+        var result = UnsavedChangesResult.Cancel;
+
         var dialog = new Window
         {
             Title = "未保存的更改",
@@ -357,134 +302,108 @@ public partial class MainWindow : Window
             CanResize = false,
             ShowInTaskbar = false
         };
-        
-        var result = "Cancel";
-        
+
         var panel = new StackPanel { Margin = new Thickness(20), Spacing = 15 };
         panel.Children.Add(new TextBlock
         {
-            Text = "检测到未保存的更改。是否在退出前保存？",
+            Text = message,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             FontSize = 14
         });
-        
+
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
             Spacing = 10
         };
-        
+
         var saveButton = new Button { Content = "保存", Width = 80 };
         var discardButton = new Button { Content = "不保存", Width = 80 };
         var cancelButton = new Button { Content = "取消", Width = 80 };
-        
-        saveButton.Click += async (s, e) =>
-        {
-            result = "Save";
-            dialog.Close();
-        };
-        
-        discardButton.Click += (s, e) =>
-        {
-            result = "Discard";
-            dialog.Close();
-        };
-        
-        cancelButton.Click += (s, e) =>
-        {
-            result = "Cancel";
-            dialog.Close();
-        };
-        
+
+        saveButton.Click += (s, e) => { result = UnsavedChangesResult.Save; dialog.Close(); };
+        discardButton.Click += (s, e) => { result = UnsavedChangesResult.Discard; dialog.Close(); };
+        cancelButton.Click += (s, e) => { result = UnsavedChangesResult.Cancel; dialog.Close(); };
+
         buttonPanel.Children.Add(saveButton);
         buttonPanel.Children.Add(discardButton);
         buttonPanel.Children.Add(cancelButton);
         panel.Children.Add(buttonPanel);
-        
+
         dialog.Content = panel;
-        
+
         await dialog.ShowDialog(this);
-        
-        if (result == "Save")
+
+        return result;
+    }
+
+    /// <summary>
+    /// 图片选择对话框（作为回调注入 DocumentViewModel）
+    /// </summary>
+    private async Task<ImageSelectionResult?> ShowImageSelectionDialogAsync(
+        List<string> imageFiles, string defaultFileName)
+    {
+        var selectionWindow = new Views.ImageSelectionWindow(imageFiles, defaultFileName);
+        selectionWindow.Owner = this;
+
+        var dialogResult = await selectionWindow.ShowDialog<bool>(this);
+
+        if (!dialogResult || selectionWindow.SelectedImagePaths.Count == 0)
+            return null;
+
+        return new ImageSelectionResult
         {
-            // 保存文件
-            if (!string.IsNullOrEmpty(_currentTranslationFilePath))
-            {
-                try
-                {
-                    var parser = new TranslationParser();
-                    if (_translationData != null)
-                    {
-                        parser.Save(_currentTranslationFilePath, _translationData);
-                    }
-                    _isDirty = false;
-                    StatusBar.UpdateStatus("已保存", StatusBarViewModel.StatusType.Success);
-                }
-                catch (Exception ex)
-                {
-                    StatusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-                    return; // 如果保存失败，不关闭
-                }
-            }
-            else
-            {
-                // 如果没有路径，弹出另存为对话框
-                var topLevel2 = GetTopLevel(this);
-                if (topLevel2 != null)
-                {
-                    var file = await topLevel2.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-                    {
-                        Title = "保存翻译文件",
-                        DefaultExtension = "txt",
-                        ShowOverwritePrompt = true,
-                        FileTypeChoices = new[]
-                        {
-                            new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } },
-                            new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
-                        }
-                    });
-                    
-                    if (file != null)
-                    {
-                        try
-                        {
-                            var parser = new TranslationParser();
-                            var newPath = file.Path.LocalPath;
-                            if (_translationData != null)
-                            {
-                                parser.Save(newPath, _translationData);
-                            }
-                            _currentTranslationFilePath = newPath;
-                            _isDirty = false;
-                            StatusBar.UpdateStatus($"已保存至: {Path.GetFileName(newPath)}", StatusBarViewModel.StatusType.Success);
-                        }
-                        catch (Exception ex)
-                        {
-                            StatusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-                            return; // 如果保存失败，不关闭
-                        }
-                    }
-                    else
-                    {
-                        return; // 用户取消另存为，不关闭
-                    }
-                }
-            }
-        }
-        else if (result == "Discard")
+            SelectedImagePaths = selectionWindow.SelectedImagePaths,
+            FileName = selectionWindow.FileName
+        };
+    }
+
+    /// <summary>
+    /// DocumentViewModel.DocumentOpened 事件处理
+    /// </summary>
+    private void OnDocumentOpened(object? sender, DocumentOpenedEventArgs e)
+    {
+        // 同步过渡期引用
+        _translationData = e.TranslationData;
+        _imageFolderPath = e.ImageFolderPath;
+        _imageNames = e.ImageNames;
+
+        if (_imageNames.Count > 0)
         {
-            // 丢弃更改
+            _currentImageIndex = 0;
+            LoadCurrentImage();
+            BuildTreeView();
+            ShowMainContent();
+            _ = SetFocusAfterDelayAsync();
         }
-        else
+    }
+
+    /// <summary>
+    /// DocumentViewModel.DocumentClosed 事件处理
+    /// </summary>
+    private void OnDocumentClosed(object? sender, EventArgs e)
+    {
+        // 清理图片和标注
+        if (_currentImage != null)
         {
-            // 取消，不关闭
-            return;
+            _currentImage.Dispose();
+            _currentImage = null;
         }
-        
-        // 如果执行到这里，说明用户选择保存或丢弃，关闭应用
-        _forceClose = true;
-        Close();
+        _currentImagePath = null;
+        _transformMatrix = Matrix.Identity;
+        ApplyTransform();
+
+        ClearLabelControls();
+
+        // 清理过渡期引用
+        _translationData = null;
+        _imageFolderPath = null;
+        _imageNames.Clear();
+        _treeItems.Clear();
+        _isFirstImageLoaded = false;
+
+        ShowWelcomeScreen();
     }
     
     /// <summary>
@@ -559,7 +478,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void OnOpenTranslationRequested(object? sender, RoutedEventArgs e)
     {
-        await OpenTranslationFileAsync();
+        await Document.OpenCommand.ExecuteAsync(null);
     }
     
     /// <summary>
@@ -567,207 +486,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void OnNewTranslationRequested(object? sender, RoutedEventArgs e)
     {
-        await CreateNewTranslationAsync();
-    }
-    
-    private async void OnOpenTranslationFile(object? sender, RoutedEventArgs e)
-    {
-        await OpenTranslationFileAsync();
-    }
-
-    /// <summary>
-    /// 新建翻译 - 选择文件夹并创建新的翻译文件
-    /// </summary>
-    private async void OnNewTranslation(object? sender, RoutedEventArgs e)
-    {
-        await CreateNewTranslationAsync();
-    }
-
-    /// <summary>
-    /// 新建翻译的核心逻辑
-    /// </summary>
-    private async Task CreateNewTranslationAsync()
-    {
-        var topLevel = GetTopLevel(this);
-        if (topLevel == null) return;
-        
-        // 1. 弹出文件夹选择框
-        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "选择图片文件夹",
-            AllowMultiple = false
-        });
-        
-        if (folders.Count == 0)
-            return;
-        
-        var folderPath = folders[0].Path.LocalPath;
-        
-        // 2. 扫描文件夹内的图片（不包括子文件夹）
-        var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
-        var imageFiles = Directory.GetFiles(folderPath)
-            .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-            .ToList();
-        
-        if (imageFiles.Count == 0)
-        {
-            StatusBar.UpdateStatus("所选文件夹中没有找到图片文件", StatusBarViewModel.StatusType.Warn);
-            return;
-        }
-        
-        // 3. 弹出图片选择对话框
-        var folderName = new DirectoryInfo(folderPath).Name;
-        var selectionWindow = new Views.ImageSelectionWindow(imageFiles, folderName);
-        
-        // 设置父窗口
-        selectionWindow.Owner = this;
-        
-        var result = await selectionWindow.ShowDialog<bool>(this);
-        
-        if (!result || selectionWindow.SelectedImagePaths.Count == 0)
-            return;
-        
-        // 4. 生成翻译文件
-        var selectedImages = selectionWindow.SelectedImagePaths;
-        var userFileName = selectionWindow.FileName;
-        
-        // 创建翻译文件内容
-        var content = GenerateTranslationFileContent(selectedImages);
-        
-        var translationFileName = $"{userFileName}.txt";
-        var translationFilePath = Path.Combine(folderPath, translationFileName);
-        
-        // 如果文件已存在，添加数字后缀
-        var counter = 1;
-        while (File.Exists(translationFilePath))
-        {
-            translationFileName = $"{folderName}_translation_{counter}.txt";
-            translationFilePath = Path.Combine(folderPath, translationFileName);
-            counter++;
-        }
-        
-        // 写入文件
-        await File.WriteAllTextAsync(translationFilePath, content, System.Text.Encoding.UTF8);
-        
-        // 5. 设置工作文件夹
-        _imageFolderPath = folderPath;
-        
-        // 6. 加载翻译文件
-        var parser = new TranslationParser();
-        _translationData = parser.Parse(translationFilePath);
-        _currentTranslationFilePath = translationFilePath;
-        
-        // 更新标题栏显示文件名
-        UpdateTitle();
-        
-        // 获取所有图片名
-        _imageNames = new List<string>(_translationData.ImageLabels.Keys);
-        
-        if (_imageNames.Count > 0)
-        {
-            _currentImageIndex = 0;
-            LoadCurrentImage();
-            BuildTreeView();
-            StatusBar.UpdateStatus($"已创建翻译文件，包含 {selectedImages.Count} 张图片", StatusBarViewModel.StatusType.Success);
-            
-            // 切换到主界面
-            ShowMainContent();
-            
-            // 加载完成后，将焦点设置到右侧树状视图
-            _ = SetFocusAfterDelayAsync();
-        }
-    }
-
-    /// <summary>
-    /// 生成翻译文件内容
-    /// </summary>
-    private string GenerateTranslationFileContent(List<string> imagePaths)
-    {
-        var lines = new List<string>();
-        
-        // 第1行: 未知参数
-        lines.Add("1,0");
-        
-        // 分组区域
-        lines.Add("-");
-        lines.Add("框内");
-        lines.Add("框外");
-        lines.Add("-");
-        
-        // 注释区域
-        lines.Add("LabelAva 1.0");
-        lines.Add("");
-        
-        // 数据区域 - 为每个图片生成标记
-        foreach (var imagePath in imagePaths)
-        {
-            var imageName = Path.GetFileName(imagePath);
-            lines.Add($"");
-            lines.Add($">>>>>>>>[{imageName}]<<<<<<<<");
-            lines.Add($"");
-        }
-        
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    /// <summary>
-    /// 打开翻译文件的核心逻辑
-    /// </summary>
-    private async Task OpenTranslationFileAsync()
-    {
-        var topLevel = GetTopLevel(this);
-        if (topLevel == null) return;
-        
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "选择翻译文件",
-            AllowMultiple = false,
-            FileTypeFilter = new[]
-            {
-                new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } },
-                new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
-            }
-        });
-        
-        if (files.Count > 0)
-        {
-            var filePath = files[0].Path.LocalPath;
-            
-            // 解析翻译文件
-            var parser = new TranslationParser();
-            _translationData = parser.Parse(filePath);
-            
-            // 保存当前翻译文件的路径
-            _currentTranslationFilePath = filePath;
-            
-            // 更新标题栏显示文件名
-            UpdateTitle();
-            
-            // 获取翻译文件所在目录，作为图片文件夹
-            _imageFolderPath = Path.GetDirectoryName(filePath);
-            
-            // 获取所有图片名
-            _imageNames = new List<string>(_translationData.ImageLabels.Keys);
-            
-            if (_imageNames.Count > 0)
-            {
-                _currentImageIndex = 0;
-                LoadCurrentImage();
-                BuildTreeView();
-                StatusBar.UpdateStatus($"已加载 {_imageNames.Count} 张图片", StatusBarViewModel.StatusType.Success);
-                
-                // 切换到主界面
-                ShowMainContent();
-                
-                // 加载完成后，将焦点设置到右侧树状视图
-                // 使用 Task.Delay 延迟设置焦点，确保菜单已完全关闭
-                _ = SetFocusAfterDelayAsync();
-            }
-            else
-            {
-                StatusBar.UpdateStatus("解析翻译文件失败", StatusBarViewModel.StatusType.Error);
-            }
-        }
+        await Document.NewCommand.ExecuteAsync(null);
     }
     
     private void OnExit(object? sender, RoutedEventArgs e)
@@ -835,7 +554,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnHistoryStateChanged(object? sender, EventArgs e)
     {
-        SetDirty(true);
+        Document.SetDirty(true);
 
         // 【核心修复】将视图重建推迟到更晚执行，确保 SelectionChanged 等事件完全处理完毕
         // 使用更低的优先级，确保在 TextBox 值设置和光标定位之后执行
@@ -1596,275 +1315,6 @@ public partial class MainWindow : Window
         // 注意：UI 刷新由 HistoryManager.HistoryChanged 事件处理
     }
     
-    /// <summary>
-    /// 关闭翻译文件，回到欢迎屏幕
-    /// </summary>
-    private void OnCloseTranslation(object? sender, RoutedEventArgs e)
-    {
-        // 检查是否有未保存的更改
-        if (_isDirty && _translationData != null)
-        {
-            // 显示确认对话框
-            Dispatcher.UIThread.InvokeAsync(ShowCloseTranslationDialogAsync);
-            return;
-        }
-        
-        CloseTranslationInternal();
-    }
-    
-    /// <summary>
-    /// 显示关闭翻译文件确认对话框
-    /// </summary>
-    private async Task ShowCloseTranslationDialogAsync()
-    {
-        var topLevel = GetTopLevel(this);
-        if (topLevel == null)
-        {
-            CloseTranslationInternal();
-            return;
-        }
-        
-        var dialog = new Window
-        {
-            Title = "未保存的更改",
-            Width = 400,
-            Height = 180,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false,
-            ShowInTaskbar = false
-        };
-        
-        var result = "Cancel";
-        
-        var panel = new StackPanel { Margin = new Thickness(20), Spacing = 15 };
-        panel.Children.Add(new TextBlock
-        {
-            Text = "当前翻译文件有未保存的更改。是否保存？",
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            FontSize = 14
-        });
-        
-        var buttonPanel = new StackPanel
-        {
-            Orientation = Avalonia.Layout.Orientation.Horizontal,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-            Spacing = 10
-        };
-        
-        var saveButton = new Button { Content = "保存", Width = 80 };
-        var discardButton = new Button { Content = "不保存", Width = 80 };
-        var cancelButton = new Button { Content = "取消", Width = 80 };
-        
-        saveButton.Click += async (s, e) =>
-        {
-            result = "Save";
-            dialog.Close();
-        };
-        
-        discardButton.Click += (s, e) =>
-        {
-            result = "Discard";
-            dialog.Close();
-        };
-        
-        cancelButton.Click += (s, e) =>
-        {
-            result = "Cancel";
-            dialog.Close();
-        };
-        
-        buttonPanel.Children.Add(saveButton);
-        buttonPanel.Children.Add(discardButton);
-        buttonPanel.Children.Add(cancelButton);
-        panel.Children.Add(buttonPanel);
-        
-        dialog.Content = panel;
-        
-        await dialog.ShowDialog(this);
-        
-        if (result == "Save")
-        {
-            // 保存文件
-            if (!string.IsNullOrEmpty(_currentTranslationFilePath))
-            {
-                try
-                {
-                    var parser = new TranslationParser();
-                    if (_translationData != null)
-                    {
-                        parser.Save(_currentTranslationFilePath, _translationData);
-                    }
-                    _isDirty = false;
-                    StatusBar.UpdateStatus("已保存", StatusBarViewModel.StatusType.Success);
-                }
-                catch (Exception ex)
-                {
-                    StatusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-                    return; // 如果保存失败，不关闭
-                }
-            }
-            else
-            {
-                // 如果没有路径，弹出另存为对话框
-                var topLevel2 = GetTopLevel(this);
-                if (topLevel2 != null)
-                {
-                    var file = await topLevel2.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-                    {
-                        Title = "保存翻译文件",
-                        DefaultExtension = "txt",
-                        ShowOverwritePrompt = true,
-                        FileTypeChoices = new[]
-                        {
-                            new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } },
-                            new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
-                        }
-                    });
-                    
-                    if (file != null)
-                    {
-                        try
-                        {
-                            var parser = new TranslationParser();
-                            var newPath = file.Path.LocalPath;
-                            if (_translationData != null)
-                            {
-                                parser.Save(newPath, _translationData);
-                            }
-                            _currentTranslationFilePath = newPath;
-                            _isDirty = false;
-                            StatusBar.UpdateStatus($"已保存至: {Path.GetFileName(newPath)}", StatusBarViewModel.StatusType.Success);
-                        }
-                        catch (Exception ex)
-                        {
-                            StatusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-                            return; // 如果保存失败，不关闭
-                        }
-                    }
-                    else
-                    {
-                        return; // 用户取消另存为，不关闭
-                    }
-                }
-            }
-        }
-        else if (result == "Discard")
-        {
-            // 丢弃更改
-        }
-        else
-        {
-            // 取消，不关闭
-            return;
-        }
-        
-        // 关闭翻译
-        CloseTranslationInternal();
-    }
-    
-    /// <summary>
-    /// 关闭翻译的内部实现
-    /// </summary>
-    private void CloseTranslationInternal()
-    {
-        // 清空图片
-        if (_currentImage != null)
-        {
-            _currentImage.Dispose();
-            _currentImage = null;
-        }
-        _currentImagePath = null;
-        _transformMatrix = Matrix.Identity;
-        ApplyTransform();
-        
-        // 清除标注（使用辅助方法解绑事件）
-        ClearLabelControls();
-        
-        // 清空数据
-        _translationData = null;
-        _currentTranslationFilePath = null;
-        _imageFolderPath = null;
-        _imageNames.Clear();
-        _treeItems.Clear();
-        _isFirstImageLoaded = false;
-        
-        // 重置脏标记和历史记录
-        _isDirty = false;
-        UpdateTitle();
-        ViewModel.History.Clear();
-        
-        // 切换回欢迎屏幕
-        ShowWelcomeScreen();
-        
-        StatusBar.UpdateStatus("就绪");
-    }
-    
-    // ==================== 保存功能 ====================
-    
-    /// <summary>
-    /// 保存翻译文件
-    /// </summary>
-    private void OnSaveTranslation(object? sender, RoutedEventArgs e)
-    {
-        if (_translationData == null || string.IsNullOrEmpty(_currentTranslationFilePath))
-            return;
-
-        try
-        {
-            var parser = new TranslationParser();
-            parser.Save(_currentTranslationFilePath, _translationData);
-            _isDirty = false;
-            UpdateTitle();
-            StatusBar.UpdateStatus($"已保存至: {Path.GetFileName(_currentTranslationFilePath)}", StatusBarViewModel.StatusType.Success);
-        }
-        catch (Exception ex)
-        {
-            StatusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-        }
-    }
-    
-    /// <summary>
-    /// 另存为翻译文件
-    /// </summary>
-    private async void OnSaveAsTranslation(object? sender, RoutedEventArgs e)
-    {
-        if (_translationData == null) return;
-
-        var topLevel = GetTopLevel(this);
-        if (topLevel == null) return;
-
-        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "另存为翻译文件",
-            DefaultExtension = "txt",
-            ShowOverwritePrompt = true,
-            FileTypeChoices = new[]
-            {
-                new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } },
-                new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
-            }
-        });
-
-        if (file != null)
-        {
-            try
-            {
-                var parser = new TranslationParser();
-                var newPath = file.Path.LocalPath;
-                parser.Save(newPath, _translationData);
-                
-                // 更新当前路径记录
-                _currentTranslationFilePath = newPath;
-                _isDirty = false;
-                UpdateTitle();
-                StatusBar.UpdateStatus($"已另存为: {Path.GetFileName(newPath)}", StatusBarViewModel.StatusType.Success);
-            }
-            catch (Exception ex)
-            {
-                StatusBar.UpdateStatus($"另存为失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-            }
-        }
-    }
     
     /// <summary>
     /// 显示主界面，隐藏欢迎屏幕
@@ -1874,12 +1324,7 @@ public partial class MainWindow : Window
         WelcomeViewControl.IsVisible = false;
         MainContentPanel.IsVisible = true;
         
-        // 通过 ViewModel 更新菜单状态
-        ViewModel.SetFileState(hasDocument: true);
         Edit.CanToggleEditMode = true;
-        
-        UpdateTitle();
-
         Edit.IsEditMode = false;
     }
     
@@ -1891,8 +1336,6 @@ public partial class MainWindow : Window
         WelcomeViewControl.IsVisible = true;
         MainContentPanel.IsVisible = false;
         
-        // 通过 ViewModel 更新菜单状态
-        ViewModel.SetFileState(hasDocument: false);
         Edit.CanToggleEditMode = false;
         Edit.IsEditMode = false;
     }
