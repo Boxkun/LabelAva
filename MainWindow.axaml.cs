@@ -81,7 +81,6 @@ public partial class MainWindow : Window
     private bool _isProgrammaticTextChange = false; // 程序化设置文本时的标志
     private TextBox? _translationTextBox;
     private Border? _editPanel;
-    private int _currentGroupIndex = 0; // 当前选中的分组：0=框内，1=框外
     
     // Dirty State & Undo/Redo 相关
     private bool _isDirty = false;
@@ -98,8 +97,6 @@ public partial class MainWindow : Window
     private double _dragStartNormY = 0;
     private LabelItem? _draggingLabelItem;
     
-    // 记录新添加的标签索引（用于在 HistoryChanged 后选中新标签）
-    private int? _pendingNewLabelIndex = null;
 
     // 树视图拖拽交互状态
     private Point _treeDragStartPoint;
@@ -110,6 +107,7 @@ public partial class MainWindow : Window
     
     public MainWindowViewModel ViewModel => ((MainWindowViewModel)DataContext!);
     public StatusBarViewModel StatusBar => ViewModel.StatusBar;
+    public EditViewModel Edit => ViewModel.Edit;
 
     public MainWindow()
     {
@@ -183,6 +181,11 @@ public partial class MainWindow : Window
         var historyManager = new HistoryManager();
         ViewModel.History = new HistoryViewModel(historyManager, CommitCurrentEdit, StatusBar);
         ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
+        
+        // 初始化编辑视图模型
+        ViewModel.Edit = new EditViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
+        ViewModel.Edit.EditModeChanged += OnEditModeChanged;
+        ViewModel.Edit.GroupChanged += OnGroupChanged;
         
         // 初始化自动保存定时器（3分钟间隔）
         _autoSaveTimer = new DispatcherTimer
@@ -866,9 +869,9 @@ public partial class MainWindow : Window
         }
         
         // 【新增】如果有待选中的新标签（添加标签操作），优先使用它
-        if (_pendingNewLabelIndex.HasValue)
+        if (Edit.PendingNewLabelIndex.HasValue)
         {
-            previouslySelectedLabelIndex = _pendingNewLabelIndex;
+            previouslySelectedLabelIndex = Edit.PendingNewLabelIndex;
         }
         
         // 重新构建树视图
@@ -927,10 +930,10 @@ public partial class MainWindow : Window
         
         // 【新增】如果有待选中的新标签已被选中，聚焦到文本框
         // 根据设置决定是否自动聚焦
-        if (_pendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
+        if (Edit.PendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
         {
             // 清除待选中状态后，聚焦到文本框
-            _pendingNewLabelIndex = null;
+            Edit.ClearPendingNewLabelIndex();
 
             // 延迟聚焦到文本框，确保 UI 已完成重建
             Dispatcher.UIThread.Post(() =>
@@ -938,73 +941,37 @@ public partial class MainWindow : Window
                 _translationTextBox?.Focus();
             }, DispatcherPriority.Loaded);
         }
-        else if (_pendingNewLabelIndex.HasValue)
+        else if (Edit.PendingNewLabelIndex.HasValue)
         {
             // 如果不需要自动聚焦，仅清除待选中状态
-            _pendingNewLabelIndex = null;
+            Edit.ClearPendingNewLabelIndex();
         }
         
     }
     
     /// <summary>
-    /// 切换编辑模式
+    /// 编辑模式变更事件处理（由 EditViewModel.EditModeChanged 触发）
     /// </summary>
-    private void OnToggleEditMode(object? sender, RoutedEventArgs e)
+    private void OnEditModeChanged(object? sender, EventArgs e)
     {
-        if (sender is MenuItem menuItem)
+        // 更新分组按钮颜色（仍需 code-behind，因为涉及 Window Resources）
+        if (Edit.IsEditMode)
         {
-            // TwoWay 绑定已自动更新 ViewModel.IsEditMode，此处确保一致性
-            ViewModel.IsEditMode = menuItem.IsChecked;
-            
-            if (_editPanel != null)
-            {
-                _editPanel.IsVisible = ViewModel.IsEditMode;
-            }
-
-            // 显示/隐藏分组选择按钮
-            UpdateGroupButtonsVisibility();
-
-            // 更新工具栏按钮状态
-            UpdateEditModeButton();
-
-            if (ViewModel.IsEditMode)
-            {
-                StatusBar.UpdateStatus("已进入编辑模式：左键点击图片以新建标签，中键/右键拖动平移", StatusBarViewModel.StatusType.Success);
-            }
-            else
-            {
-                StatusBar.UpdateStatus("已退出编辑模式", StatusBarViewModel.StatusType.Info);
-            }
+            UpdateGroupButtonColors();
         }
-        else if (sender is Button button)
-        {
-            ViewModel.IsEditMode = !ViewModel.IsEditMode;
-            
-            if (_editPanel != null)
-            {
-                _editPanel.IsVisible = ViewModel.IsEditMode;
-            }
+    }
 
-            // 显示/隐藏分组选择按钮
-            UpdateGroupButtonsVisibility();
-
-            // 更新按钮文字和样式
-            if (EditModeToggleButton != null)
-            {
-                if (ViewModel.IsEditMode)
-                {
-                    EditModeToggleButton.Content = "编辑模式";
-                    EditModeToggleButton.Classes.Add("active");
-                    StatusBar.UpdateStatus("已进入编辑模式：左键点击图片以新建标签，中键/右键拖动平移", StatusBarViewModel.StatusType.Success);
-                }
-                else
-                {
-                    EditModeToggleButton.Content = "查看模式";
-                    EditModeToggleButton.Classes.Remove("active");
-                    StatusBar.UpdateStatus("已退出编辑模式", StatusBarViewModel.StatusType.Info);
-                }
-            }
-        }
+    /// <summary>
+    /// 分组变更事件处理（由 EditViewModel.GroupChanged 触发）
+    /// </summary>
+    private void OnGroupChanged(object? sender, EventArgs e)
+    {
+        // 同步 RadioButton 选中状态
+        var groupIndex = Edit.CurrentGroupIndex;
+        if (groupIndex == 0 && Group0RadioButton != null)
+            Group0RadioButton.IsChecked = true;
+        else if (groupIndex == 1 && Group1RadioButton != null)
+            Group1RadioButton.IsChecked = true;
     }
 
     /// <summary>
@@ -1021,48 +988,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 更新分组按钮的可见性
-    /// </summary>
-    private void UpdateGroupButtonsVisibility()
-    {
-        bool isVisible = ViewModel.IsEditMode;
-        if (Group0RadioButton != null)
-        {
-            Group0RadioButton.IsVisible = isVisible;
-        }
-        if (Group1RadioButton != null)
-        {
-            Group1RadioButton.IsVisible = isVisible;
-        }
-
-        // 更新按钮颜色
-        if (isVisible)
-        {
-            UpdateGroupButtonColors();
-        }
-    }
-
-    /// <summary>
-    /// 更新编辑模式按钮的状态（文本和样式）
-    /// </summary>
-    private void UpdateEditModeButton()
-    {
-        if (EditModeToggleButton != null)
-        {
-            if (ViewModel.IsEditMode)
-            {
-                EditModeToggleButton.Content = "编辑模式";
-                EditModeToggleButton.Classes.Add("active");
-            }
-            else
-            {
-                EditModeToggleButton.Content = "查看模式";
-                EditModeToggleButton.Classes.Remove("active");
-            }
-        }
-    }
-
-    /// <summary>
     /// 分组选择改变
     /// </summary>
     private void OnGroupSelectionChanged(object? sender, RoutedEventArgs e)
@@ -1071,14 +996,13 @@ public partial class MainWindow : Window
         {
             if (radioButton == Group0RadioButton)
             {
-                _currentGroupIndex = 0;
+                Edit.SwitchGroupCommand.Execute(0);
             }
             else if (radioButton == Group1RadioButton)
             {
-                _currentGroupIndex = 1;
+                Edit.SwitchGroupCommand.Execute(1);
             }
             UpdateGroupButtonColors();
-            StatusBar.UpdateStatus($"当前分组：{(_currentGroupIndex == 0 ? "框内" : "框外")}，点击图片添加标记", StatusBarViewModel.StatusType.Info);
         }
     }
 
@@ -1271,7 +1195,7 @@ public partial class MainWindow : Window
         }
 
         // 在 UI 重建期间，忽略文本改变事件
-        if (_isUpdatingUI || !ViewModel.IsEditMode || _translationTextBox == null) return;
+        if (_isUpdatingUI || !Edit.IsEditMode || _translationTextBox == null) return;
 
         if (ImageTreeView.SelectedItem is TranslationTreeItem selectedTreeItem)
         {
@@ -1298,7 +1222,7 @@ public partial class MainWindow : Window
     private void CommitCurrentEdit()
     {
         // 如果没有处于编辑模式，或者没有焦点/数据，直接返回
-        if (!ViewModel.IsEditMode || _translationTextBox == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (!Edit.IsEditMode || _translationTextBox == null || _translationData == null || string.IsNullOrEmpty(_currentImagePath))
             return;
 
         // 只有当前树状图选中的是文本节点时，才需要结算
@@ -1408,24 +1332,12 @@ public partial class MainWindow : Window
     /// </summary>
     private void SwitchToGroup(int groupIndex)
     {
-        if (groupIndex == 0)
-        {
-            if (Group0RadioButton != null)
-            {
-                Group0RadioButton.IsChecked = true;
-                _currentGroupIndex = 0;
-                StatusBar.UpdateStatus("当前分组：框内，点击图片添加标记", StatusBarViewModel.StatusType.Info);
-            }
-        }
-        else if (groupIndex == 1)
-        {
-            if (Group1RadioButton != null)
-            {
-                Group1RadioButton.IsChecked = true;
-                _currentGroupIndex = 1;
-                StatusBar.UpdateStatus("当前分组：框外，点击图片添加标记", StatusBarViewModel.StatusType.Info);
-            }
-        }
+        Edit.SwitchGroupCommand.Execute(groupIndex);
+        // 同步 RadioButton 选中状态
+        if (groupIndex == 0 && Group0RadioButton != null)
+            Group0RadioButton.IsChecked = true;
+        else if (groupIndex == 1 && Group1RadioButton != null)
+            Group1RadioButton.IsChecked = true;
     }
 
 
@@ -1455,7 +1367,7 @@ public partial class MainWindow : Window
     private void OnLabelMarkerPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         // 仅在编辑模式下允许拖拽标签
-        if (!ViewModel.IsEditMode)
+        if (!Edit.IsEditMode)
             return;
 
         // 从Tag中提取labelIndex（支持新的ValueTuple格式和旧的int格式）
@@ -1512,7 +1424,7 @@ public partial class MainWindow : Window
     private void OnLabelMarkerPointerMoved(object? sender, PointerEventArgs e)
     {
         // 仅在编辑模式下允许拖拽标签
-        if (!ViewModel.IsEditMode)
+        if (!Edit.IsEditMode)
             return;
         
         if (_isDraggingLabel && _draggedLabel != null && sender == _draggedLabel)
@@ -1556,7 +1468,7 @@ public partial class MainWindow : Window
     private void OnLabelMarkerPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         // 仅在编辑模式下允许拖拽标签
-        if (!ViewModel.IsEditMode)
+        if (!Edit.IsEditMode)
             return;
         
         if (_isDraggingLabel && _draggedLabel != null && sender == _draggedLabel)
@@ -1674,16 +1586,12 @@ public partial class MainWindow : Window
             TextIndex = nextIndex,
             X = normX,
             Y = normY,
-            GroupIndex = _currentGroupIndex + 1, // 从1开始：0→1, 1→2
+            GroupIndex = Edit.CurrentGroupIndex + 1, // 从1开始：0→1, 1→2
             Text = ""
         };
         
-        // 记录新标签索引，等待 HistoryChanged 后选中新标签
-        _pendingNewLabelIndex = nextIndex;
-        
         // 创建并执行 AddLabelCommand（命令会自动刷新 UI）
-        var command = new AddLabelCommand(labels, newLabel);
-        ViewModel.History.ExecuteCommand(command);
+        Edit.AddLabel(labels, newLabel, nextIndex);
 
         // 注意：UI 刷新由 HistoryManager.HistoryChanged 事件处理
     }
@@ -1968,13 +1876,11 @@ public partial class MainWindow : Window
         
         // 通过 ViewModel 更新菜单状态
         ViewModel.SetFileState(hasDocument: true);
-        ViewModel.CanToggleEditMode = true;
+        Edit.CanToggleEditMode = true;
         
         UpdateTitle();
 
-        ViewModel.IsEditMode = false;
-        UpdateEditModeButton();
-        UpdateGroupButtonsVisibility();
+        Edit.IsEditMode = false;
     }
     
     /// <summary>
@@ -1987,13 +1893,8 @@ public partial class MainWindow : Window
         
         // 通过 ViewModel 更新菜单状态
         ViewModel.SetFileState(hasDocument: false);
-        ViewModel.CanToggleEditMode = false;
-        ViewModel.IsEditMode = false;
-        
-        if (_editPanel != null) _editPanel.IsVisible = false;
-
-        UpdateEditModeButton();
-        UpdateGroupButtonsVisibility();
+        Edit.CanToggleEditMode = false;
+        Edit.IsEditMode = false;
     }
     
     private void OnAddLabel(object? sender, RoutedEventArgs e)
@@ -2090,7 +1991,7 @@ public partial class MainWindow : Window
         // 左键行为取决于是否在编辑模式
         if (point.Properties.IsLeftButtonPressed)
         {
-            if (ViewModel.IsEditMode)
+            if (Edit.IsEditMode)
             {
                 // ========== 编辑模式：点击添加标签 ==========
                 // 获取相对于原图(MainImage)的实际像素坐标
@@ -2994,7 +2895,7 @@ public partial class MainWindow : Window
                 _isProgrammaticTextChange = false;
 
                 // 3. 异步渲染后置阶段：操作焦点与光标
-                if (ViewModel.IsEditMode && !_isUpdatingUI)
+                if (Edit.IsEditMode && !_isUpdatingUI)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
@@ -3519,13 +3420,8 @@ public partial class MainWindow : Window
                 {
                     int targetIndex = labels.IndexOf(targetModel);
 
-                    // 标记当前准备重新选中的标签 (因为重建UI时需要通过它恢复高亮)
-                    // 由于拖拽后序号会重置为目标索引的顺序，新序号即为 targetIndex + 1
-                    _pendingNewLabelIndex = targetIndex + 1;
-
                     // 执行拖拽重排命令
-                    var command = new ReorderLabelsCommand(labels, sourceModel, targetIndex);
-                    ViewModel.History.ExecuteCommand(command);
+                    Edit.ReorderLabels(labels, sourceModel, targetIndex, targetIndex + 1);
                 }
             }
         }

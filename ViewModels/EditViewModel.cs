@@ -1,0 +1,160 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using LabelAva.Commands;
+using LabelAva.Models;
+
+namespace LabelAva.ViewModels;
+
+public partial class EditViewModel : ObservableObject
+{
+    private readonly HistoryViewModel _history;
+    private readonly StatusBarViewModel _statusBar;
+    private readonly Action _commitCurrentEdit;
+
+    // ========================
+    // 状态属性
+    // ========================
+
+    [ObservableProperty]
+    private bool _isEditMode;
+
+    [ObservableProperty]
+    private bool _canToggleEditMode;
+
+    [ObservableProperty]
+    private int _currentGroupIndex;
+
+    // ========================
+    // 派生属性（供 XAML 绑定）
+    // ========================
+
+    /// <summary>编辑面板是否可见</summary>
+    public bool IsEditPanelVisible => IsEditMode;
+
+    /// <summary>编辑模式按钮文本</summary>
+    public string EditModeButtonText => IsEditMode ? "编辑模式" : "查看模式";
+
+    /// <summary>分组按钮是否可见</summary>
+    public bool AreGroupButtonsVisible => IsEditMode;
+
+    // ========================
+    // 待选中标签索引（添加标签后自动选中）
+    // ========================
+
+    private int? _pendingNewLabelIndex;
+
+    public int? PendingNewLabelIndex => _pendingNewLabelIndex;
+
+    public void SetPendingNewLabelIndex(int? index) => _pendingNewLabelIndex = index;
+
+    public void ClearPendingNewLabelIndex() => _pendingNewLabelIndex = null;
+
+    // ========================
+    // 命令
+    // ========================
+
+    [RelayCommand(CanExecute = nameof(CanToggleEditMode))]
+    private void ToggleEditMode()
+    {
+        IsEditMode = !IsEditMode;
+        UpdateDerivedProperties();
+        EditModeChanged?.Invoke(this, EventArgs.Empty);
+
+        _statusBar.UpdateStatus(
+            IsEditMode ? "已进入编辑模式：左键点击图片以新建标签，中键/右键拖动平移"
+                       : "已退出编辑模式",
+            IsEditMode ? StatusBarViewModel.StatusType.Success
+                       : StatusBarViewModel.StatusType.Info);
+    }
+
+    [RelayCommand]
+    private void SwitchGroup(int groupIndex)
+    {
+        CurrentGroupIndex = groupIndex;
+        GroupChanged?.Invoke(this, EventArgs.Empty);
+        _statusBar.UpdateStatus(
+            $"当前分组：{(groupIndex == 0 ? "框内" : "框外")}，点击图片添加标记",
+            StatusBarViewModel.StatusType.Info);
+    }
+
+    // ========================
+    // 标签操作方法（由 code-behind 调用，传入模型数据）
+    // ========================
+
+    /// <summary>添加标签</summary>
+    public void AddLabel(List<LabelItem> labels, LabelItem newItem, int textIndex)
+    {
+        _pendingNewLabelIndex = textIndex;
+        _history.ExecuteCommand(new AddLabelCommand(labels, newItem));
+    }
+
+    /// <summary>删除标签</summary>
+    public void DeleteLabel(List<LabelItem> labels, LabelItem itemToDelete)
+    {
+        _commitCurrentEdit();
+        _history.ExecuteCommand(new DeleteLabelCommand(labels, itemToDelete));
+    }
+
+    /// <summary>切换标签分组</summary>
+    public void ChangeGroup(LabelItem label, int oldGroupIndex, int newGroupIndex)
+    {
+        _commitCurrentEdit();
+        _history.ExecuteCommand(new ChangeGroupCommand(label, oldGroupIndex, newGroupIndex));
+    }
+
+    /// <summary>移动标签</summary>
+    public void MoveLabel(LabelItem label, double oldX, double oldY, double newX, double newY)
+    {
+        _history.ExecuteCommand(new MoveLabelCommand(label, oldX, oldY, newX, newY));
+    }
+
+    /// <summary>重排序标签</summary>
+    public void ReorderLabels(List<LabelItem> labels, LabelItem draggedItem, int targetIndex, int pendingIndex)
+    {
+        _pendingNewLabelIndex = pendingIndex;
+        _history.ExecuteCommand(new ReorderLabelsCommand(labels, draggedItem, targetIndex));
+    }
+
+    // ========================
+    // 构造函数
+    // ========================
+
+    public EditViewModel(HistoryViewModel history, StatusBarViewModel statusBar, Action commitCurrentEdit)
+    {
+        _history = history;
+        _statusBar = statusBar;
+        _commitCurrentEdit = commitCurrentEdit;
+    }
+
+    // ========================
+    // 内部方法
+    // ========================
+
+    partial void OnIsEditModeChanged(bool value)
+    {
+        UpdateDerivedProperties();
+        ToggleEditModeCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnCanToggleEditModeChanged(bool value)
+    {
+        ToggleEditModeCommand.NotifyCanExecuteChanged();
+    }
+
+    private void UpdateDerivedProperties()
+    {
+        OnPropertyChanged(nameof(IsEditPanelVisible));
+        OnPropertyChanged(nameof(EditModeButtonText));
+        OnPropertyChanged(nameof(AreGroupButtonsVisible));
+    }
+
+    // ========================
+    // 事件
+    // ========================
+
+    /// <summary>编辑模式变更事件（通知 MainWindow 更新 UI 细节）</summary>
+    public event EventHandler? EditModeChanged;
+
+    /// <summary>分组变更事件（通知 MainWindow 更新 RadioButton 状态）</summary>
+    public event EventHandler? GroupChanged;
+}

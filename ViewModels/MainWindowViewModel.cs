@@ -8,6 +8,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private HistoryViewModel _history = null!; // 由 MainWindow 构造时注入
 
+    [ObservableProperty]
+    private EditViewModel _edit = null!; // 由 MainWindow 构造时注入
+
     // ========================
     // 文件菜单
     // ========================
@@ -20,17 +23,6 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _canCloseTranslation;
-
-
-    // ========================
-    // 编辑菜单
-    // ========================
-
-    [ObservableProperty]
-    private bool _isEditMode;
-
-    [ObservableProperty]
-    private bool _canToggleEditMode;
 
 
     // ========================

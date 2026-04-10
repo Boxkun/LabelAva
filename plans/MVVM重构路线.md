@@ -58,11 +58,16 @@ graph TD
 
 > 详见下方第三节
 
-### Phase 2：EditViewModel ⬜ 待规划
+### Phase 2：EditViewModel ✅ 已完成
 
-- 迁移编辑模式切换逻辑
-- 迁移标签添加/删除/移动/分组切换命令
-- 迁移编辑面板显示/隐藏
+> 详见 `plans/Phase2-EditViewModel迁移方案.md`
+
+- [x] 迁移编辑模式切换逻辑 → `EditViewModel.ToggleEditModeCommand`
+- [x] 迁移标签添加/删除/移动/分组切换命令 → `EditViewModel.AddLabel/DeleteLabel/MoveLabel/ChangeGroup/ReorderLabels`
+- [x] 迁移编辑面板显示/隐藏 → XAML 绑定 `Edit.IsEditPanelVisible`/`Edit.AreGroupButtonsVisible`
+- [x] 迁移 `_currentGroupIndex` → `Edit.CurrentGroupIndex`
+- [x] 迁移 `_pendingNewLabelIndex` → `Edit.PendingNewLabelIndex`
+- [x] 移除 `OnToggleEditMode`/`UpdateEditModeButton`/`UpdateGroupButtonsVisibility`
 
 ### Phase 3：DocumentViewModel ⬜ 待规划
 

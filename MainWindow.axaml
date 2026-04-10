@@ -41,7 +41,7 @@
                 <MenuItem Header="{Binding History.UndoHeader}" Command="{Binding History.UndoCommand}" InputGesture="Ctrl+Z"/>
                 <MenuItem Header="{Binding History.RedoHeader}" Command="{Binding History.RedoCommand}" InputGesture="Ctrl+Y"/>
                 <Separator/>
-                <MenuItem Header="编辑模式" ToggleType="CheckBox" Click="OnToggleEditMode" IsEnabled="{Binding CanToggleEditMode}" IsChecked="{Binding IsEditMode, Mode=TwoWay}"/>
+                <MenuItem Header="编辑模式" ToggleType="CheckBox" Command="{Binding Edit.ToggleEditModeCommand}" IsChecked="{Binding Edit.IsEditMode, Mode=TwoWay}"/>
                 <Separator/>
                 <MenuItem Header="首选项" Click="OnPreferences"/>
             </MenuItem>
@@ -115,10 +115,10 @@
                             <Border DockPanel.Dock="Top" Background="Transparent" Padding="12,4" Height="48">
                                 <DockPanel>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="8">
-                                        <Button x:Name="EditModeToggleButton" 
-                                                Content="查看模式" 
+                                        <Button x:Name="EditModeToggleButton"
+                                                Content="{Binding Edit.EditModeButtonText}"
                                                 FontSize="12"
-                                                Click="OnToggleEditMode"
+                                                Command="{Binding Edit.ToggleEditModeCommand}"
                                                 Classes="mode-toggle"
                                                 VerticalAlignment="Center"/>
                                         <RadioButton x:Name="Group0RadioButton"
@@ -127,7 +127,7 @@
                                                      GroupName="GroupSelection"
                                                      IsChecked="True"
                                                      Click="OnGroupSelectionChanged"
-                                                     IsVisible="False"
+                                                     IsVisible="{Binding Edit.AreGroupButtonsVisible}"
                                                      VerticalAlignment="Center"
                                                      MinHeight="30"/>
                                         <RadioButton x:Name="Group1RadioButton"
@@ -135,7 +135,7 @@
                                                      Content="框外"
                                                      GroupName="GroupSelection"
                                                      Click="OnGroupSelectionChanged"
-                                                     IsVisible="False"
+                                                     IsVisible="{Binding Edit.AreGroupButtonsVisible}"
                                                      VerticalAlignment="Center"
                                                      MinHeight="30"/>
                                     </StackPanel>
@@ -190,7 +190,7 @@
                         </DockPanel>
 
                         <!-- 下半部分：文本编辑区域 (默认隐藏) -->
-                        <Border x:Name="EditPanel" Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10" IsVisible="False">
+                        <Border x:Name="EditPanel" Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10" IsVisible="{Binding Edit.IsEditPanelVisible}">
                             <DockPanel>
                                 <!-- 工具栏：快捷输入按钮 -->
                                 <Border DockPanel.Dock="Top" Background="#F8F8F8" Margin="0,0,0,8">
