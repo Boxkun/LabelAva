@@ -98,11 +98,22 @@ graph TD
 - [x] XAML 绑定 TreeView ItemsSource
 - [x] 清理 MainWindow 过渡期引用
 
-### Phase 5：ImageViewportViewModel ⬜ 待规划
+### Phase 5：ImageViewportViewModel ✅ 已完成
 
-- 迁移缩放/平移/Fit 逻辑
-- 迁移变换矩阵管理
-- 迁移鼠标滚轮/拖拽事件
+> 详见 `plans/Phase5-ImageViewportViewModel迁移方案.md`
+
+- [x] 创建 `ImageViewportViewModel`：封装变换矩阵、缩放/平移/Fit 纯数学逻辑
+- [x] 迁移缩放命令 → `Viewport.ZoomInCommand`/`ZoomOutCommand`/`ResetZoomCommand`
+- [x] 迁移滚轮缩放 → `Viewport.ApplyZoomDelta()`
+- [x] 迁移平移逻辑 → `Viewport.StartPan()`/`UpdatePan()`/`EndPan()`
+- [x] 迁移 CalculateFitTransform → `Viewport.CalculateFitTransform()`
+- [x] 迁移 CenterOnLabel → `Viewport.CenterOnLabel(normalizedX, normalizedY)`
+- [x] 迁移容器尺寸变化 → `Viewport.UpdateContainerSize()` + `OnContainerSizeChanged()`
+- [x] 添加 `TransformChanged` 事件同步矩阵到 UI + 状态栏 + FitScale
+- [x] XAML 视图菜单绑定：`Click` → `Command`
+- [x] 移除 `_transformMatrix`/`_isPanning`/`_lastPanPoint` 字段
+- [x] 移除 `ApplyZoom`/`ApplyCentering`/`GetScaledImageSize`/`GetCurrentScale`/`GetZoomText` 方法
+- [x] 移除 `MainWindowViewModel` 中 `_canZoomIn`/`_canZoomOut`/`_canResetZoom` 属性
 
 ---
 

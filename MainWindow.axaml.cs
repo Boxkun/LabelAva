@@ -32,13 +32,10 @@ public partial class MainWindow : Window
     
     // 翻译数据已迁入 DocumentViewModel（通过 Document.TranslationData 访问）
     
-    // 矩阵变换
-    private Matrix _transformMatrix = Matrix.Identity;
+    // 矩阵变换（_transformMatrix 已迁入 ImageViewportViewModel，通过 Viewport.TransformMatrix 访问）
     private MatrixTransform? _matrixTransform;
     
-    // 拖动状态
-    private bool _isPanning = false;
-    private Point _lastPanPoint = new Point(0, 0);
+    // 拖动状态（_isPanning/_lastPanPoint 已迁入 ImageViewportViewModel）
 
     // 标注拖拽状态
     private bool _isDraggingLabel = false;
@@ -96,6 +93,7 @@ public partial class MainWindow : Window
     public EditViewModel Edit => ViewModel.Edit;
     public DocumentViewModel Document => ViewModel.Document;
     public NavigationViewModel Navigation => ViewModel.Navigation;
+    public ImageViewportViewModel Viewport => ViewModel.Viewport;
 
     public MainWindow()
     {
@@ -191,6 +189,9 @@ public partial class MainWindow : Window
         ViewModel.Document.DocumentOpened += OnDocumentOpened;
         ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
+        // 订阅视口变换矩阵变更事件（同步矩阵到 UI 控件 + 状态栏 + FitScale）
+        Viewport.TransformChanged += OnViewportTransformChanged;
+
         // 【新增】注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
         // Ctrl+Enter 提交功能也在这里处理（兼容主键盘 Return 和数字小键盘 Enter）
         this.AddHandler(InputElement.KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
@@ -273,7 +274,6 @@ public partial class MainWindow : Window
         
         // 重置状态
         _isFirstImageLoaded = false;
-        _isPanning = false;
         
         // 强制退出整个进程
         Environment.Exit(0);
@@ -382,8 +382,8 @@ public partial class MainWindow : Window
             _currentImage = null;
         }
         _currentImagePath = null;
-        _transformMatrix = Matrix.Identity;
-        ApplyTransform();
+        Viewport.ResetTransform();
+        Viewport.UpdateImageSize(new Size(0, 0));
 
         ClearLabelControls();
 
@@ -401,8 +401,6 @@ public partial class MainWindow : Window
     {
         LoadCurrentImage();
         CalculateFitTransform();
-        ApplyTransform();
-        StatusBar.UpdateZoom(GetZoomText());
         UpdateLabels();
     }
     
@@ -434,21 +432,33 @@ public partial class MainWindow : Window
     {
         if (_currentImage == null) return;
         
-        // 重新应用边界限制（居中/防越界）
-        _transformMatrix = ApplyCentering(_transformMatrix);
-        ApplyTransform();
-        // UpdateZoomText();
-        StatusBar.UpdateZoom(GetZoomText());
+        // 通知 Viewport 容器尺寸变化，重新应用边界限制
+        Viewport.UpdateContainerSize(new Size(e.NewSize.Width, e.NewSize.Height));
+        Viewport.OnContainerSizeChanged();
     }
     
     /// <summary>
-    /// 应用变换矩阵到 Image 控件
+    /// ImageViewportViewModel.TransformChanged 事件处理
+    /// 同步矩阵到 UI 控件 + 状态栏缩放百分比 + FitScale 到树视图项
+    /// </summary>
+    private void OnViewportTransformChanged(object? sender, EventArgs e)
+    {
+        // 同步矩阵到 UI 控件
+        ApplyTransform();
+        // 同步缩放百分比到状态栏
+        StatusBar.UpdateZoom(Viewport.ZoomPercent);
+        // 同步 FitScale 到树视图项
+        SaveCurrentFitScale(Viewport.CurrentFitScale);
+    }
+    
+    /// <summary>
+    /// 应用变换矩阵到 Image 控件（从 Viewport 同步到 UI）
     /// </summary>
     private void ApplyTransform()
     {
         if (_matrixTransform != null)
         {
-            _matrixTransform.Matrix = _transformMatrix;
+            _matrixTransform.Matrix = Viewport.TransformMatrix;
         }
     }
     
@@ -1379,8 +1389,8 @@ public partial class MainWindow : Window
             _currentImage = null;
         }
         _currentImagePath = null;
-        _transformMatrix = Matrix.Identity;
-        ApplyTransform();
+        Viewport.ResetTransform();
+        Viewport.UpdateImageSize(new Size(0, 0));
         
         // 清除标注（使用辅助方法解绑事件）
         ClearLabelControls();
@@ -1388,57 +1398,12 @@ public partial class MainWindow : Window
         StatusBar.UpdateStatus("画布已清空");
     }
     
-    private void OnZoomIn(object? sender, RoutedEventArgs e)
-    {
-        if (_currentImage == null) return;
-        
-        // 以容器中心为基准进行缩放
-        var containerBounds = ImageContainer.Bounds;
-        if (containerBounds.Width <= 0 || containerBounds.Height <= 0)
-        {
-            // 容器未准备好，等待下次
-            return;
-        }
-        
-        var centerPoint = new Point(containerBounds.Width / 2, containerBounds.Height / 2);
-        
-        _transformMatrix = ApplyZoom(_transformMatrix, 1.2, centerPoint);
-        ApplyTransform();
-        
-        // UpdateZoomText();
-        StatusBar.UpdateZoom(GetZoomText());
-    }
-    
-    private void OnZoomOut(object? sender, RoutedEventArgs e)
-    {
-        if (_currentImage == null) return;
-        
-        // 以容器中心为基准进行缩放
-        var containerBounds = ImageContainer.Bounds;
-        if (containerBounds.Width <= 0 || containerBounds.Height <= 0)
-        {
-            // 容器未准备好，等待下次
-            return;
-        }
-        
-        var centerPoint = new Point(containerBounds.Width / 2, containerBounds.Height / 2);
-        
-        _transformMatrix = ApplyZoom(_transformMatrix, 0.9, centerPoint);
-        ApplyTransform();
-        
-        // UpdateZoomText();
-        StatusBar.UpdateZoom(GetZoomText());
-    }
+    // OnZoomIn/OnZoomOut/OnResetZoom 已迁入 ImageViewportViewModel（通过 Command 绑定）
     
     private void OnResetZoom(object? sender, RoutedEventArgs e)
     {
-        if (_currentImage == null) return;
-        
-        // 重置为自适应状态
-        CalculateFitTransform();
-        ApplyTransform();
-        // UpdateZoomText();
-        StatusBar.UpdateZoom(GetZoomText());
+        // 保留此事件处理以兼容 XAML Click 绑定过渡期
+        Viewport.ResetZoomCommand.Execute(null);
     }
     
     private void OnAbout(object? sender, RoutedEventArgs e)
@@ -1487,8 +1452,7 @@ public partial class MainWindow : Window
             else
             {
                 // ========== 浏览模式：左键平移 ==========
-                _isPanning = true;
-                _lastPanPoint = e.GetPosition(ImageContainer);
+                Viewport.StartPan(e.GetPosition(ImageContainer));
                 ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
                 e.Handled = true;
             }
@@ -1496,8 +1460,7 @@ public partial class MainWindow : Window
         // 允许任何模式下使用中键或右键平移
         else if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
         {
-            _isPanning = true;
-            _lastPanPoint = e.GetPosition(ImageContainer);
+            Viewport.StartPan(e.GetPosition(ImageContainer));
             ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
             e.Handled = true;
         }
@@ -1538,30 +1501,18 @@ public partial class MainWindow : Window
     }
     
     private void OnImageContainerPointerMoved(object? sender, PointerEventArgs e)
-{
-    if (_isPanning)
     {
-        var currentPoint = e.GetPosition(ImageContainer);
-        var delta = currentPoint - _lastPanPoint;
-        
-        _transformMatrix = new Matrix(
-            _transformMatrix.M11, _transformMatrix.M12,
-            _transformMatrix.M21, _transformMatrix.M22,
-            _transformMatrix.M31 + delta.X, _transformMatrix.M32 + delta.Y);
-        
-        _transformMatrix = ApplyCentering(_transformMatrix);
-        
-        ApplyTransform();
-        
-        _lastPanPoint = currentPoint;
+        if (Viewport.IsPanning)
+        {
+            Viewport.UpdatePan(e.GetPosition(ImageContainer));
+        }
     }
-}
     
     private void OnImageContainerPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (_isPanning)
+        if (Viewport.IsPanning)
         {
-            _isPanning = false;
+            Viewport.EndPan();
             ImageContainer.Cursor = new Cursor(StandardCursorType.Arrow);
         }
     }
@@ -1576,111 +1527,16 @@ public partial class MainWindow : Window
         // 确定缩放因子
         double zoom = e.Delta.Y > 0 ? 1.1 : 0.9;
         
-        // 以鼠标为中心进行缩放
-        _transformMatrix = ApplyZoom(_transformMatrix, zoom, mousePos);
+        // 以鼠标为中心进行缩放（委托给 Viewport）
+        Viewport.ApplyZoomDelta(zoom, mousePos);
         
-        // 自动居中：如果图片缩小后小于容器
-        _transformMatrix = ApplyCentering(_transformMatrix);
-        
-        ApplyTransform();
-        
-        // UpdateZoomText();
-        StatusBar.UpdateZoom(GetZoomText());
         e.Handled = true;
     }
     
-    // ==================== 矩阵变换核心方法 ====================
+    // ==================== 矩阵变换核心方法（已迁入 ImageViewportViewModel）====================
     
     /// <summary>
-    /// 以指定点为中心进行缩放
-    /// </summary>
-    private Matrix ApplyZoom(Matrix matrix, double zoomFactor, Point centerPoint)
-    {
-        // 【修复】标准的以某点为中心的缩放矩阵乘法组合
-        var zoomMatrix = Matrix.CreateTranslation(-centerPoint.X, -centerPoint.Y) *
-                        Matrix.CreateScale(zoomFactor, zoomFactor) *
-                        Matrix.CreateTranslation(centerPoint.X, centerPoint.Y);
-        
-        // 将缩放效果叠加到当前矩阵上
-        return matrix * zoomMatrix;
-    }
-    
-    /// <summary>
-    /// 自动居中：如果图片比视野小，则居中显示
-    /// </summary>
-    private Matrix ApplyCentering(Matrix matrix)
-    {
-        if (_currentImage == null) return matrix;
-        
-        var containerBounds = ImageContainer.Bounds;
-        if (containerBounds.Width <= 0 || containerBounds.Height <= 0)
-            return matrix;
-        
-        var scaledSize = GetScaledImageSize();
-        double scaledWidth = scaledSize.Width;
-        double scaledHeight = scaledSize.Height;
-        
-        double translateX = matrix.M31;
-        double translateY = matrix.M32;
-        
-        // --- X轴边界限制 ---
-        double minX, maxX;
-        if (scaledWidth < containerBounds.Width)
-        {
-            // 图片比容器窄：限制在容器内部，不允许被拖出去
-            minX = 0;
-            maxX = containerBounds.Width - scaledWidth;
-        }
-        else
-        {
-            // 图片比容器宽：限制边缘不能拖出视口（撞墙）
-            minX = containerBounds.Width - scaledWidth;
-            maxX = 0;
-        }
-        translateX = Math.Clamp(translateX, minX, maxX);
-        
-        // --- Y轴边界限制 ---
-        double minY, maxY;
-        if (scaledHeight < containerBounds.Height)
-        {
-            // 图片比容器矮：限制在容器内部
-            minY = 0;
-            maxY = containerBounds.Height - scaledHeight;
-        }
-        else
-        {
-            // 图片比容器高：限制边缘不能拖出视口
-            minY = containerBounds.Height - scaledHeight;
-            maxY = 0;
-        }
-        translateY = Math.Clamp(translateY, minY, maxY);
-        
-        // 返回应用了边界限制的新矩阵
-        return new Matrix(
-            matrix.M11, matrix.M12,
-            matrix.M21, matrix.M22,
-            translateX, translateY);
-    }
-    
-    /// <summary>
-    /// 获取缩放后的图片尺寸
-    /// </summary>
-    private Size GetScaledImageSize()
-    {
-        if (_currentImage == null) return new Size(0, 0);
-        
-        // 从矩阵中提取缩放因子
-        double scaleX = Math.Sqrt(_transformMatrix.M11 * _transformMatrix.M11 + _transformMatrix.M12 * _transformMatrix.M12);
-        double scaleY = Math.Sqrt(_transformMatrix.M21 * _transformMatrix.M21 + _transformMatrix.M22 * _transformMatrix.M22);
-        
-        return new Size(
-            _currentImage.Size.Width * scaleX,
-            _currentImage.Size.Height * scaleY
-        );
-    }
-    
-    /// <summary>
-    /// 计算适应容器的初始变换（Fit模式）
+    /// 计算适应容器的初始变换（Fit模式）—— 委托给 ImageViewportViewModel
     /// </summary>
     private void CalculateFitTransform()
     {
@@ -1698,26 +1554,10 @@ public partial class MainWindow : Window
             return;
         }
         
-        double imageWidth = _currentImage.Size.Width;
-        double imageHeight = _currentImage.Size.Height;
-        double containerWidth = containerBounds.Width;
-        double containerHeight = containerBounds.Height;
-        
-        // 计算自适应缩放比例
-        double scale = Math.Min(containerWidth / imageWidth, containerHeight / imageHeight);
-        
-        // 计算居中偏移
-        double scaledWidth = imageWidth * scale;
-        double scaledHeight = imageHeight * scale;
-        double translateX = (containerWidth - scaledWidth) / 2;
-        double translateY = (containerHeight - scaledHeight) / 2;
-        
-        // 【修复】一定要先 CreateScale，再乘以 CreateTranslation！
-        _transformMatrix = Matrix.CreateScale(scale, scale) * 
-                        Matrix.CreateTranslation(translateX, translateY);
-        
-        // 保存当前图片的 fit 缩放比例
-        SaveCurrentFitScale(scale);
+        // 通知 Viewport 容器和图片尺寸，然后计算 Fit 变换
+        Viewport.UpdateContainerSize(new Size(containerBounds.Width, containerBounds.Height));
+        Viewport.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
+        Viewport.CalculateFitTransform();
     }
     
     /// <summary>
@@ -1741,13 +1581,7 @@ public partial class MainWindow : Window
         }
     }
     
-    /// <summary>
-    /// 获取当前缩放比例
-    /// </summary>
-    private double GetCurrentScale()
-    {
-        return Math.Sqrt(_transformMatrix.M11 * _transformMatrix.M11 + _transformMatrix.M12 * _transformMatrix.M12);
-    }
+    // GetCurrentScale 已迁入 ImageViewportViewModel（通过 Viewport.ZoomPercent / 100 获取）
     
     // ==================== 图片加载 ====================
 
@@ -2001,6 +1835,9 @@ public partial class MainWindow : Window
                 }
             }
             
+            // 通知 Viewport 图片尺寸
+            Viewport.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
+            
             // 首次加载时延迟计算适应容器的初始变换，等待布局完成
             if (!_isFirstImageLoaded)
             {
@@ -2014,9 +1851,7 @@ public partial class MainWindow : Window
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
                         CalculateFitTransform();
-                        ApplyTransform();
-                        // UpdateZoomText();
-                        StatusBar.UpdateZoom(GetZoomText());
+                        // TransformChanged 事件会自动同步 ApplyTransform + StatusBar.UpdateZoom
 
                         // 居中完成后显示图片
                         MainImage.IsVisible = true;
@@ -2030,8 +1865,7 @@ public partial class MainWindow : Window
             {
                 // 非首次加载直接应用已有的变换
                 ApplyTransform();
-                // UpdateZoomText();
-                StatusBar.UpdateZoom(GetZoomText());
+                StatusBar.UpdateZoom(Viewport.ZoomPercent);
                 // 更新标注显示
                 UpdateLabels();
             }
@@ -2056,14 +1890,7 @@ public partial class MainWindow : Window
     
     // ==================== 辅助方法 ====================
     
-    private double GetZoomText()
-    {
-        // 从矩阵中提取缩放比例
-        double scaleX = Math.Sqrt(_transformMatrix.M11 * _transformMatrix.M11 + _transformMatrix.M12 * _transformMatrix.M12);
-        // if (_zoomText != null)
-        //     _zoomText.Text = $"缩放: {scaleX * 100:F0}%";
-        return scaleX * 100;
-    }
+    // GetZoomText 已迁入 ImageViewportViewModel（通过 Viewport.ZoomPercent 获取）
     
     // private void StatusBar.UpdateStatus(string message)
     // {
@@ -2260,8 +2087,7 @@ public partial class MainWindow : Window
         {
             LoadCurrentImage();
             CalculateFitTransform();
-            ApplyTransform();
-            StatusBar.UpdateZoom(GetZoomText());
+            // TransformChanged 事件会自动同步 ApplyTransform + StatusBar.UpdateZoom
             UpdateLabels();
         }
 
@@ -2277,7 +2103,7 @@ public partial class MainWindow : Window
             // 切换图片视图中的编号高亮
             HighlightLabel(targetChildItem.Index);
             
-            double currentScale = GetCurrentScale();
+            double currentScale = Viewport.ZoomPercent / 100;
             double fitScale = targetRootItem?.FitScale ?? 1.0;
             
             // 如果当前缩放比例大于 fit 比例（用户手动放大了）
@@ -2611,7 +2437,7 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 将视野中心对准指定编号的标注
+    /// 将视野中心对准指定编号的标注（委托给 ImageViewportViewModel）
     /// </summary>
     private void CenterOnLabel(int labelIndex)
     {
@@ -2636,34 +2462,8 @@ public partial class MainWindow : Window
         
         if (targetLabel == null) return;
         
-        // 计算标注在图片上的像素坐标
-        double imageWidth = _currentImage.Size.Width;
-        double imageHeight = _currentImage.Size.Height;
-        double labelX = targetLabel.X * imageWidth;
-        double labelY = targetLabel.Y * imageHeight;
-        
-        // 获取容器中心（目标视野中心）
-        var containerBounds = ImageContainer.Bounds;
-        double centerX = containerBounds.Width / 2;
-        double centerY = containerBounds.Height / 2;
-        
-        // 计算需要的平移量：将标注点从 (labelX, labelY) 移动到 (centerX, centerY)
-        // 变换公式：屏幕坐标 = 图片坐标 * scale + translate
-        // 所以：translate = 屏幕坐标 - 图片坐标 * scale
-        double currentScale = GetCurrentScale();
-        double translateX = centerX - labelX * currentScale;
-        double translateY = centerY - labelY * currentScale;
-        
-        // 应用变换（保持缩放比例不变，只调整位置）
-        _transformMatrix = new Matrix(
-            _transformMatrix.M11, _transformMatrix.M12,
-            _transformMatrix.M21, _transformMatrix.M22,
-            translateX, translateY);
-        
-        // 应用边界限制
-        _transformMatrix = ApplyCentering(_transformMatrix);
-
-        ApplyTransform();
+        // 委托给 Viewport（传入归一化坐标）
+        Viewport.CenterOnLabel(targetLabel.X, targetLabel.Y);
     }
 
     // ==================== 树视图拖拽排序 ====================

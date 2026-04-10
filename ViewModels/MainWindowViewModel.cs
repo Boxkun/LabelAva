@@ -17,17 +17,6 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private NavigationViewModel _navigation = null!; // 由 MainWindow 构造时注入
 
-
-    // ========================
-    // 视图菜单
-    // ========================
-
     [ObservableProperty]
-    private bool _canZoomIn = true;
-
-    [ObservableProperty]
-    private bool _canZoomOut = true;
-
-    [ObservableProperty]
-    private bool _canResetZoom = true;
+    private ImageViewportViewModel _viewport = new();
 }
