@@ -87,23 +87,7 @@
             <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False" Background="#88FF0000">
                 <!-- 左侧 Panel：画布区域 -->
                 <Border Grid.Column="0" Background="#F5F5F5">
-                    <Border Name="ImageContainer" 
-                            ClipToBounds="True" 
-                            Background="Transparent"
-                            PointerPressed="OnImageContainerPointerPressed"
-                            PointerMoved="OnImageContainerPointerMoved"
-                            PointerReleased="OnImageContainerPointerReleased"
-                            PointerWheelChanged="OnImageContainerPointerWheelChanged">
-                        <Canvas x:Name="ImageCanvas">
-                            <Canvas x:Name="ImageWrapper" RenderTransformOrigin="0,0">
-                                 <Image x:Name="MainImage" 
-                                        Stretch="None" 
-                                        HorizontalAlignment="Left" 
-                                        VerticalAlignment="Top"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality" />
-                            </Canvas>
-                        </Canvas>
-                    </Border>
+                    <views:AnnotationCanvas x:Name="AnnotationCanvasControl" DataContext="{Binding CanvasVM}" />
                 </Border>
                 
                 <!-- 右侧 Panel：属性面板 -->

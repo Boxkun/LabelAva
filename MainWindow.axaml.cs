@@ -30,54 +30,20 @@ public partial class MainWindow : Window
     private Bitmap? _currentImage;
     private string? _currentImagePath;
     
-    // 翻译数据已迁入 DocumentViewModel（通过 Document.TranslationData 访问）
-    
-    // 矩阵变换（_transformMatrix 已迁入 CanvasViewModel，通过 CanvasVM.TransformMatrix 访问）
-    private MatrixTransform? _matrixTransform;
-    
-    // 拖动状态（_isPanning/_lastPanPoint 已迁入 CanvasViewModel）
-
-    // 标注拖拽状态
-    private bool _isDraggingLabel = false;
-    private Border? _draggedLabel;
-    private Point _labelDragLastPoint;
-    
     // 快捷键设置
     private ShortcutSettings _shortcutSettings;
     
     // 首次加载标志
     private bool _isFirstImageLoaded = false;
     
-    // 标注控件列表
-    private List<Control> _labelControls = new();
-    
-    // // 状态栏
-    // private TextBlock? _statusText;
-    // private Border? _statusBar;
-    // private TextBlock? _zoomText;
-    
-    // // 状态栏
-    // private StatusBarViewModel.StatusType _currentStatusBarViewModel.StatusType = StatusBarViewModel.StatusType.Default;
-    // private int _statusMessageId = 0; // 用于追踪最新的消息ID，防止并发覆盖
-    
     // 编辑模式相关
     private bool _isProgrammaticTextChange = false; // 程序化设置文本时的标志
     private TextBox? _translationTextBox;
     private Border? _editPanel;
     
-    // Dirty State 已迁入 DocumentViewModel（通过 Document.IsDirty 访问）
-    
     // UI 锁：防止命令执行时触发 UI 事件污染历史栈
     private bool _isUpdatingUI = false;
     
-
-    
-    // 拖拽交互状态（数据模型坐标）
-    private double _dragStartNormX = 0;
-    private double _dragStartNormY = 0;
-    private LabelItem? _draggingLabelItem;
-    
-
     // 树视图拖拽交互状态
     private Point _treeDragStartPoint;
     private bool _isTreeItemDragging = false;
@@ -94,6 +60,9 @@ public partial class MainWindow : Window
     public DocumentViewModel Document => ViewModel.Document;
     public NavigationViewModel Navigation => ViewModel.Navigation;
     public CanvasViewModel CanvasVM => ViewModel.CanvasVM;
+    
+    // ==================== AnnotationCanvas 便捷属性 ====================
+    public AnnotationCanvas CanvasControl => this.FindControl<AnnotationCanvas>("AnnotationCanvasControl")!;
 
     public MainWindow()
     {
@@ -126,35 +95,11 @@ public partial class MainWindow : Window
             _translationTextBox.LostFocus += OnTranslationTextBoxLostFocus;
         }
         
-        // // 添加默认 status-bar 类
-        // if (_statusBar != null)
-        // {
-        //     _statusBar.Classes.Add("status-bar");
-        // }
-        
-        // // 初始状态
-        // if (_statusText != null)
-        //     _statusText.Text = "就绪";
-        // if (_zoomText != null)
-        //     _zoomText.Text = "缩放: 100%";
-        
-        // 获取 MatrixTransform 引用（应用于包装 Grid）
-        _matrixTransform = ImageWrapper.RenderTransform as MatrixTransform;
-        if (_matrixTransform == null)
-        {
-            _matrixTransform = new MatrixTransform();
-            ImageWrapper.RenderTransform = _matrixTransform;
-        }
-        
-        // 树视图 ItemsSource 已通过 XAML 绑定 Navigation.TreeItems
-
-        // 初始化树视图拖放事件（仅用于 DragOver/Drop，Pointer 事件在 DataTemplate 中处理）
-        DragDrop.SetAllowDrop(ImageTreeView, true);
-        ImageTreeView.AddHandler(DragDrop.DragOverEvent, OnTreeViewDragOver);
-        ImageTreeView.AddHandler(DragDrop.DropEvent, OnTreeViewDrop);
-
-        // 订阅容器尺寸变化事件
-        ImageContainer.SizeChanged += OnImageContainerSizeChanged;
+        // 获取树视图引用并初始化拖放
+        var imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
+        DragDrop.SetAllowDrop(imageTreeView, true);
+        imageTreeView.AddHandler(DragDrop.DragOverEvent, OnTreeViewDragOver);
+        imageTreeView.AddHandler(DragDrop.DropEvent, OnTreeViewDrop);
         
         // 订阅窗口关闭事件，确保清理资源
         this.Closing += OnWindowClosing;
@@ -199,6 +144,13 @@ public partial class MainWindow : Window
         // 【新增】注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
         // Ctrl+Enter 提交功能也在这里处理（兼容主键盘 Return 和数字小键盘 Enter）
         this.AddHandler(InputElement.KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
+        
+        // ==================== AnnotationCanvas 初始化 ====================
+        // 注入回调和订阅事件
+        CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
+        CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
+        CanvasControl.LabelClicked += OnCanvasLabelClicked;
+        CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
     }
     
     
@@ -253,7 +205,7 @@ public partial class MainWindow : Window
         }
         
         // 取消订阅事件
-        ImageContainer.SizeChanged -= OnImageContainerSizeChanged;
+        // ImageContainer 已迁入 AnnotationCanvas，无需在此处理
         this.Closing -= OnWindowClosing;
         
         // 清空历史记录
@@ -262,12 +214,12 @@ public partial class MainWindow : Window
         // 释放图片资源
         if (_currentImage != null)
         {
-            _currentImage.Dispose();
+            _currentImage?.Dispose();
             _currentImage = null;
         }
         
-        // 清除标注控件（使用辅助方法解绑事件）
-        ClearLabelControls();
+        // 清除标注控件
+        CanvasControl.ClearCanvas();
         
         // 清空树视图数据
         Navigation.TreeItems.Clear();
@@ -380,16 +332,15 @@ public partial class MainWindow : Window
     private void OnDocumentClosed(object? sender, EventArgs e)
     {
         // 清理图片和标注
-        if (_currentImage != null)
-        {
-            _currentImage.Dispose();
-            _currentImage = null;
-        }
+        CanvasControl.ClearCanvas();
+        
+        // 更新本地引用
+        _currentImage = null;
         _currentImagePath = null;
+        
+        // 重置视口
         CanvasVM.ResetTransform();
         CanvasVM.UpdateImageSize(new Size(0, 0));
-
-        ClearLabelControls();
 
         // 清理导航状态（TranslationData 由 DocumentViewModel 管理）
         Navigation.ClearNavigation();
@@ -441,29 +392,14 @@ public partial class MainWindow : Window
         CanvasVM.OnContainerSizeChanged();
     }
     
-    /// <summary>
-    /// CanvasViewModel.TransformChanged 事件处理
-    /// 同步矩阵到 UI 控件 + 状态栏缩放百分比 + FitScale 到树视图项
-    /// </summary>
     private void OnCanvasTransformChanged(object? sender, EventArgs e)
     {
         // 同步矩阵到 UI 控件
-        ApplyTransform();
+        CanvasControl.ApplyTransform();
         // 同步缩放百分比到状态栏
         StatusBar.UpdateZoom(CanvasVM.ZoomPercent);
         // 同步 FitScale 到树视图项
         SaveCurrentFitScale(CanvasVM.CurrentFitScale);
-    }
-    
-    /// <summary>
-    /// 应用变换矩阵到 Image 控件（从 CanvasVM 同步到 UI）
-    /// </summary>
-    private void ApplyTransform()
-    {
-        if (_matrixTransform != null)
-        {
-            _matrixTransform.Matrix = CanvasVM.TransformMatrix;
-        }
     }
     
     /// <summary>
@@ -544,9 +480,6 @@ public partial class MainWindow : Window
         preferencesWindow.Show();
     }
 
-    /// <summary>
-    /// 设置变更事件处理
-    /// </summary>
     private void OnSettingsChanged(object? sender, ShortcutSettings settings)
     {
         // 清除颜色缓存以应用新颜色
@@ -558,7 +491,7 @@ public partial class MainWindow : Window
         // 如果有选中的标签，刷新高亮颜色
         if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
         {
-            HighlightLabel(selectedItem.Index);
+            CanvasControl.HighlightLabel(selectedItem.Index);
         }
 
         // 刷新树状视图以应用新的分组颜色
@@ -638,7 +571,7 @@ public partial class MainWindow : Window
         // 更新画布标注
         // 【修复核心】：如果当前正在按下鼠标拖拽某个标签，则跳过全量图形销毁与重建，
         // 保护当前正在捕获鼠标事件的原生控件不被销毁，从而保持拖拽的连续性。
-        if (!_isDraggingLabel)
+        if (!CanvasControl.IsDraggingLabel)
         {
             UpdateLabels();
         }
@@ -647,7 +580,7 @@ public partial class MainWindow : Window
             // 如果跳过重建，也要确保同步其可能因选中项变化带来的高亮状态
             if (previouslySelectedLabelIndex.HasValue)
             {
-                HighlightLabel(previouslySelectedLabelIndex.Value);
+                CanvasControl.HighlightLabel(previouslySelectedLabelIndex.Value);
             }
         }
         // ======================= FIX END =======================
@@ -1098,192 +1031,6 @@ public partial class MainWindow : Window
     /// <summary>
     /// 清除所有标注控件并解绑事件（防止内存泄漏和幽灵点击）
     /// </summary>
-    private void ClearLabelControls()
-    {
-        foreach (var control in _labelControls)
-        {
-            if (control is Border border)
-            {
-                border.PointerPressed -= OnLabelMarkerPointerPressed;
-                border.PointerMoved -= OnLabelMarkerPointerMoved;
-                border.PointerReleased -= OnLabelMarkerPointerReleased;
-            }
-            ImageWrapper.Children.Remove(control);
-        }
-        _labelControls.Clear();
-    }
-    
-    
-    
-    /// <summary>
-    /// 处理标签标记的按下事件（选中及准备拖拽）
-    /// </summary>
-    private void OnLabelMarkerPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        // 仅在编辑模式下允许拖拽标签
-        if (!Edit.IsEditMode)
-            return;
-
-        // 从Tag中提取labelIndex（支持新的ValueTuple格式和旧的int格式）
-        if (sender is not Border border)
-            return;
-
-        int? labelIndex = null;
-        if (border.Tag is ValueTuple<int, int> tuple)
-            labelIndex = tuple.Item1;
-        else if (border.Tag is int intIndex)
-            labelIndex = intIndex;
-
-        if (!labelIndex.HasValue)
-            return;
-
-        var point = e.GetCurrentPoint(ImageWrapper);
-        if (point.Properties.IsLeftButtonPressed)
-        {
-            e.Handled = true;
-            CommitCurrentEdit();
-
-            // 移除 TextBox 的焦点，将焦点设置到窗口上，确保鼠标事件能正确路由到标记
-            this.Focus();
-
-            // 先记录拖拽开始时的数据模型坐标并设置拖动状态（在 SelectLabelByIndex 之前）
-            if (Document.TranslationData != null && _currentImagePath != null)
-            {
-                string imageName = Path.GetFileName(_currentImagePath);
-                if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
-                {
-                    var labelItem = labels.FirstOrDefault(l => l.TextIndex == labelIndex);
-                    if (labelItem != null)
-                    {
-                        _dragStartNormX = labelItem.X;
-                        _dragStartNormY = labelItem.Y;
-                        _draggingLabelItem = labelItem;
-                    }
-                }
-            }
-
-            _isDraggingLabel = true;
-            _draggedLabel = border;
-            _labelDragLastPoint = point.Position;
-            e.Pointer.Capture(border);
-
-            // 点击立即选中（使其高亮聚焦）
-            SelectLabelByIndex(labelIndex.Value);
-        }
-    }
-    
-    /// <summary>
-    /// 处理标签标记的移动事件（执行拖拽）
-    /// </summary>
-    private void OnLabelMarkerPointerMoved(object? sender, PointerEventArgs e)
-    {
-        // 仅在编辑模式下允许拖拽标签
-        if (!Edit.IsEditMode)
-            return;
-        
-        if (_isDraggingLabel && _draggedLabel != null && sender == _draggedLabel)
-        {
-            e.Handled = true;
-            
-            var currentPoint = e.GetPosition(ImageWrapper);
-            var delta = currentPoint - _labelDragLastPoint;
-            
-            double currentLeft = Canvas.GetLeft(_draggedLabel);
-            double currentTop = Canvas.GetTop(_draggedLabel);
-            
-            double newLeft = currentLeft + delta.X;
-            double newTop = currentTop + delta.Y;
-            
-            // 限制在图片范围内 (防止拖拽出界)
-            if (_currentImage != null)
-            {
-                double minLeft = -32;
-                double maxLeft = Math.Max(-32, _currentImage.Size.Width - 32);
-                double minTop = -32;
-                double maxTop = Math.Max(-32, _currentImage.Size.Height - 32);
-                
-                newLeft = Math.Clamp(newLeft, minLeft, maxLeft);
-                newTop = Math.Clamp(newTop, minTop, maxTop);
-            }
-            
-            Canvas.SetLeft(_draggedLabel, newLeft);
-            Canvas.SetTop(_draggedLabel, newTop);
-            
-            _labelDragLastPoint = currentPoint;
-            
-            // 实时更新底层数据模型坐标
-            UpdateDraggedLabelData(_draggedLabel, newLeft, newTop);
-        }
-    }
-    
-    /// <summary>
-    /// 处理标签标记的释放事件（结束拖拽）
-    /// </summary>
-    private void OnLabelMarkerPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        // 仅在编辑模式下允许拖拽标签
-        if (!Edit.IsEditMode)
-            return;
-        
-        if (_isDraggingLabel && _draggedLabel != null && sender == _draggedLabel)
-        {
-            var point = e.GetCurrentPoint(ImageWrapper);
-            if (point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonReleased)
-            {
-                e.Handled = true;
-                
-                // 最终更新一次坐标信息
-                double currentLeft = Canvas.GetLeft(_draggedLabel);
-                double currentTop = Canvas.GetTop(_draggedLabel);
-                UpdateDraggedLabelData(_draggedLabel, currentLeft, currentTop);
-                
-                // 检查是否真的移动了（使用新的交互状态字段）
-                if (_draggingLabelItem != null)
-                {
-                    double currentX = _draggingLabelItem.X;
-                    double currentY = _draggingLabelItem.Y;
-                    
-                    if (Math.Abs(currentX - _dragStartNormX) > 0.0001 || Math.Abs(currentY - _dragStartNormY) > 0.0001)
-                    {
-                        // 真的移动了，创建 MoveLabelCommand
-                        var command = new MoveLabelCommand(_draggingLabelItem, _dragStartNormX, _dragStartNormY, currentX, currentY);
-                        ViewModel.History.ExecuteCommand(command);
-                    }
-                }
-                
-                // 清理拖拽状态
-                _draggingLabelItem = null;
-                _isDraggingLabel = false;
-                _draggedLabel = null;
-                e.Pointer.Capture(null);
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 更新被拖拽标签的底层归一化坐标数据
-    /// </summary>
-    private void UpdateDraggedLabelData(Border labelBorder, double left, double top)
-    {
-        if (labelBorder.Tag is not int labelIndex || _currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
-            return;
-
-        string imageName = Path.GetFileName(_currentImagePath);
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
-            return;
-
-        var labelItem = labels.FirstOrDefault(l => l.TextIndex == labelIndex);
-        if (labelItem != null)
-        {
-            // 恢复中心点坐标并将其归一化 (0.0 ~ 1.0)
-            double centerX = left + 32;
-            double centerY = top + 32;
-            
-            labelItem.X = centerX / _currentImage.Size.Width;
-            labelItem.Y = centerY / _currentImage.Size.Height;
-        }
-    }
-    
     /// <summary>
     /// 根据索引选中文本节点并在树视图中聚焦
     /// </summary>
@@ -1387,17 +1134,16 @@ public partial class MainWindow : Window
     
     private void OnClearCanvas(object? sender, RoutedEventArgs e)
     {
-        if (_currentImage != null)
-        {
-            _currentImage.Dispose();
-            _currentImage = null;
-        }
+        // 通过 CanvasControl 清空画布
+        CanvasControl.ClearCanvas();
+        
+        // 更新本地引用
+        _currentImage = null;
         _currentImagePath = null;
+        
+        // 重置视口
         CanvasVM.ResetTransform();
         CanvasVM.UpdateImageSize(new Size(0, 0));
-        
-        // 清除标注（使用辅助方法解绑事件）
-        ClearLabelControls();
         
         StatusBar.UpdateStatus("画布已清空");
     }
@@ -1417,151 +1163,72 @@ public partial class MainWindow : Window
     
     // ==================== ImageContainer 事件处理 ====================
     
-    private void OnImageContainerPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnCanvasLabelClicked(object? sender, int labelIndex)
     {
-        var point = e.GetCurrentPoint(ImageContainer);
+        SelectLabelByIndex(labelIndex);
+    }
+    
+    private void OnCanvasAddLabelRequested(object? sender, (double pixelX, double pixelY) coords)
+    {
+        // 检查是否在编辑模式
+        if (!Edit.IsEditMode)
+            return;
         
-        // 左键行为取决于是否在编辑模式
-        if (point.Properties.IsLeftButtonPressed)
+        // 检查点击位置是否已有现有标签
+        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
+            return;
+        
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
         {
-            if (Edit.IsEditMode)
-            {
-                // ========== 编辑模式：点击添加标签 ==========
-                // 获取相对于原图(MainImage)的实际像素坐标
-                var imagePoint = e.GetPosition(MainImage);
-                
-                // 确保点击在图片范围内才添加
-                if (_currentImage != null && 
-                    imagePoint.X >= 0 && imagePoint.X <= _currentImage.Size.Width &&
-                    imagePoint.Y >= 0 && imagePoint.Y <= _currentImage.Size.Height)
-                {
-                    // 检查点击位置是否已有标签，如果有则选中，没有则创建
-                    int? existingLabelIndex = FindLabelAtPosition(imagePoint.X, imagePoint.Y);
-                    
-                    if (existingLabelIndex.HasValue)
-                    {
-                        // 选中现有标签前，先提交当前正在编辑的文本
-                        CommitCurrentEdit();
-                        SelectLabelByIndex(existingLabelIndex.Value);
-                    }
-                    else
-                    {
-                        // 创建新标签前，先提交当前正在编辑的文本
-                        CommitCurrentEdit();
-                        AddNewLabel(imagePoint.X, imagePoint.Y);
-                    }
-                }
-                e.Handled = true;
-            }
-            else
-            {
-                // ========== 浏览模式：左键平移 ==========
-                CanvasVM.StartPan(e.GetPosition(ImageContainer));
-                ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
-                e.Handled = true;
-            }
+            // 没有现有标签，直接添加
+            AddNewLabel(coords.pixelX, coords.pixelY);
+            return;
         }
-        // 允许任何模式下使用中键或右键平移
-        else if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
+        
+        // 检查是否命中现有标签
+        int? hitIndex = CanvasVM.FindLabelAtPosition(coords.pixelX, coords.pixelY, 
+            CanvasControl.CurrentImage?.Size.Width ?? 0, 
+            CanvasControl.CurrentImage?.Size.Height ?? 0, 
+            labels);
+        
+        if (hitIndex.HasValue)
         {
-            CanvasVM.StartPan(e.GetPosition(ImageContainer));
-            ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
-            e.Handled = true;
+            SelectLabelByIndex(hitIndex.Value);
+        }
+        else
+        {
+            AddNewLabel(coords.pixelX, coords.pixelY);
         }
     }
     
-    /// <summary>
-    /// 检查指定像素坐标是否靠近现有标签
-    /// </summary>
-    private int? FindLabelAtPosition(double x, double y)
+    private void OnImageContainerPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
-            return null;
-
-        string imageName = Path.GetFileName(_currentImagePath);
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
-            return null;
-
-        double imageWidth = _currentImage.Size.Width;
-        double imageHeight = _currentImage.Size.Height;
-        
-        // 标注的大小是64x64，一半是32
-        double halfSize = 32;
-        
-        foreach (var label in labels)
-        {
-            double labelX = label.X * imageWidth;
-            double labelY = label.Y * imageHeight;
-            
-            // 检查点击位置是否在标签范围内
-            if (x >= labelX - halfSize && x <= labelX + halfSize &&
-                y >= labelY - halfSize && y <= labelY + halfSize)
-            {
-                return label.TextIndex;
-            }
-        }
-        
-        return null;
+        // 【已迁移】相关逻辑已移至 AnnotationCanvas
+        // 此处仅保留空实现以兼容事件处理
     }
     
     private void OnImageContainerPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (CanvasVM.IsPanning)
-        {
-            CanvasVM.UpdatePan(e.GetPosition(ImageContainer));
-        }
+        // 【已迁移】相关逻辑已移至 AnnotationCanvas
     }
     
     private void OnImageContainerPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (CanvasVM.IsPanning)
-        {
-            CanvasVM.EndPan();
-            ImageContainer.Cursor = new Cursor(StandardCursorType.Arrow);
-        }
+        // 【已迁移】相关逻辑已移至 AnnotationCanvas
     }
     
     private void OnImageContainerPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        if (_currentImage == null) return;
-        
-        // 获取鼠标在容器中的位置
-        var mousePos = e.GetPosition(ImageContainer);
-        
-        // 确定缩放因子
-        double zoom = e.Delta.Y > 0 ? 1.1 : 0.9;
-        
-        // 以鼠标为中心进行缩放（委托给 CanvasVM）
-        CanvasVM.ApplyZoomDelta(zoom, mousePos);
-        
-        e.Handled = true;
+        // 【已迁移】相关逻辑已移至 AnnotationCanvas
     }
     
-    // ==================== 矩阵变换核心方法（已迁入 CanvasViewModel）====================
-
     /// <summary>
     /// 计算适应容器的初始变换（Fit模式）—— 委托给 CanvasViewModel
     /// </summary>
     private void CalculateFitTransform()
     {
-        if (_currentImage == null) return;
-        
-        var containerBounds = ImageContainer.Bounds;
-        if (containerBounds.Width <= 0 || containerBounds.Height <= 0)
-        {
-            // 容器未准备好，重试
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(200);
-                Avalonia.Threading.Dispatcher.UIThread.Post(CalculateFitTransform);
-            });
-            return;
-        }
-        
-        // 通知 CanvasVM 容器和图片尺寸，然后计算 Fit 变换
-        CanvasVM.UpdateContainerSize(new Size(containerBounds.Width, containerBounds.Height));
-        CanvasVM.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
-        CanvasVM.CalculateFitTransform();
+        CanvasControl.CalculateFitTransform();
     }
     
     /// <summary>
@@ -1594,197 +1261,26 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateLabels()
     {
-        // 移除旧的标注（使用辅助方法解绑事件）
-        ClearLabelControls();
-
         // 没有图片或翻译数据时返回
-        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (CanvasControl.CurrentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
             return;
 
         // 获取当前图片的文件名（作为键）
-        string imageName = Path.GetFileName(_currentImagePath);
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
         if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
 
-        double imageWidth = _currentImage.Size.Width;
-        double imageHeight = _currentImage.Size.Height;
-
-        foreach (var label in labels)
-        {
-            // 根据分组获取对应的背景颜色
-            var groupBrush = GetGroupBrush(label.GroupIndex);
-
-            var border = new Border
-            {
-                Width = 64,
-                Height = 64,
-                Background = groupBrush,
-                CornerRadius = new CornerRadius(16),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                // 存储元组 (TextIndex, GroupIndex) 用于后续高亮匹配
-                Tag = (label.TextIndex, label.GroupIndex),
-                Classes = { "label-marker" }, // 添加样式类
-                Child = new TextBlock
-                {
-                    Text = label.TextIndex.ToString(),   // 显示编号
-                    Foreground = Brushes.White,
-                    FontSize = 48,
-                    FontFamily = new FontFamily("Sarasa Mono SC"),
-                    FontWeight = FontWeight.Bold,
-                    TextAlignment = TextAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center
-                }
-            };
-            
-            // 添加拖拽及点击事件
-            border.PointerPressed += OnLabelMarkerPointerPressed;
-            border.PointerMoved += OnLabelMarkerPointerMoved;
-            border.PointerReleased += OnLabelMarkerPointerReleased;
-            
-            // 设置归一化坐标对应的像素位置
-            Canvas.SetLeft(border, label.X * imageWidth - 32);  // 减去一半宽度以居中
-            Canvas.SetTop(border, label.Y * imageHeight - 32);  // 减去一半高度以居中
-
-            // 将标注置于顶层
-            border.ZIndex = 10;
-
-            // 添加到 ImageWrapper 内部，使其继承图片的变换
-            ImageWrapper.Children.Add(border);
-            _labelControls.Add(border);
-        }
+        // 通过 CanvasControl 更新标注显示，并高亮当前选中项
+        int? highlightIndex = (Navigation.SelectedItem is TranslationTreeItem selectedTranslation) 
+            ? selectedTranslation.Index 
+            : null;
         
-        // 如果当前恰好有选中的翻译文本子项，则在新生成的标注中自动高亮它
-        if (Navigation.SelectedItem is TranslationTreeItem selectedTranslation)
-        {
-            HighlightLabel(selectedTranslation.Index);
-        }
+        CanvasControl.UpdateLabels(labels, CanvasControl.CurrentImage.Size.Width, CanvasControl.CurrentImage.Size.Height, highlightIndex);
     }
     
     /// <summary>
     /// 获取指定分组的背景颜色
     /// </summary>
-    private IBrush GetGroupBrush(int groupIndex)
-    {
-        try
-        {
-            var settings = ShortcutSettingsService.Load();
-
-            if (settings.Colors.GroupColors.TryGetValue(groupIndex, out var colorHex) &&
-                !string.IsNullOrEmpty(colorHex) && colorHex.StartsWith("#"))
-            {
-                var color = Avalonia.Media.Color.Parse(colorHex);
-                return new SolidColorBrush(color, 0.8);
-            }
-
-            // 如果没有找到对应颜色，从默认设置中获取
-            var defaults = ColorSettings.CreateDefaults();
-            if (defaults.GroupColors.TryGetValue(groupIndex, out var defaultColorHex))
-            {
-                var color = Avalonia.Media.Color.Parse(defaultColorHex);
-                return new SolidColorBrush(color, 0.8);
-            }
-        }
-        catch
-        {
-            // 如果出错，从默认设置中获取
-            try
-            {
-                var defaults = ColorSettings.CreateDefaults();
-                if (defaults.GroupColors.TryGetValue(groupIndex, out var defaultColorHex))
-                {
-                    var color = Avalonia.Media.Color.Parse(defaultColorHex);
-                    return new SolidColorBrush(color, 0.8);
-                }
-            }
-            catch
-            {
-                // 如果还是出错，使用白色
-            }
-        }
-
-        return new SolidColorBrush(Colors.White, 0.8);
-    }
-
-    /// <summary>
-    /// 获取当前设置中的选中高亮颜色
-    /// </summary>
-    private IBrush GetSelectedHighlightBrush()
-    {
-        try
-        {
-            var settings = ShortcutSettingsService.Load();
-            var selectedColorHex = settings.Colors.SelectedColor;
-
-            if (!string.IsNullOrEmpty(selectedColorHex) && selectedColorHex.StartsWith("#"))
-            {
-                var color = Avalonia.Media.Color.Parse(selectedColorHex);
-                return new SolidColorBrush(color, 0.9);
-            }
-
-            // 如果没有设置，从默认中获取
-            var defaults = ColorSettings.CreateDefaults();
-            if (!string.IsNullOrEmpty(defaults.SelectedColor))
-            {
-                var color = Avalonia.Media.Color.Parse(defaults.SelectedColor);
-                return new SolidColorBrush(color, 0.9);
-            }
-        }
-        catch
-        {
-            // 如果出错，尝试从默认中获取
-            try
-            {
-                var defaults = ColorSettings.CreateDefaults();
-                if (!string.IsNullOrEmpty(defaults.SelectedColor))
-                {
-                    var color = Avalonia.Media.Color.Parse(defaults.SelectedColor);
-                    return new SolidColorBrush(color, 0.9);
-                }
-            }
-            catch
-            {
-                // 如果还是出错，使用白色
-            }
-        }
-
-        return new SolidColorBrush(Colors.White, 0.9);
-    }
-
-    /// <summary>
-    /// 高亮显示指定编号的标注控件
-    /// </summary>
-    private void HighlightLabel(int labelIndex)
-    {
-        var selectedBrush = GetSelectedHighlightBrush();
-
-        foreach (var control in _labelControls)
-        {
-            if (control is Border border)
-            {
-                // Tag 是一个元组 (TextIndex, GroupIndex)
-                if (border.Tag is ValueTuple<int, int> tag && tag.Item1 == labelIndex)
-                {
-                    // 高亮状态：使用自定义颜色，加粗白边框，并提升图层显示层级
-                    border.Background = selectedBrush;
-                    border.BorderBrush = Brushes.White;
-                    border.BorderThickness = new Thickness(3);
-                    border.ZIndex = 20;
-                }
-                else if (border.Tag is ValueTuple<int, int> normalTag)
-                {
-                    // 普通状态：恢复对应分组的颜色
-                    var groupIndex = normalTag.Item2;
-                    border.Background = GetGroupBrush(groupIndex);
-                    border.BorderBrush = null;
-                    border.BorderThickness = new Thickness(0);
-                    border.ZIndex = 10;
-                }
-            }
-        }
-    }
-    
     private void LoadCurrentImage()
     {
         if (Navigation.ImageNames.Count == 0 || string.IsNullOrEmpty(Navigation.ImageFolderPath))
@@ -1810,23 +1306,12 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (_currentImage != null)
-            {
-                _currentImage.Dispose();
-            }
+            // 通过 CanvasControl 加载图片
+            CanvasControl.LoadImage(imagePath);
             
-            // 首次加载时先隐藏图片，避免居中完成前显示导致闪烁
-            // 后续切换直接覆盖旧图片，避免闪烁
-            if (!_isFirstImageLoaded)
-            {
-                MainImage.IsVisible = false;
-            }
-            
-            _currentImage = new Bitmap(imagePath);
-            _currentImagePath = imagePath;
-            
-            // 设置图片源
-            MainImage.Source = _currentImage;
+            // 更新本地引用以供其他方法使用
+            _currentImage = CanvasControl.CurrentImage;
+            _currentImagePath = CanvasControl.CurrentImagePath;
             
             // 找到当前图片对应的树视图项
             string imageName = Path.GetFileName(imagePath);
@@ -1855,10 +1340,7 @@ public partial class MainWindow : Window
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
                         CalculateFitTransform();
-                        // TransformChanged 事件会自动同步 ApplyTransform + StatusBar.UpdateZoom
-
-                        // 居中完成后显示图片
-                        MainImage.IsVisible = true;
+                        CanvasControl.MarkFirstImageLoaded();
                         
                         // 更新标注显示
                         UpdateLabels();
@@ -1868,7 +1350,7 @@ public partial class MainWindow : Window
             else
             {
                 // 非首次加载直接应用已有的变换
-                ApplyTransform();
+                CanvasControl.ApplyTransform();
                 StatusBar.UpdateZoom(CanvasVM.ZoomPercent);
                 // 更新标注显示
                 UpdateLabels();
@@ -1887,8 +1369,6 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusBar.UpdateStatus($"加载图片失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-            // 发生异常时也要确保图片可见
-            MainImage.IsVisible = true;
         }
     }
     
@@ -2105,7 +1585,7 @@ public partial class MainWindow : Window
         if (selectedItem is TranslationTreeItem targetChildItem)
         {
             // 切换图片视图中的编号高亮
-            HighlightLabel(targetChildItem.Index);
+            CanvasControl.HighlightLabel(targetChildItem.Index);
             
             double currentScale = CanvasVM.ZoomPercent / 100;
             double fitScale = targetRootItem?.FitScale ?? 1.0;
@@ -2148,7 +1628,7 @@ public partial class MainWindow : Window
         else if (selectedItem is ImageTreeItem)
         {
             // 如果选中的是图片本身，禁用编辑框
-            HighlightLabel(-1);
+            CanvasControl.HighlightLabel(-1);
 
             if (_translationTextBox != null)
             {
