@@ -18,5 +18,5 @@ public partial class MainWindowViewModel : ObservableObject
     private NavigationViewModel _navigation = null!; // 由 MainWindow 构造时注入
 
     [ObservableProperty]
-    private ImageViewportViewModel _viewport = new();
+    private CanvasViewModel _canvasVM = null!; // 由 MainWindow 构造时注入（替代原 ImageViewportViewModel）
 }

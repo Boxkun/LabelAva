@@ -46,9 +46,9 @@
                 <MenuItem Header="首选项" Click="OnPreferences"/>
             </MenuItem>
             <MenuItem Header="视图(_V)">
-                <MenuItem Header="放大" Command="{Binding Viewport.ZoomInCommand}"/>
-                <MenuItem Header="缩小" Command="{Binding Viewport.ZoomOutCommand}"/>
-                <MenuItem Header="重置缩放" Command="{Binding Viewport.ResetZoomCommand}"/>
+                <MenuItem Header="放大" Command="{Binding CanvasVM.ZoomInCommand}"/>
+                <MenuItem Header="缩小" Command="{Binding CanvasVM.ZoomOutCommand}"/>
+                <MenuItem Header="重置缩放" Command="{Binding CanvasVM.ResetZoomCommand}"/>
             </MenuItem>
             <MenuItem Header="帮助(_H)">
                 <MenuItem Header="关于" Click="OnAbout"/>

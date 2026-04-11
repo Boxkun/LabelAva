@@ -32,10 +32,10 @@ public partial class MainWindow : Window
     
     // 翻译数据已迁入 DocumentViewModel（通过 Document.TranslationData 访问）
     
-    // 矩阵变换（_transformMatrix 已迁入 ImageViewportViewModel，通过 Viewport.TransformMatrix 访问）
+    // 矩阵变换（_transformMatrix 已迁入 CanvasViewModel，通过 CanvasVM.TransformMatrix 访问）
     private MatrixTransform? _matrixTransform;
     
-    // 拖动状态（_isPanning/_lastPanPoint 已迁入 ImageViewportViewModel）
+    // 拖动状态（_isPanning/_lastPanPoint 已迁入 CanvasViewModel）
 
     // 标注拖拽状态
     private bool _isDraggingLabel = false;
@@ -93,7 +93,7 @@ public partial class MainWindow : Window
     public EditViewModel Edit => ViewModel.Edit;
     public DocumentViewModel Document => ViewModel.Document;
     public NavigationViewModel Navigation => ViewModel.Navigation;
-    public ImageViewportViewModel Viewport => ViewModel.Viewport;
+    public CanvasViewModel CanvasVM => ViewModel.CanvasVM;
 
     public MainWindow()
     {
@@ -167,8 +167,12 @@ public partial class MainWindow : Window
         ViewModel.History = new HistoryViewModel(historyManager, CommitCurrentEdit, StatusBar);
         ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
         
-        // 初始化编辑视图模型
-        ViewModel.Edit = new EditViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
+        // 初始化画布视图模型（合并原 ImageViewportViewModel + 标签操作）
+        ViewModel.CanvasVM = new CanvasViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
+        ViewModel.CanvasVM.TransformChanged += OnCanvasTransformChanged;
+        
+        // 初始化编辑视图模型（仅编辑模式状态，标签操作已迁入 CanvasViewModel）
+        ViewModel.Edit = new EditViewModel(StatusBar);
         ViewModel.Edit.EditModeChanged += OnEditModeChanged;
         ViewModel.Edit.GroupChanged += OnGroupChanged;
         
@@ -189,8 +193,8 @@ public partial class MainWindow : Window
         ViewModel.Document.DocumentOpened += OnDocumentOpened;
         ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
-        // 订阅视口变换矩阵变更事件（同步矩阵到 UI 控件 + 状态栏 + FitScale）
-        Viewport.TransformChanged += OnViewportTransformChanged;
+        // 订阅画布变换矩阵变更事件（同步矩阵到 UI 控件 + 状态栏 + FitScale）
+        // （已在上方 CanvasVM 初始化时订阅）
 
         // 【新增】注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
         // Ctrl+Enter 提交功能也在这里处理（兼容主键盘 Return 和数字小键盘 Enter）
@@ -382,8 +386,8 @@ public partial class MainWindow : Window
             _currentImage = null;
         }
         _currentImagePath = null;
-        Viewport.ResetTransform();
-        Viewport.UpdateImageSize(new Size(0, 0));
+        CanvasVM.ResetTransform();
+        CanvasVM.UpdateImageSize(new Size(0, 0));
 
         ClearLabelControls();
 
@@ -433,32 +437,32 @@ public partial class MainWindow : Window
         if (_currentImage == null) return;
         
         // 通知 Viewport 容器尺寸变化，重新应用边界限制
-        Viewport.UpdateContainerSize(new Size(e.NewSize.Width, e.NewSize.Height));
-        Viewport.OnContainerSizeChanged();
+        CanvasVM.UpdateContainerSize(new Size(e.NewSize.Width, e.NewSize.Height));
+        CanvasVM.OnContainerSizeChanged();
     }
     
     /// <summary>
-    /// ImageViewportViewModel.TransformChanged 事件处理
+    /// CanvasViewModel.TransformChanged 事件处理
     /// 同步矩阵到 UI 控件 + 状态栏缩放百分比 + FitScale 到树视图项
     /// </summary>
-    private void OnViewportTransformChanged(object? sender, EventArgs e)
+    private void OnCanvasTransformChanged(object? sender, EventArgs e)
     {
         // 同步矩阵到 UI 控件
         ApplyTransform();
         // 同步缩放百分比到状态栏
-        StatusBar.UpdateZoom(Viewport.ZoomPercent);
+        StatusBar.UpdateZoom(CanvasVM.ZoomPercent);
         // 同步 FitScale 到树视图项
-        SaveCurrentFitScale(Viewport.CurrentFitScale);
+        SaveCurrentFitScale(CanvasVM.CurrentFitScale);
     }
     
     /// <summary>
-    /// 应用变换矩阵到 Image 控件（从 Viewport 同步到 UI）
+    /// 应用变换矩阵到 Image 控件（从 CanvasVM 同步到 UI）
     /// </summary>
     private void ApplyTransform()
     {
         if (_matrixTransform != null)
         {
-            _matrixTransform.Matrix = Viewport.TransformMatrix;
+            _matrixTransform.Matrix = CanvasVM.TransformMatrix;
         }
     }
     
@@ -619,9 +623,9 @@ public partial class MainWindow : Window
         }
         
         // 【新增】如果有待选中的新标签（添加标签操作），优先使用它
-        if (Edit.PendingNewLabelIndex.HasValue)
+        if (CanvasVM.PendingNewLabelIndex.HasValue)
         {
-            previouslySelectedLabelIndex = Edit.PendingNewLabelIndex;
+            previouslySelectedLabelIndex = CanvasVM.PendingNewLabelIndex;
         }
         
         // 重新构建树视图
@@ -680,10 +684,10 @@ public partial class MainWindow : Window
         
         // 【新增】如果有待选中的新标签已被选中，聚焦到文本框
         // 根据设置决定是否自动聚焦
-        if (Edit.PendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
+        if (CanvasVM.PendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
         {
             // 清除待选中状态后，聚焦到文本框
-            Edit.ClearPendingNewLabelIndex();
+            CanvasVM.ClearPendingNewLabelIndex();
 
             // 延迟聚焦到文本框，确保 UI 已完成重建
             Dispatcher.UIThread.Post(() =>
@@ -691,10 +695,10 @@ public partial class MainWindow : Window
                 _translationTextBox?.Focus();
             }, DispatcherPriority.Loaded);
         }
-        else if (Edit.PendingNewLabelIndex.HasValue)
+        else if (CanvasVM.PendingNewLabelIndex.HasValue)
         {
             // 如果不需要自动聚焦，仅清除待选中状态
-            Edit.ClearPendingNewLabelIndex();
+            CanvasVM.ClearPendingNewLabelIndex();
         }
         
     }
@@ -1341,7 +1345,7 @@ public partial class MainWindow : Window
         };
         
         // 创建并执行 AddLabelCommand（命令会自动刷新 UI）
-        Edit.AddLabel(labels, newLabel, nextIndex);
+        CanvasVM.AddLabel(labels, newLabel, nextIndex);
 
         // 注意：UI 刷新由 HistoryManager.HistoryChanged 事件处理
     }
@@ -1389,8 +1393,8 @@ public partial class MainWindow : Window
             _currentImage = null;
         }
         _currentImagePath = null;
-        Viewport.ResetTransform();
-        Viewport.UpdateImageSize(new Size(0, 0));
+        CanvasVM.ResetTransform();
+        CanvasVM.UpdateImageSize(new Size(0, 0));
         
         // 清除标注（使用辅助方法解绑事件）
         ClearLabelControls();
@@ -1398,12 +1402,12 @@ public partial class MainWindow : Window
         StatusBar.UpdateStatus("画布已清空");
     }
     
-    // OnZoomIn/OnZoomOut/OnResetZoom 已迁入 ImageViewportViewModel（通过 Command 绑定）
+    // OnZoomIn/OnZoomOut/OnResetZoom 已迁入 CanvasViewModel（通过 Command 绑定）
     
     private void OnResetZoom(object? sender, RoutedEventArgs e)
     {
         // 保留此事件处理以兼容 XAML Click 绑定过渡期
-        Viewport.ResetZoomCommand.Execute(null);
+        CanvasVM.ResetZoomCommand.Execute(null);
     }
     
     private void OnAbout(object? sender, RoutedEventArgs e)
@@ -1452,7 +1456,7 @@ public partial class MainWindow : Window
             else
             {
                 // ========== 浏览模式：左键平移 ==========
-                Viewport.StartPan(e.GetPosition(ImageContainer));
+                CanvasVM.StartPan(e.GetPosition(ImageContainer));
                 ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
                 e.Handled = true;
             }
@@ -1460,7 +1464,7 @@ public partial class MainWindow : Window
         // 允许任何模式下使用中键或右键平移
         else if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
         {
-            Viewport.StartPan(e.GetPosition(ImageContainer));
+            CanvasVM.StartPan(e.GetPosition(ImageContainer));
             ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
             e.Handled = true;
         }
@@ -1502,17 +1506,17 @@ public partial class MainWindow : Window
     
     private void OnImageContainerPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (Viewport.IsPanning)
+        if (CanvasVM.IsPanning)
         {
-            Viewport.UpdatePan(e.GetPosition(ImageContainer));
+            CanvasVM.UpdatePan(e.GetPosition(ImageContainer));
         }
     }
     
     private void OnImageContainerPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (Viewport.IsPanning)
+        if (CanvasVM.IsPanning)
         {
-            Viewport.EndPan();
+            CanvasVM.EndPan();
             ImageContainer.Cursor = new Cursor(StandardCursorType.Arrow);
         }
     }
@@ -1527,16 +1531,16 @@ public partial class MainWindow : Window
         // 确定缩放因子
         double zoom = e.Delta.Y > 0 ? 1.1 : 0.9;
         
-        // 以鼠标为中心进行缩放（委托给 Viewport）
-        Viewport.ApplyZoomDelta(zoom, mousePos);
+        // 以鼠标为中心进行缩放（委托给 CanvasVM）
+        CanvasVM.ApplyZoomDelta(zoom, mousePos);
         
         e.Handled = true;
     }
     
-    // ==================== 矩阵变换核心方法（已迁入 ImageViewportViewModel）====================
-    
+    // ==================== 矩阵变换核心方法（已迁入 CanvasViewModel）====================
+
     /// <summary>
-    /// 计算适应容器的初始变换（Fit模式）—— 委托给 ImageViewportViewModel
+    /// 计算适应容器的初始变换（Fit模式）—— 委托给 CanvasViewModel
     /// </summary>
     private void CalculateFitTransform()
     {
@@ -1554,10 +1558,10 @@ public partial class MainWindow : Window
             return;
         }
         
-        // 通知 Viewport 容器和图片尺寸，然后计算 Fit 变换
-        Viewport.UpdateContainerSize(new Size(containerBounds.Width, containerBounds.Height));
-        Viewport.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
-        Viewport.CalculateFitTransform();
+        // 通知 CanvasVM 容器和图片尺寸，然后计算 Fit 变换
+        CanvasVM.UpdateContainerSize(new Size(containerBounds.Width, containerBounds.Height));
+        CanvasVM.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
+        CanvasVM.CalculateFitTransform();
     }
     
     /// <summary>
@@ -1581,7 +1585,7 @@ public partial class MainWindow : Window
         }
     }
     
-    // GetCurrentScale 已迁入 ImageViewportViewModel（通过 Viewport.ZoomPercent / 100 获取）
+    // GetCurrentScale 已迁入 CanvasViewModel（通过 CanvasVM.ZoomPercent / 100 获取）
     
     // ==================== 图片加载 ====================
 
@@ -1835,8 +1839,8 @@ public partial class MainWindow : Window
                 }
             }
             
-            // 通知 Viewport 图片尺寸
-            Viewport.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
+            // 通知 CanvasVM 图片尺寸
+            CanvasVM.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
             
             // 首次加载时延迟计算适应容器的初始变换，等待布局完成
             if (!_isFirstImageLoaded)
@@ -1865,7 +1869,7 @@ public partial class MainWindow : Window
             {
                 // 非首次加载直接应用已有的变换
                 ApplyTransform();
-                StatusBar.UpdateZoom(Viewport.ZoomPercent);
+                StatusBar.UpdateZoom(CanvasVM.ZoomPercent);
                 // 更新标注显示
                 UpdateLabels();
             }
@@ -1890,7 +1894,7 @@ public partial class MainWindow : Window
     
     // ==================== 辅助方法 ====================
     
-    // GetZoomText 已迁入 ImageViewportViewModel（通过 Viewport.ZoomPercent 获取）
+    // GetZoomText 已迁入 CanvasViewModel（通过 CanvasVM.ZoomPercent 获取）
     
     // private void StatusBar.UpdateStatus(string message)
     // {
@@ -2103,7 +2107,7 @@ public partial class MainWindow : Window
             // 切换图片视图中的编号高亮
             HighlightLabel(targetChildItem.Index);
             
-            double currentScale = Viewport.ZoomPercent / 100;
+            double currentScale = CanvasVM.ZoomPercent / 100;
             double fitScale = targetRootItem?.FitScale ?? 1.0;
             
             // 如果当前缩放比例大于 fit 比例（用户手动放大了）
@@ -2437,7 +2441,7 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 将视野中心对准指定编号的标注（委托给 ImageViewportViewModel）
+    /// 将视野中心对准指定编号的标注（委托给 CanvasViewModel）
     /// </summary>
     private void CenterOnLabel(int labelIndex)
     {
@@ -2462,8 +2466,8 @@ public partial class MainWindow : Window
         
         if (targetLabel == null) return;
         
-        // 委托给 Viewport（传入归一化坐标）
-        Viewport.CenterOnLabel(targetLabel.X, targetLabel.Y);
+        // 委托给 CanvasVM（传入归一化坐标）
+        CanvasVM.CenterOnLabel(targetLabel.X, targetLabel.Y);
     }
 
     // ==================== 树视图拖拽排序 ====================
@@ -2616,7 +2620,7 @@ public partial class MainWindow : Window
                     int targetIndex = labels.IndexOf(targetModel);
 
                     // 执行拖拽重排命令
-                    Edit.ReorderLabels(labels, sourceModel, targetIndex, targetIndex + 1);
+                    CanvasVM.ReorderLabels(labels, sourceModel, targetIndex, targetIndex + 1);
                 }
             }
         }

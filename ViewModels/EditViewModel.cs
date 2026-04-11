@@ -1,15 +1,15 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LabelAva.Commands;
-using LabelAva.Models;
 
 namespace LabelAva.ViewModels;
 
+/// <summary>
+/// 编辑模式 ViewModel：仅管理编辑模式 UI 状态（IsEditMode、CurrentGroupIndex）。
+/// 标签操作（AddLabel/DeleteLabel/MoveLabel/ChangeGroup/ReorderLabels）已迁入 CanvasViewModel。
+/// </summary>
 public partial class EditViewModel : ObservableObject
 {
-    private readonly HistoryViewModel _history;
     private readonly StatusBarViewModel _statusBar;
-    private readonly Action _commitCurrentEdit;
 
     // ========================
     // 状态属性
@@ -38,18 +38,6 @@ public partial class EditViewModel : ObservableObject
     public bool AreGroupButtonsVisible => IsEditMode;
 
     // ========================
-    // 待选中标签索引（添加标签后自动选中）
-    // ========================
-
-    private int? _pendingNewLabelIndex;
-
-    public int? PendingNewLabelIndex => _pendingNewLabelIndex;
-
-    public void SetPendingNewLabelIndex(int? index) => _pendingNewLabelIndex = index;
-
-    public void ClearPendingNewLabelIndex() => _pendingNewLabelIndex = null;
-
-    // ========================
     // 命令
     // ========================
 
@@ -71,52 +59,12 @@ public partial class EditViewModel : ObservableObject
     }
 
     // ========================
-    // 标签操作方法（由 code-behind 调用，传入模型数据）
-    // ========================
-
-    /// <summary>添加标签</summary>
-    public void AddLabel(List<LabelItem> labels, LabelItem newItem, int textIndex)
-    {
-        _pendingNewLabelIndex = textIndex;
-        _history.ExecuteCommand(new AddLabelCommand(labels, newItem));
-    }
-
-    /// <summary>删除标签</summary>
-    public void DeleteLabel(List<LabelItem> labels, LabelItem itemToDelete)
-    {
-        _commitCurrentEdit();
-        _history.ExecuteCommand(new DeleteLabelCommand(labels, itemToDelete));
-    }
-
-    /// <summary>切换标签分组</summary>
-    public void ChangeGroup(LabelItem label, int oldGroupIndex, int newGroupIndex)
-    {
-        _commitCurrentEdit();
-        _history.ExecuteCommand(new ChangeGroupCommand(label, oldGroupIndex, newGroupIndex));
-    }
-
-    /// <summary>移动标签</summary>
-    public void MoveLabel(LabelItem label, double oldX, double oldY, double newX, double newY)
-    {
-        _history.ExecuteCommand(new MoveLabelCommand(label, oldX, oldY, newX, newY));
-    }
-
-    /// <summary>重排序标签</summary>
-    public void ReorderLabels(List<LabelItem> labels, LabelItem draggedItem, int targetIndex, int pendingIndex)
-    {
-        _pendingNewLabelIndex = pendingIndex;
-        _history.ExecuteCommand(new ReorderLabelsCommand(labels, draggedItem, targetIndex));
-    }
-
-    // ========================
     // 构造函数
     // ========================
 
-    public EditViewModel(HistoryViewModel history, StatusBarViewModel statusBar, Action commitCurrentEdit)
+    public EditViewModel(StatusBarViewModel statusBar)
     {
-        _history = history;
         _statusBar = statusBar;
-        _commitCurrentEdit = commitCurrentEdit;
     }
 
     // ========================
