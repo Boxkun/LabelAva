@@ -5,7 +5,7 @@ namespace LabelAva.ViewModels;
 
 /// <summary>
 /// 编辑模式 ViewModel：仅管理编辑模式 UI 状态（IsEditMode、CurrentGroupIndex）。
-/// 标签操作（AddLabel/DeleteLabel/MoveLabel/ChangeGroup/ReorderLabels）已迁入 CanvasViewModel。
+/// 标签操作（AddLabel/DeleteLabel/MoveLabel/ChangeGroup/ReorderLabels）已迁入 CanvasWorkspaceViewModel。
 /// </summary>
 public partial class EditViewModel : ObservableObject
 {

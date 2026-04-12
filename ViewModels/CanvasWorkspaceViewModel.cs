@@ -11,7 +11,7 @@ namespace LabelAva.ViewModels;
 /// 合并了原 ImageViewportViewModel（视口变换）和 EditViewModel 中的标签操作部分。
 /// 纯数学运算在 VM 内完成，UI 数据（容器尺寸、图片尺寸、鼠标位置）由 code-behind 注入。
 /// </summary>
-public partial class CanvasViewModel : ObservableObject
+public partial class CanvasWorkspaceViewModel : ObservableObject
 {
     private readonly HistoryViewModel _history;
     private readonly StatusBarViewModel _statusBar;
@@ -319,7 +319,7 @@ public partial class CanvasViewModel : ObservableObject
     // 构造函数
     // ========================
 
-    public CanvasViewModel(HistoryViewModel history, StatusBarViewModel statusBar, Action commitCurrentEdit)
+    public CanvasWorkspaceViewModel(HistoryViewModel history, StatusBarViewModel statusBar, Action commitCurrentEdit)
     {
         _history = history;
         _statusBar = statusBar;

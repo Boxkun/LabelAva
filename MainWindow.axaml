@@ -46,9 +46,9 @@
                 <MenuItem Header="首选项" Click="OnPreferences"/>
             </MenuItem>
             <MenuItem Header="视图(_V)">
-                <MenuItem Header="放大" Command="{Binding CanvasVM.ZoomInCommand}"/>
-                <MenuItem Header="缩小" Command="{Binding CanvasVM.ZoomOutCommand}"/>
-                <MenuItem Header="重置缩放" Command="{Binding CanvasVM.ResetZoomCommand}"/>
+                <MenuItem Header="放大" Command="{Binding CanvasWorkspace.ZoomInCommand}"/>
+                <MenuItem Header="缩小" Command="{Binding CanvasWorkspace.ZoomOutCommand}"/>
+                <MenuItem Header="重置缩放" Command="{Binding CanvasWorkspace.ResetZoomCommand}"/>
             </MenuItem>
             <MenuItem Header="帮助(_H)">
                 <MenuItem Header="关于" Click="OnAbout"/>
@@ -84,10 +84,10 @@
                                 NewTranslationRequested="OnNewTranslationRequested"/>
             
             <!-- 主界面：左右两个 Panel（默认隐藏） -->
-            <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False" Background="#88FF0000">
+            <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False">
                 <!-- 左侧 Panel：画布区域 -->
                 <Border Grid.Column="0" Background="#F5F5F5">
-                    <views:AnnotationCanvas x:Name="AnnotationCanvasControl" DataContext="{Binding CanvasVM}" />
+                    <views:AnnotationCanvas x:Name="AnnotationCanvasControl" DataContext="{Binding CanvasWorkspace}" />
                 </Border>
                 
                 <!-- 右侧 Panel：属性面板 -->

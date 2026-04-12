@@ -16,7 +16,7 @@ namespace LabelAva.Views;
 
 /// <summary>
 /// AnnotationCanvas UserControl - 封装画布区域的视觉渲染和交互逻辑
-/// DataContext = CanvasViewModel（视口变换、标签操作、命中测试）
+/// DataContext = CanvasWorkspaceViewModel（视口变换、标签操作、命中测试）
 /// 采用回调+事件模式处理跨 VM 协调，避免 UserControl 直接依赖其他 VM
 /// </summary>
 public partial class AnnotationCanvas : UserControl
@@ -43,7 +43,7 @@ public partial class AnnotationCanvas : UserControl
     private Point _labelDragLastPoint;
     private double _dragStartNormX = 0;
     private double _dragStartNormY = 0;
-    private LabelItem? _draggingLabelItem;
+    private int? _draggingLabelIndex;
     
     // ========================
     // 私有字段 - 标注控件
@@ -78,6 +78,10 @@ public partial class AnnotationCanvas : UserControl
     /// <remarks>参数为 (pixelX, pixelY) 相对于原图的像素坐标</remarks>
     public event EventHandler<(double pixelX, double pixelY)>? AddLabelRequested;
     
+    /// <summary>标签拖拽结束后位置变更（通知 MainWindow 保存到数据模型）</summary>
+    /// <remarks>参数为 (textIndex, oldNormX, oldNormY, newNormX, newNormY)</remarks>
+    public event EventHandler<(int textIndex, double oldNormX, double oldNormY, double newNormX, double newNormY)>? LabelMoved;
+    
     // ========================
     // 公开状态属性
     // ========================
@@ -111,7 +115,7 @@ public partial class AnnotationCanvas : UserControl
     // 公开方法（由 MainWindow 调用）
     // ========================
     
-    /// <summary>加载图片（仅处理 Bitmap 加载 + CanvasVM 尺寸通知）</summary>
+    /// <summary>加载图片（仅处理 Bitmap 加载 + CanvasWorkspace 尺寸通知）</summary>
     public void LoadImage(string imagePath)
     {
         try
@@ -226,19 +230,19 @@ public partial class AnnotationCanvas : UserControl
         }
     }
     
-    /// <summary>同步 CanvasVM.TransformMatrix 到 UI</summary>
+    /// <summary>同步 CanvasWorkspace.TransformMatrix 到 UI</summary>
     public void ApplyTransform()
     {
-        if (_matrixTransform != null && DataContext is CanvasViewModel canvasVM)
+        if (_matrixTransform != null && DataContext is CanvasWorkspaceViewModel CanvasWorkspace)
         {
-            _matrixTransform.Matrix = canvasVM.TransformMatrix;
+            _matrixTransform.Matrix = CanvasWorkspace.TransformMatrix;
         }
     }
     
-    /// <summary>计算 Fit 变换（委托给 CanvasVM）</summary>
+    /// <summary>计算 Fit 变换（委托给 CanvasWorkspace）</summary>
     public void CalculateFitTransform()
     {
-        if (_currentImage == null || DataContext is not CanvasViewModel canvasVM)
+        if (_currentImage == null || DataContext is not CanvasWorkspaceViewModel CanvasWorkspace)
             return;
         
         var containerBounds = new Rect(0, 0, ImageContainer.Bounds.Width, ImageContainer.Bounds.Height);
@@ -253,10 +257,10 @@ public partial class AnnotationCanvas : UserControl
             return;
         }
         
-        // 通知 CanvasVM 容器和图片尺寸，然后计算 Fit 变换
-        canvasVM.UpdateContainerSize(new Size(containerBounds.Width, containerBounds.Height));
-        canvasVM.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
-        canvasVM.CalculateFitTransform();
+        // 通知 CanvasWorkspace 容器和图片尺寸，然后计算 Fit 变换
+        CanvasWorkspace.UpdateContainerSize(new Size(containerBounds.Width, containerBounds.Height));
+        CanvasWorkspace.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
+        CanvasWorkspace.CalculateFitTransform();
     }
     
     /// <summary>清空画布（图片 + 标注）</summary>
@@ -268,6 +272,7 @@ public partial class AnnotationCanvas : UserControl
             _currentImage = null;
         }
         _currentImagePath = null;
+        _isFirstImageLoaded = false;
         ClearLabelControls();
         MainImage.Source = null;
     }
@@ -389,12 +394,12 @@ public partial class AnnotationCanvas : UserControl
     
     private void OnImageContainerSizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        if (_currentImage == null || DataContext is not CanvasViewModel canvasVM) 
+        if (_currentImage == null || DataContext is not CanvasWorkspaceViewModel CanvasWorkspace) 
             return;
         
-        // 通知 CanvasVM 容器尺寸变化
-        canvasVM.UpdateContainerSize(new Size(e.NewSize.Width, e.NewSize.Height));
-        canvasVM.OnContainerSizeChanged();
+        // 通知 CanvasWorkspace 容器尺寸变化
+        CanvasWorkspace.UpdateContainerSize(new Size(e.NewSize.Width, e.NewSize.Height));
+        CanvasWorkspace.OnContainerSizeChanged();
     }
     
     // ========================
@@ -427,6 +432,16 @@ public partial class AnnotationCanvas : UserControl
             _draggedLabel = border;
             _labelDragLastPoint = point.Position;
             e.Pointer.Capture(border);
+            
+            // 记录拖拽起始的归一化坐标（用于拖拽结束后计算位移）
+            if (_currentImage != null && labelIndex.HasValue)
+            {
+                double currentLeft = Canvas.GetLeft(border);
+                double currentTop = Canvas.GetTop(border);
+                _dragStartNormX = (currentLeft + 32) / _currentImage.Size.Width;
+                _dragStartNormY = (currentTop + 32) / _currentImage.Size.Height;
+                _draggingLabelIndex = labelIndex.Value;
+            }
 
             // 发送标签被点击事件
             LabelClicked?.Invoke(this, labelIndex.Value);
@@ -476,9 +491,26 @@ public partial class AnnotationCanvas : UserControl
             {
                 e.Handled = true;
                 
+                // 计算拖拽结束后的归一化坐标，并通过事件通知 MainWindow 保存到数据模型
+                if (_currentImage != null && _draggingLabelIndex.HasValue)
+                {
+                    double finalLeft = Canvas.GetLeft(_draggedLabel);
+                    double finalTop = Canvas.GetTop(_draggedLabel);
+                    double newNormX = (finalLeft + 32) / _currentImage.Size.Width;
+                    double newNormY = (finalTop + 32) / _currentImage.Size.Height;
+                    
+                    // 只有位置实际发生变化时才触发事件
+                    double dx = Math.Abs(newNormX - _dragStartNormX);
+                    double dy = Math.Abs(newNormY - _dragStartNormY);
+                    if (dx > 0.0001 || dy > 0.0001)
+                    {
+                        LabelMoved?.Invoke(this, (_draggingLabelIndex.Value, _dragStartNormX, _dragStartNormY, newNormX, newNormY));
+                    }
+                }
+                
                 _isDraggingLabel = false;
                 _draggedLabel = null;
-                _draggingLabelItem = null;
+                _draggingLabelIndex = null;
                 e.Pointer.Capture(null);
             }
         }
@@ -512,9 +544,9 @@ public partial class AnnotationCanvas : UserControl
         // 允许任何模式下使用中键或右键平移
         else if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
         {
-            if (DataContext is CanvasViewModel canvasVM)
+            if (DataContext is CanvasWorkspaceViewModel CanvasWorkspace)
             {
-                canvasVM.StartPan(e.GetPosition(ImageContainer));
+                CanvasWorkspace.StartPan(e.GetPosition(ImageContainer));
                 ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
             }
             e.Handled = true;
@@ -523,24 +555,24 @@ public partial class AnnotationCanvas : UserControl
 
     private void OnImageContainerPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (DataContext is CanvasViewModel canvasVM && canvasVM.IsPanning)
+        if (DataContext is CanvasWorkspaceViewModel CanvasWorkspace && CanvasWorkspace.IsPanning)
         {
-            canvasVM.UpdatePan(e.GetPosition(ImageContainer));
+            CanvasWorkspace.UpdatePan(e.GetPosition(ImageContainer));
         }
     }
 
     private void OnImageContainerPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (DataContext is CanvasViewModel canvasVM && canvasVM.IsPanning)
+        if (DataContext is CanvasWorkspaceViewModel CanvasWorkspace && CanvasWorkspace.IsPanning)
         {
-            canvasVM.EndPan();
+            CanvasWorkspace.EndPan();
             ImageContainer.Cursor = new Cursor(StandardCursorType.Arrow);
         }
     }
 
     private void OnImageContainerPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        if (_currentImage == null || DataContext is not CanvasViewModel canvasVM)
+        if (_currentImage == null || DataContext is not CanvasWorkspaceViewModel CanvasWorkspace)
             return;
         
         // 获取鼠标在容器中的位置
@@ -550,7 +582,7 @@ public partial class AnnotationCanvas : UserControl
         double zoom = e.Delta.Y > 0 ? 1.1 : 0.9;
         
         // 以鼠标为中心进行缩放
-        canvasVM.ApplyZoomDelta(zoom, mousePos);
+        CanvasWorkspace.ApplyZoomDelta(zoom, mousePos);
         
         e.Handled = true;
     }

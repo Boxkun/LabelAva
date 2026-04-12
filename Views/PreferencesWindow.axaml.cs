@@ -15,6 +15,9 @@ public partial class PreferencesWindow : Window
 
     // 当前正在捕获按键的按钮
     private Button? _capturingButton;
+    
+    // 标志：设置是否有未保存的变更（窗口关闭时统一保存通知）
+    private bool _hasChanges = false;
 
     // 静态事件用于通知 MainWindow 设置已更改
     public static event EventHandler<ShortcutSettings>? SettingsChanged;
@@ -28,6 +31,9 @@ public partial class PreferencesWindow : Window
         
         // 更新界面显示
         UpdateUI();
+        
+        // 窗口关闭时统一保存并通知变更
+        this.Closed += OnPreferencesWindowClosed;
     }
     
     /// <summary>
@@ -137,7 +143,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.Colors.GroupColors[1] = colorHex!;
             UpdateColorPreview(Group0ColorPreview, colorHex);
-            SaveAndNotify();
+            _hasChanges = true;
         }
     }
 
@@ -154,7 +160,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.Colors.GroupColors[2] = colorHex!;
             UpdateColorPreview(Group1ColorPreview, colorHex);
-            SaveAndNotify();
+            _hasChanges = true;
         }
     }
 
@@ -171,7 +177,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.Colors.SelectedColor = colorHex!;
             UpdateColorPreview(SelectedColorPreview, colorHex);
-            SaveAndNotify();
+            _hasChanges = true;
         }
     }
 
@@ -200,7 +206,7 @@ public partial class PreferencesWindow : Window
     {
         _settings.Colors = ColorSettings.CreateDefaults();
         UpdateColorUI();
-        SaveAndNotify();
+        _hasChanges = true;
     }
     
     /// <summary>
@@ -233,7 +239,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateUp = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
     
@@ -246,7 +252,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateUpSecondary = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
     
@@ -259,7 +265,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateDown = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
     
@@ -272,7 +278,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateDownSecondary = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
     
@@ -285,7 +291,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.CopyText = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
 
@@ -297,7 +303,7 @@ public partial class PreferencesWindow : Window
         if (AutoFocusCheckBox == null) return;
 
         _settings.AutoFocusTextBox = AutoFocusCheckBox.IsChecked == true;
-        SaveAndNotify();
+        _hasChanges = true;
     }
     
     /// <summary>
@@ -309,7 +315,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.ToggleGroup0 = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
     
@@ -322,7 +328,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.ToggleGroup1 = gesture;
             UpdateUI();
-            SaveAndNotify();
+            _hasChanges = true;
         });
     }
     
@@ -521,11 +527,7 @@ public partial class PreferencesWindow : Window
     {
         _settings = ShortcutSettings.CreateDefaults();
         UpdateUI();
-        
-        // 保存到文件
-        ShortcutSettingsService.Save(_settings);
-        
-        NotifySettingsChanged();
+        _hasChanges = true;
     }
     
     /// <summary>
@@ -546,6 +548,19 @@ public partial class PreferencesWindow : Window
     private void NotifySettingsChanged()
     {
         SettingsChanged?.Invoke(this, _settings);
+    }
+    
+    /// <summary>
+    /// 窗口关闭时统一保存并通知变更
+    /// </summary>
+    private void OnPreferencesWindowClosed(object? sender, EventArgs e)
+    {
+        this.Closed -= OnPreferencesWindowClosed;
+        
+        if (_hasChanges)
+        {
+            SaveAndNotify();
+        }
     }
     
     /// <summary>

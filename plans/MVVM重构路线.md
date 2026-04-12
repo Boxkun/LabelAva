@@ -8,14 +8,15 @@
 
 ```mermaid
 graph TD
-    MW["MainWindow.axaml.cs<br/>~150 行：仅 UI 事件转发"]
-    MWVM["MainWindowViewModel<br/>~300 行：协调子 VM"]
+    MW["MainWindow.axaml.cs<br/>仅 UI 事件转发 + 跨 VM 协调"]
+    MWVM["MainWindowViewModel<br/>协调子 VM"]
     DOC["DocumentViewModel<br/>文件操作 + 脏状态"]
     HIST["HistoryViewModel<br/>撤销/重做"]
-    EDIT["EditViewModel<br/>编辑模式 + 标签操作"]
+    EDIT["EditViewModel<br/>仅编辑模式 UI 状态"]
     NAV["NavigationViewModel<br/>树视图 + 图片导航"]
-    SB["StatusBarViewModel<br/>状态显示 ✅ 已完成"]
-    VP["ImageViewportViewModel<br/>缩放/平移/画布"]
+    SB["StatusBarViewModel<br/>状态显示"]
+    CWS["CanvasWorkspaceViewModel<br/>视口变换 + 标注操作 + 命中测试"]
+    AC["AnnotationCanvas<br/>视觉渲染 + 交互"]
 
     MW --> MWVM
     MWVM --> DOC
@@ -23,7 +24,8 @@ graph TD
     MWVM --> EDIT
     MWVM --> NAV
     MWVM --> SB
-    MWVM --> VP
+    MWVM --> CWS
+    CWS -->|DataContext| AC
 ```
 
 ### 子 VM 存在原则
@@ -34,10 +36,10 @@ graph TD
 |-------|------|----------|---------|
 | StatusBarViewModel | StatusText, ZoomText | UpdateStatus 自动恢复, UpdateZoom | ✅ 封装定时器+消息过期 |
 | HistoryViewModel | CanUndo, CanRedo, UndoHeader | UndoCommand, RedoCommand, ExecuteCommand | ✅ 封装 HistoryManager 交互 |
-| EditViewModel | IsEditMode, CurrentGroup | ToggleEditModeCommand, AddLabelCommand | ✅ 封装编辑行为 |
+| EditViewModel | IsEditMode, CurrentGroupIndex | ToggleEditModeCommand, SwitchGroupCommand | ✅ 封装编辑模式 UI 状态 |
 | DocumentViewModel | IsDirty, FilePath | NewCommand, SaveCommand, CloseCommand | ✅ 封装文件操作+脏状态 |
 | NavigationViewModel | TreeItems, SelectedItem | SelectItemCommand, NavigateNext | ✅ 封装树视图行为 |
-| ImageViewportViewModel | TransformMatrix, CurrentImage | ZoomIn/Out, Pan, FitToScreen | ✅ 封装画布交互 |
+| CanvasWorkspaceViewModel | TransformMatrix, ZoomPercent, HighlightedLabelIndex | ZoomIn/Out, Pan, FitToScreen, AddLabel, DeleteLabel, MoveLabel | ✅ 封装画布工作区（视口+标注） |
 
 ---
 
@@ -114,6 +116,25 @@ graph TD
 - [x] 移除 `_transformMatrix`/`_isPanning`/`_lastPanPoint` 字段
 - [x] 移除 `ApplyZoom`/`ApplyCentering`/`GetScaledImageSize`/`GetCurrentScale`/`GetZoomText` 方法
 - [x] 移除 `MainWindowViewModel` 中 `_canZoomIn`/`_canZoomOut`/`_canResetZoom` 属性
+
+### Phase 6：废弃代码清理 ✅ 已完成
+
+> 详见 `plans/Phase6-废弃代码清理方案.md`
+
+### Phase 7：CanvasWorkspaceViewModel + AnnotationCanvas ✅ 已完成
+
+> 详见 `plans/Phase7-CanvasViewModel迁移方案.md`、`plans/Phase7-Step2-AnnotationCanvas迁移方案.md`、`plans/Phase7-Step3-清理与瘦身迁移方案.md`
+
+- [x] Step 1：创建 `CanvasWorkspaceViewModel`（合并 ImageViewportViewModel + EditViewModel 标签操作）
+- [x] Step 2：创建 `AnnotationCanvas` UserControl（视觉渲染 + 交互迁入）
+- [x] Step 3：清理与瘦身
+  - [x] 重命名 `CanvasViewModel` → `CanvasWorkspaceViewModel`，属性 `CanvasVM` → `CanvasWorkspace`
+  - [x] 修复 `ClearCanvas()` 未重置 `_isFirstImageLoaded` 的 Bug
+  - [x] 消除 MainWindow 3 个重复字段（`_currentImage`/`_currentImagePath`/`_isFirstImageLoaded`）
+  - [x] 移除 4 个空壳 Pointer 事件方法
+  - [x] 移除 4 个孤立方法（`OnImageContainerSizeChanged`/`OnResetZoom`/`OnAddLabel`/`OnDeleteLabel`）
+  - [x] 清理注释块和过时注释（约 60 行）
+  - [x] 修复 XAML 调试残留色
 
 ---
 

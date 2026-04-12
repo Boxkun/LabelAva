@@ -26,15 +26,9 @@ namespace LabelAva;
 
 public partial class MainWindow : Window
 {
-    // 当前图片
-    private Bitmap? _currentImage;
-    private string? _currentImagePath;
-    
     // 快捷键设置
     private ShortcutSettings _shortcutSettings;
-    
-    // 首次加载标志
-    private bool _isFirstImageLoaded = false;
+    private ShortcutRouter _shortcutRouter = null!;
     
     // 编辑模式相关
     private bool _isProgrammaticTextChange = false; // 程序化设置文本时的标志
@@ -59,7 +53,7 @@ public partial class MainWindow : Window
     public EditViewModel Edit => ViewModel.Edit;
     public DocumentViewModel Document => ViewModel.Document;
     public NavigationViewModel Navigation => ViewModel.Navigation;
-    public CanvasViewModel CanvasVM => ViewModel.CanvasVM;
+    public CanvasWorkspaceViewModel CanvasWorkspace => ViewModel.CanvasWorkspace;
     
     // ==================== AnnotationCanvas 便捷属性 ====================
     public AnnotationCanvas CanvasControl => this.FindControl<AnnotationCanvas>("AnnotationCanvasControl")!;
@@ -71,6 +65,7 @@ public partial class MainWindow : Window
         
         // 加载快捷键设置
         _shortcutSettings = ShortcutSettingsService.Load();
+        _shortcutRouter = new ShortcutRouter(_shortcutSettings);
         
         // 初始化分组按钮快捷键提示
         UpdateGroupButtonsShortcutTips();
@@ -113,10 +108,10 @@ public partial class MainWindow : Window
         ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
         
         // 初始化画布视图模型（合并原 ImageViewportViewModel + 标签操作）
-        ViewModel.CanvasVM = new CanvasViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
-        ViewModel.CanvasVM.TransformChanged += OnCanvasTransformChanged;
+        ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
+        ViewModel.CanvasWorkspace.TransformChanged += OnCanvasTransformChanged;
         
-        // 初始化编辑视图模型（仅编辑模式状态，标签操作已迁入 CanvasViewModel）
+        // 初始化编辑视图模型（仅编辑模式状态，标签操作已迁入 CanvasWorkspaceViewModel）
         ViewModel.Edit = new EditViewModel(StatusBar);
         ViewModel.Edit.EditModeChanged += OnEditModeChanged;
         ViewModel.Edit.GroupChanged += OnGroupChanged;
@@ -139,7 +134,7 @@ public partial class MainWindow : Window
         ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
         // 订阅画布变换矩阵变更事件（同步矩阵到 UI 控件 + 状态栏 + FitScale）
-        // （已在上方 CanvasVM 初始化时订阅）
+        // （已在上方 CanvasWorkspace 初始化时订阅）
 
         // 【新增】注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
         // Ctrl+Enter 提交功能也在这里处理（兼容主键盘 Return 和数字小键盘 Enter）
@@ -151,6 +146,7 @@ public partial class MainWindow : Window
         CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
         CanvasControl.LabelClicked += OnCanvasLabelClicked;
         CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
+        CanvasControl.LabelMoved += OnCanvasLabelMoved;
     }
     
     
@@ -160,6 +156,7 @@ public partial class MainWindow : Window
     private void OnShortcutSettingsChanged(object? sender, ShortcutSettings settings)
     {
         _shortcutSettings = settings;
+        _shortcutRouter.UpdateSettings(settings);
         
         // 更新分组切换按钮的快捷键提示
         UpdateGroupButtonsShortcutTips();
@@ -211,14 +208,7 @@ public partial class MainWindow : Window
         // 清空历史记录
         ViewModel.History.Clear();
         
-        // 释放图片资源
-        if (_currentImage != null)
-        {
-            _currentImage?.Dispose();
-            _currentImage = null;
-        }
-        
-        // 清除标注控件
+        // 清除标注控件（ClearCanvas 内部会 Dispose 图片并重置 _isFirstImageLoaded）
         CanvasControl.ClearCanvas();
         
         // 清空树视图数据
@@ -227,9 +217,6 @@ public partial class MainWindow : Window
         // 清空其他数据（TranslationData 由 DocumentViewModel 管理，无需手动清理）
         Navigation.ImageFolderPath = null;
         Navigation.ImageNames.Clear();
-        
-        // 重置状态
-        _isFirstImageLoaded = false;
         
         // 强制退出整个进程
         Environment.Exit(0);
@@ -331,20 +318,15 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnDocumentClosed(object? sender, EventArgs e)
     {
-        // 清理图片和标注
+        // 清理图片和标注（ClearCanvas 内部会 Dispose 图片并重置 _isFirstImageLoaded）
         CanvasControl.ClearCanvas();
         
-        // 更新本地引用
-        _currentImage = null;
-        _currentImagePath = null;
-        
         // 重置视口
-        CanvasVM.ResetTransform();
-        CanvasVM.UpdateImageSize(new Size(0, 0));
+        CanvasWorkspace.ResetTransform();
+        CanvasWorkspace.UpdateImageSize(new Size(0, 0));
 
         // 清理导航状态（TranslationData 由 DocumentViewModel 管理）
         Navigation.ClearNavigation();
-        _isFirstImageLoaded = false;
 
         ShowWelcomeScreen();
     }
@@ -364,7 +346,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnNavigationSelectedItemChanged(object? sender, EventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnNavigationSelectedItemChanged: _isSyncingSelection={_isSyncingSelection}, Nav.SelectedItem={Navigation.SelectedItem}, TreeView.SelectedItem={ImageTreeView.SelectedItem}");
         if (_isSyncingSelection) return;
         if (Navigation.SelectedItem != null && ImageTreeView.SelectedItem != Navigation.SelectedItem)
         {
@@ -380,26 +361,14 @@ public partial class MainWindow : Window
         }
     }
     
-    /// <summary>
-    /// 图像容器尺寸变化时重新应用边界限制
-    /// </summary>
-    private void OnImageContainerSizeChanged(object? sender, SizeChangedEventArgs e)
-    {
-        if (_currentImage == null) return;
-        
-        // 通知 Viewport 容器尺寸变化，重新应用边界限制
-        CanvasVM.UpdateContainerSize(new Size(e.NewSize.Width, e.NewSize.Height));
-        CanvasVM.OnContainerSizeChanged();
-    }
-    
     private void OnCanvasTransformChanged(object? sender, EventArgs e)
     {
         // 同步矩阵到 UI 控件
         CanvasControl.ApplyTransform();
         // 同步缩放百分比到状态栏
-        StatusBar.UpdateZoom(CanvasVM.ZoomPercent);
+        StatusBar.UpdateZoom(CanvasWorkspace.ZoomPercent);
         // 同步 FitScale 到树视图项
-        SaveCurrentFitScale(CanvasVM.CurrentFitScale);
+        SaveCurrentFitScale(CanvasWorkspace.CurrentFitScale);
     }
     
     /// <summary>
@@ -522,7 +491,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnHistoryStateChanged(object? sender, EventArgs e)
     {
-        Document.SetDirty(true);
+        // 仅在文档打开时设置脏标记（避免关闭文档时 _history.Clear() 触发 SetDirty 覆盖 IsDirty=false）
+        if (Document.HasDocument)
+        {
+            Document.SetDirty(true);
+        }
 
         // 【核心修复】将视图重建推迟到更晚执行，确保 SelectionChanged 等事件完全处理完毕
         // 使用更低的优先级，确保在 TextBox 值设置和光标定位之后执行
@@ -556,9 +529,9 @@ public partial class MainWindow : Window
         }
         
         // 【新增】如果有待选中的新标签（添加标签操作），优先使用它
-        if (CanvasVM.PendingNewLabelIndex.HasValue)
+        if (CanvasWorkspace.PendingNewLabelIndex.HasValue)
         {
-            previouslySelectedLabelIndex = CanvasVM.PendingNewLabelIndex;
+            previouslySelectedLabelIndex = CanvasWorkspace.PendingNewLabelIndex;
         }
         
         // 重新构建树视图
@@ -586,9 +559,9 @@ public partial class MainWindow : Window
         // ======================= FIX END =======================
         
         // 尝试恢复当前选中的图片
-        if (!string.IsNullOrEmpty(_currentImagePath))
+        if (!string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
         {
-            var imageName = Path.GetFileName(_currentImagePath);
+            var imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
             var treeItem = Navigation.TreeItems.FirstOrDefault(t => t.ImageName == imageName);
             if (treeItem != null)
             {
@@ -617,10 +590,10 @@ public partial class MainWindow : Window
         
         // 【新增】如果有待选中的新标签已被选中，聚焦到文本框
         // 根据设置决定是否自动聚焦
-        if (CanvasVM.PendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
+        if (CanvasWorkspace.PendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
         {
             // 清除待选中状态后，聚焦到文本框
-            CanvasVM.ClearPendingNewLabelIndex();
+            CanvasWorkspace.ClearPendingNewLabelIndex();
 
             // 延迟聚焦到文本框，确保 UI 已完成重建
             Dispatcher.UIThread.Post(() =>
@@ -628,10 +601,10 @@ public partial class MainWindow : Window
                 _translationTextBox?.Focus();
             }, DispatcherPriority.Loaded);
         }
-        else if (CanvasVM.PendingNewLabelIndex.HasValue)
+        else if (CanvasWorkspace.PendingNewLabelIndex.HasValue)
         {
             // 如果不需要自动聚焦，仅清除待选中状态
-            CanvasVM.ClearPendingNewLabelIndex();
+            CanvasWorkspace.ClearPendingNewLabelIndex();
         }
         
     }
@@ -753,115 +726,6 @@ public partial class MainWindow : Window
         return Avalonia.Media.Color.FromArgb(color.A, r, g, b);
     }
 
-    // 存储每个按钮的颜色信息用于hover/pressed
-    private readonly Dictionary<RadioButton, (Color normal, Color hover, Color pressed, Color normalBorder, Color activated)> _buttonColors = new();
-
-    /// <summary>
-    /// 为RadioButton应用颜色（通过样式类）
-    /// </summary>
-    private void ApplyRadioButtonColors(RadioButton rb, Avalonia.Media.Color normalColor, Avalonia.Media.Color hoverColor, Avalonia.Media.Color pressedColor)
-    {
-        // 存储颜色信息
-        var activatedColor = AdjustBrightness(normalColor, 1.1);
-        _buttonColors[rb] = (normalColor, hoverColor, pressedColor, Avalonia.Media.Color.Parse("#CCCCCC"), Avalonia.Media.Color.Parse("#333333"));
-
-        // 订阅事件
-        rb.PointerEntered -= OnRadioButtonPointerEntered;
-        rb.PointerExited -= OnRadioButtonPointerExited;
-        rb.PointerPressed -= OnRadioButtonPointerPressed;
-        rb.PointerReleased -= OnRadioButtonPointerReleased;
-
-        rb.PointerEntered += OnRadioButtonPointerEntered;
-        rb.PointerExited += OnRadioButtonPointerExited;
-        rb.PointerPressed += OnRadioButtonPointerPressed;
-        rb.PointerReleased += OnRadioButtonPointerReleased;
-    }
-
-    /// <summary>
-    /// RadioButton悬停事件
-    /// </summary>
-    private void OnRadioButtonPointerEntered(object? sender, PointerEventArgs e)
-    {
-        if (sender is RadioButton rb && _buttonColors.TryGetValue(rb, out var colors))
-        {
-            if (rb.IsChecked == true)
-            {
-                rb.Background = new Avalonia.Media.SolidColorBrush(AdjustBrightness(colors.activated, 1.15));
-            }
-            else
-            {
-                rb.Background = new Avalonia.Media.SolidColorBrush(colors.hover);
-            }
-        }
-    }
-
-    /// <summary>
-    /// RadioButton离开事件
-    /// </summary>
-    private void OnRadioButtonPointerExited(object? sender, PointerEventArgs e)
-    {
-        if (sender is RadioButton rb && _buttonColors.TryGetValue(rb, out var colors))
-        {
-            if (rb.IsChecked == true)
-            {
-                rb.Background = new Avalonia.Media.SolidColorBrush(colors.activated);
-            }
-            else
-            {
-                rb.Background = new Avalonia.Media.SolidColorBrush(colors.normal);
-            }
-        }
-    }
-
-    /// <summary>
-    /// RadioButton按下事件
-    /// </summary>
-    private void OnRadioButtonPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (sender is RadioButton rb && _buttonColors.TryGetValue(rb, out var colors))
-        {
-            rb.Background = new Avalonia.Media.SolidColorBrush(colors.pressed);
-        }
-    }
-
-    /// <summary>
-    /// RadioButton释放事件
-    /// </summary>
-    private void OnRadioButtonPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (sender is RadioButton rb && _buttonColors.TryGetValue(rb, out var colors))
-        {
-            if (rb.IsChecked == true)
-            {
-                rb.Background = new Avalonia.Media.SolidColorBrush(colors.activated);
-            }
-            else
-            {
-                rb.Background = new Avalonia.Media.SolidColorBrush(colors.hover);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 激活RadioButton（选中状态）
-    /// </summary>
-    private void ActivateRadioButton(RadioButton rb, Avalonia.Media.Color color)
-    {
-        rb.Background = new Avalonia.Media.SolidColorBrush(color);
-        rb.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#333333"));
-        rb.BorderThickness = new Avalonia.Thickness(2);
-    }
-
-    /// <summary>
-    /// 停用RadioButton（未选中状态）
-    /// </summary>
-    private void DeactivateRadioButton(RadioButton rb, Avalonia.Media.Color normalColor)
-    {
-        rb.Background = new Avalonia.Media.SolidColorBrush(normalColor);
-        rb.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
-        rb.BorderThickness = new Avalonia.Thickness(1);
-    }
-    
     /// <summary>
     /// 当文本框内容修改时，同步到树状图节点（禁止直接修改底层数据）
     /// 底层数据的修改必须通过 ChangeTextCommand 进行
@@ -909,13 +773,13 @@ public partial class MainWindow : Window
     private void CommitCurrentEdit()
     {
         // 如果没有处于编辑模式，或者没有焦点/数据，直接返回
-        if (!Edit.IsEditMode || _translationTextBox == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (!Edit.IsEditMode || _translationTextBox == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
             return;
 
         // 只有当前树状图选中的是文本节点时，才需要结算
         if (Navigation.SelectedItem is TranslationTreeItem currentTreeItem)
         {
-            string imageName = Path.GetFileName(_currentImagePath);
+            string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
             if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             {
                 var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
@@ -989,28 +853,14 @@ public partial class MainWindow : Window
             e.Handled = true;
         }
         
-        // 创建当前按键的 KeyGesture 用于比较（与树图导航相同的处理方式）
+        // 通过 ShortcutRouter 匹配可配置快捷键
         var currentGesture = new KeyGesture(e.Key, e.KeyModifiers);
-
-        // 检查 TextBox 是否有焦点 - 如果有焦点，则不处理分组切换快捷键
-        // 避免在编辑文本时意外触发分组切换
         bool isTextBoxFocused = _translationTextBox != null && _translationTextBox.IsFocused;
-
-        // 检查是否匹配分组切换快捷键（仅当 TextBox 无焦点时处理）
-        if (!isTextBoxFocused)
+        var action = _shortcutRouter.MatchKeyGesture(currentGesture, isTextBoxFocused);
+        if (action.HasValue)
         {
-            if (_shortcutSettings.ToggleGroup0 != null &&
-                currentGesture.Equals(_shortcutSettings.ToggleGroup0))
-            {
-                SwitchToGroup(0);
-                e.Handled = true;
-            }
-            else if (_shortcutSettings.ToggleGroup1 != null &&
-                     currentGesture.Equals(_shortcutSettings.ToggleGroup1))
-            {
-                SwitchToGroup(1);
-                e.Handled = true;
-            }
+            ExecuteShortcutAction(action.Value);
+            e.Handled = true;
         }
     }
 
@@ -1025,6 +875,35 @@ public partial class MainWindow : Window
             Group0RadioButton.IsChecked = true;
         else if (groupIndex == 1 && Group1RadioButton != null)
             Group1RadioButton.IsChecked = true;
+    }
+
+    /// <summary>
+    /// 执行快捷键动作（由 ShortcutRouter 匹配后统一调用）
+    /// </summary>
+    private void ExecuteShortcutAction(ShortcutAction action)
+    {
+        switch (action)
+        {
+            case ShortcutAction.NavigateUp:
+                Navigation.NavigateUpCommand.Execute(null);
+                break;
+            case ShortcutAction.NavigateDown:
+                Navigation.NavigateDownCommand.Execute(null);
+                break;
+            case ShortcutAction.CopyText:
+                if (Navigation.SelectedItem is TranslationTreeItem item)
+                {
+                    CopyToClipboard(item.Text);
+                    StatusBar.UpdateStatus($"已复制: {item.Text}");
+                }
+                break;
+            case ShortcutAction.SwitchToGroup0:
+                SwitchToGroup(0);
+                break;
+            case ShortcutAction.SwitchToGroup1:
+                SwitchToGroup(1);
+                break;
+        }
     }
 
 
@@ -1061,10 +940,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void AddNewLabel(double imageX, double imageY)
     {
-        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath) || Navigation.CurrentTreeItem == null)
+        if (CanvasControl.CurrentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath) || Navigation.CurrentTreeItem == null)
             return;
 
-        string imageName = Path.GetFileName(_currentImagePath);
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
         
         // 确保字典中有该图片的数据列表
         if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
@@ -1077,8 +956,8 @@ public partial class MainWindow : Window
         int nextIndex = labels.Any() ? labels.Max(l => l.TextIndex) + 1 : 1;
 
         // 计算归一化坐标 (0.0 ~ 1.0)
-        double normX = imageX / _currentImage.Size.Width;
-        double normY = imageY / _currentImage.Size.Height;
+        double normX = imageX / CanvasControl.CurrentImage!.Size.Width;
+        double normY = imageY / CanvasControl.CurrentImage!.Size.Height;
 
         // 创建底层数据
         var newLabel = new LabelItem
@@ -1092,7 +971,7 @@ public partial class MainWindow : Window
         };
         
         // 创建并执行 AddLabelCommand（命令会自动刷新 UI）
-        CanvasVM.AddLabel(labels, newLabel, nextIndex);
+        CanvasWorkspace.AddLabel(labels, newLabel, nextIndex);
 
         // 注意：UI 刷新由 HistoryManager.HistoryChanged 事件处理
     }
@@ -1120,40 +999,6 @@ public partial class MainWindow : Window
         
         Edit.CanToggleEditMode = false;
         Edit.IsEditMode = false;
-    }
-    
-    private void OnAddLabel(object? sender, RoutedEventArgs e)
-    {
-        StatusBar.UpdateStatus("添加标注模式");
-    }
-    
-    private void OnDeleteLabel(object? sender, RoutedEventArgs e)
-    {
-        StatusBar.UpdateStatus("删除标注模式");
-    }
-    
-    private void OnClearCanvas(object? sender, RoutedEventArgs e)
-    {
-        // 通过 CanvasControl 清空画布
-        CanvasControl.ClearCanvas();
-        
-        // 更新本地引用
-        _currentImage = null;
-        _currentImagePath = null;
-        
-        // 重置视口
-        CanvasVM.ResetTransform();
-        CanvasVM.UpdateImageSize(new Size(0, 0));
-        
-        StatusBar.UpdateStatus("画布已清空");
-    }
-    
-    // OnZoomIn/OnZoomOut/OnResetZoom 已迁入 CanvasViewModel（通过 Command 绑定）
-    
-    private void OnResetZoom(object? sender, RoutedEventArgs e)
-    {
-        // 保留此事件处理以兼容 XAML Click 绑定过渡期
-        CanvasVM.ResetZoomCommand.Execute(null);
     }
     
     private void OnAbout(object? sender, RoutedEventArgs e)
@@ -1187,7 +1032,7 @@ public partial class MainWindow : Window
         }
         
         // 检查是否命中现有标签
-        int? hitIndex = CanvasVM.FindLabelAtPosition(coords.pixelX, coords.pixelY, 
+        int? hitIndex = CanvasWorkspace.FindLabelAtPosition(coords.pixelX, coords.pixelY, 
             CanvasControl.CurrentImage?.Size.Width ?? 0, 
             CanvasControl.CurrentImage?.Size.Height ?? 0, 
             labels);
@@ -1202,29 +1047,27 @@ public partial class MainWindow : Window
         }
     }
     
-    private void OnImageContainerPointerPressed(object? sender, PointerPressedEventArgs e)
+    /// <summary>
+    /// 画布标签拖拽结束后的位置变更处理
+    /// </summary>
+    private void OnCanvasLabelMoved(object? sender, (int textIndex, double oldNormX, double oldNormY, double newNormX, double newNormY) args)
     {
-        // 【已迁移】相关逻辑已移至 AnnotationCanvas
-        // 此处仅保留空实现以兼容事件处理
-    }
-    
-    private void OnImageContainerPointerMoved(object? sender, PointerEventArgs e)
-    {
-        // 【已迁移】相关逻辑已移至 AnnotationCanvas
-    }
-    
-    private void OnImageContainerPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        // 【已迁移】相关逻辑已移至 AnnotationCanvas
-    }
-    
-    private void OnImageContainerPointerWheelChanged(object? sender, PointerWheelEventArgs e)
-    {
-        // 【已迁移】相关逻辑已移至 AnnotationCanvas
+        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
+            return;
+        
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+            return;
+        
+        var label = labels.FirstOrDefault(l => l.TextIndex == args.textIndex);
+        if (label != null)
+        {
+            CanvasWorkspace.MoveLabel(label, args.oldNormX, args.oldNormY, args.newNormX, args.newNormY);
+        }
     }
     
     /// <summary>
-    /// 计算适应容器的初始变换（Fit模式）—— 委托给 CanvasViewModel
+    /// 计算适应容器的初始变换（Fit模式）—— 委托给 CanvasWorkspaceViewModel
     /// </summary>
     private void CalculateFitTransform()
     {
@@ -1236,9 +1079,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void SaveCurrentFitScale(double fitScale)
     {
-        if (_currentImagePath == null || Navigation.TreeItems.Count == 0) return;
+        if (CanvasControl.CurrentImagePath == null || Navigation.TreeItems.Count == 0) return;
         
-        string imageName = Path.GetFileName(_currentImagePath);
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
         
         // 找到对应的 ImageTreeItem 并保存 fit 比例
         foreach (var item in Navigation.TreeItems)
@@ -1251,8 +1094,6 @@ public partial class MainWindow : Window
             }
         }
     }
-    
-    // GetCurrentScale 已迁入 CanvasViewModel（通过 CanvasVM.ZoomPercent / 100 获取）
     
     // ==================== 图片加载 ====================
 
@@ -1279,7 +1120,7 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 获取指定分组的背景颜色
+    /// 加载当前图片
     /// </summary>
     private void LoadCurrentImage()
     {
@@ -1309,10 +1150,6 @@ public partial class MainWindow : Window
             // 通过 CanvasControl 加载图片
             CanvasControl.LoadImage(imagePath);
             
-            // 更新本地引用以供其他方法使用
-            _currentImage = CanvasControl.CurrentImage;
-            _currentImagePath = CanvasControl.CurrentImagePath;
-            
             // 找到当前图片对应的树视图项
             string imageName = Path.GetFileName(imagePath);
             foreach (var item in Navigation.TreeItems)
@@ -1324,14 +1161,12 @@ public partial class MainWindow : Window
                 }
             }
             
-            // 通知 CanvasVM 图片尺寸
-            CanvasVM.UpdateImageSize(new Size(_currentImage.Size.Width, _currentImage.Size.Height));
+            // 通知 CanvasWorkspace 图片尺寸
+            CanvasWorkspace.UpdateImageSize(new Size(CanvasControl.CurrentImage!.Size.Width, CanvasControl.CurrentImage!.Size.Height));
             
             // 首次加载时延迟计算适应容器的初始变换，等待布局完成
-            if (!_isFirstImageLoaded)
+            if (!CanvasControl.IsFirstImageLoaded)
             {
-                _isFirstImageLoaded = true;
-                
                 _ = Task.Run(async () =>
                 {
                     await Task.Delay(100); // 等待布局完成
@@ -1351,7 +1186,7 @@ public partial class MainWindow : Window
             {
                 // 非首次加载直接应用已有的变换
                 CanvasControl.ApplyTransform();
-                StatusBar.UpdateZoom(CanvasVM.ZoomPercent);
+                StatusBar.UpdateZoom(CanvasWorkspace.ZoomPercent);
                 // 更新标注显示
                 UpdateLabels();
             }
@@ -1373,64 +1208,6 @@ public partial class MainWindow : Window
     }
     
     // ==================== 辅助方法 ====================
-    
-    // GetZoomText 已迁入 CanvasViewModel（通过 CanvasVM.ZoomPercent 获取）
-    
-    // private void StatusBar.UpdateStatus(string message)
-    // {
-    //     StatusBar.UpdateStatus(message, StatusBarViewModel.StatusType.Default);
-    // }
-    
-    // // 改为 async void
-    // private async void StatusBar.UpdateStatus(string message, StatusBarViewModel.StatusType statusType)
-    // {
-    //     if (_statusText == null) return;
-        
-    //     _statusText.Text = message;
-    //     _currentStatusBarViewModel.StatusType = statusType;
-        
-    //     // 根据状态类型设置样式
-    //     if (_statusBar != null)
-    //     {
-    //         _statusBar.Classes.Set("status-success", statusType == StatusBarViewModel.StatusType.Success);
-    //         _statusBar.Classes.Set("status-warn", statusType == StatusBarViewModel.StatusType.Warn);
-    //         _statusBar.Classes.Set("status-error", statusType == StatusBarViewModel.StatusType.Error);
-    //     }
-        
-    //     // 设置文字颜色
-    //     if (_statusText != null)
-    //     {
-    //         _statusText.Classes.Set("status-success", statusType == StatusBarViewModel.StatusType.Success);
-    //         _statusText.Classes.Set("status-warn", statusType == StatusBarViewModel.StatusType.Warn);
-    //         _statusText.Classes.Set("status-error", statusType == StatusBarViewModel.StatusType.Error);
-    //     }
-
-    //     // 更新当前的 MessageId
-    //     int currentId = ++_statusMessageId;
-        
-    //     if (statusType != StatusBarViewModel.StatusType.Default)
-    //     {
-    //         await Task.Delay(100);
-            
-    //         // 如果在等待期间没有任何新的状态更新，就触发回退机制还原为 Default
-    //         if (currentId == _statusMessageId)
-    //         {
-    //             if (_statusBar != null)
-    //             {
-    //                 _statusBar.Classes.Set("status-success", false);
-    //                 _statusBar.Classes.Set("status-warn", false);
-    //                 _statusBar.Classes.Set("status-error", false);
-    //             }
-    //             if (_statusText != null)
-    //             {
-    //                 _statusText.Classes.Set("status-success", false);
-    //                 _statusText.Classes.Set("status-warn", false);
-    //                 _statusText.Classes.Set("status-error", false);
-    //             }
-    //             _currentStatusBarViewModel.StatusType = StatusBarViewModel.StatusType.Default;
-    //         }
-    //     }
-    // }
     
     /// <summary>
     /// 将文本复制到系统剪贴板
@@ -1476,10 +1253,10 @@ public partial class MainWindow : Window
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
 
-        if (Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
             return;
 
-        string imageName = Path.GetFileName(_currentImagePath);
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
 
         if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
@@ -1509,10 +1286,10 @@ public partial class MainWindow : Window
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
         
-        if (Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
             return;
         
-        string imageName = Path.GetFileName(_currentImagePath);
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
         
         // 获取当前图片的所有标签
         if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
@@ -1530,15 +1307,12 @@ public partial class MainWindow : Window
     
     // ==================== 树视图相关方法 ====================
     
-    // BuildTreeView 已迁移到 NavigationViewModel.BuildTreeView()
-    
     /// <summary>
     /// 树视图选择变更事件（处理图片切换 & 自动折叠展开）
     /// </summary>
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         var selectedItem = ImageTreeView.SelectedItem;
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewSelectionChanged: _isSyncingSelection={_isSyncingSelection}, TreeView.SelectedItem={selectedItem}");
         
         // 同步选中项到 NavigationViewModel（防重入：仅在非同步期间更新 VM，避免循环触发）
         if (!_isSyncingSelection)
@@ -1587,7 +1361,7 @@ public partial class MainWindow : Window
             // 切换图片视图中的编号高亮
             CanvasControl.HighlightLabel(targetChildItem.Index);
             
-            double currentScale = CanvasVM.ZoomPercent / 100;
+            double currentScale = CanvasWorkspace.ZoomPercent / 100;
             double fitScale = targetRootItem?.FitScale ?? 1.0;
             
             // 如果当前缩放比例大于 fit 比例（用户手动放大了）
@@ -1618,10 +1392,13 @@ public partial class MainWindow : Window
                         if (_translationTextBox.IsEnabled)
                         {
                             _translationTextBox.Focus();
-                            // 强制将光标移动到文本末尾
-                            _translationTextBox.CaretIndex = _translationTextBox.Text?.Length ?? 0;
+                            // 强制将光标移动到文本末尾（同时设置 SelectionStart/End 确保视觉刷新）
+                            var len = _translationTextBox.Text?.Length ?? 0;
+                            _translationTextBox.CaretIndex = len;
+                            _translationTextBox.SelectionStart = len;
+                            _translationTextBox.SelectionEnd = len;
                         }
-                    }, Avalonia.Threading.DispatcherPriority.Input); // 使用 Input 优先级，确保在 Layout/Render 之后执行
+                    }, Avalonia.Threading.DispatcherPriority.Loaded); // 使用 Loaded 优先级，确保在布局/渲染/焦点处理之后执行
                 }
             }
         }
@@ -1648,96 +1425,19 @@ public partial class MainWindow : Window
         var updateKind = properties.PointerUpdateKind;
         
         // 只处理鼠标侧键
-        if (updateKind != PointerUpdateKind.XButton1Pressed && 
+        if (updateKind != PointerUpdateKind.XButton1Pressed &&
             updateKind != PointerUpdateKind.XButton2Pressed)
         {
             return;
         }
         
-        // 将鼠标侧键转换为 KeyGesture
-        var gesture = MouseButtonToKeyGesture(updateKind);
-        if (gesture == null)
-            return;
-        
-        // 检查树视图是否有选中项，如果有则处理快捷键
-        var selectedItem = Navigation.SelectedItem;
-        if (selectedItem != null)
+        // 通过 ShortcutRouter 匹配鼠标侧键
+        var action = _shortcutRouter.MatchPointerUpdate(updateKind);
+        if (action.HasValue && Navigation.SelectedItem != null)
         {
-            // 检查是否匹配复制快捷键
-            if (_shortcutSettings.CopyText != null && 
-                gesture.Equals(_shortcutSettings.CopyText))
-            {
-                if (selectedItem is TranslationTreeItem translationItem)
-                {
-                    CopyToClipboard(translationItem.Text);
-                    StatusBar.UpdateStatus($"已复制: {translationItem.Text}");
-                }
-                e.Handled = true;
-                return;
-            }
-            
-            // 检查是否匹配上导航快捷键
-            bool isNavigateUp = false;
-            bool isNavigateDown = false;
-            
-            if (_shortcutSettings.NavigateUp != null && 
-                gesture.Equals(_shortcutSettings.NavigateUp))
-            {
-                isNavigateUp = true;
-            }
-            else if (_shortcutSettings.NavigateUpSecondary != null && 
-                     gesture.Equals(_shortcutSettings.NavigateUpSecondary))
-            {
-                isNavigateUp = true;
-            }
-            else if (_shortcutSettings.NavigateDown != null && 
-                     gesture.Equals(_shortcutSettings.NavigateDown))
-            {
-                isNavigateDown = true;
-            }
-            else if (_shortcutSettings.NavigateDownSecondary != null && 
-                     gesture.Equals(_shortcutSettings.NavigateDownSecondary))
-            {
-                isNavigateDown = true;
-            }
-            
-            // 执行导航
-            if (isNavigateUp || isNavigateDown)
-            {
-                var visibleItems = Navigation.GetVisibleItems();
-                
-                int currentIndex = visibleItems.IndexOf(selectedItem);
-                if (currentIndex >= 0)
-                {
-                    if (isNavigateUp && currentIndex > 0)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置 Navigation.SelectedItem = {visibleItems[currentIndex - 1]}");
-                        Navigation.SelectedItem = visibleItems[currentIndex - 1];
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置后 Nav.SelectedItem={Navigation.SelectedItem}, TreeView.SelectedItem={ImageTreeView.SelectedItem}");
-                    }
-                    else if (isNavigateDown && currentIndex < visibleItems.Count - 1)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置 Navigation.SelectedItem = {visibleItems[currentIndex + 1]}");
-                        Navigation.SelectedItem = visibleItems[currentIndex + 1];
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 鼠标侧键导航: 设置后 Nav.SelectedItem={Navigation.SelectedItem}, TreeView.SelectedItem={ImageTreeView.SelectedItem}");
-                    }
-                }
-                e.Handled = true;
-            }
+            ExecuteShortcutAction(action.Value);
+            e.Handled = true;
         }
-    }
-    
-    /// <summary>
-    /// 将鼠标侧键转换为 KeyGesture
-    /// </summary>
-    private static KeyGesture? MouseButtonToKeyGesture(PointerUpdateKind updateKind)
-    {
-        return updateKind switch
-        {
-            PointerUpdateKind.XButton1Pressed => new KeyGesture(Key.F13),  // 鼠标侧键1
-            PointerUpdateKind.XButton2Pressed => new KeyGesture(Key.F14),  // 鼠标侧键2
-            _ => null
-        };
     }
     
     /// <summary>
@@ -1748,60 +1448,17 @@ public partial class MainWindow : Window
         var selectedItem = Navigation.SelectedItem;
         if (selectedItem == null) return;
 
-        // 创建当前按键的 KeyGesture 用于比较
+        // 通过 ShortcutRouter 匹配可配置快捷键
         var currentGesture = new KeyGesture(e.Key, e.KeyModifiers);
-
-        // 检查是否匹配复制快捷键（使用自定义快捷键设置）
-        if (_shortcutSettings.CopyText != null && 
-            currentGesture.Equals(_shortcutSettings.CopyText))
+        var action = _shortcutRouter.MatchKeyGesture(currentGesture);
+        if (action.HasValue)
         {
-            if (selectedItem is TranslationTreeItem translationItem)
-            {
-                CopyToClipboard(translationItem.Text);
-                StatusBar.UpdateStatus($"已复制: {translationItem.Text}");
-            }
-            else if (selectedItem is ImageTreeItem imageItem)
-            {
-                //CopyToClipboard(imageItem.ImageName);
-                //StatusBar.UpdateStatus($"已复制: {imageItem.ImageName}");
-            }
-            e.Handled = true;
-            return;
-        }
-        
-        // 检查是否匹配分组切换快捷键
-        bool isSwitchToGroup0 = false;
-        bool isSwitchToGroup1 = false;
-        
-        // 检查切换到框内
-        if (_shortcutSettings.ToggleGroup0 != null && 
-            currentGesture.Equals(_shortcutSettings.ToggleGroup0))
-        {
-            isSwitchToGroup0 = true;
-        }
-        // 检查切换到框外
-        else if (_shortcutSettings.ToggleGroup1 != null && 
-                 currentGesture.Equals(_shortcutSettings.ToggleGroup1))
-        {
-            isSwitchToGroup1 = true;
-        }
-        
-        // 如果匹配分组切换快捷键，执行分组切换
-        if (isSwitchToGroup0 || isSwitchToGroup1)
-        {
-            if (isSwitchToGroup0)
-            {
-                SwitchToGroup(0);
-            }
-            else if (isSwitchToGroup1)
-            {
-                SwitchToGroup(1);
-            }
+            ExecuteShortcutAction(action.Value);
             e.Handled = true;
             return;
         }
 
-        // 记录焦点变化前的根节点
+        // 记录焦点变化前的根节点（用于方向键展开/收起逻辑）
         ImageTreeItem? oldRootItem = null;
         if (selectedItem is ImageTreeItem)
         {
@@ -1809,73 +1466,11 @@ public partial class MainWindow : Window
         }
         else if (selectedItem is TranslationTreeItem currentChildItem)
         {
-            // 找到当前子节点对应的父节点
-            foreach (var root in Navigation.TreeItems)
-            {
-                if (root.Translations.Contains(currentChildItem))
-                {
-                    oldRootItem = root;
-                    break;
-                }
-            }
-        }
-
-        // 检查是否匹配自定义的上/下导航快捷键（主要或次要）
-        bool isNavigateUp = false;
-        bool isNavigateDown = false;
-        
-        // 检查上导航（主要或次要）
-        if (_shortcutSettings.NavigateUp != null && 
-            currentGesture.Equals(_shortcutSettings.NavigateUp))
-        {
-            isNavigateUp = true;
-        }
-        else if (_shortcutSettings.NavigateUpSecondary != null && 
-                 currentGesture.Equals(_shortcutSettings.NavigateUpSecondary))
-        {
-            isNavigateUp = true;
-        }
-        
-        // 检查下导航（主要或次要）
-        if (_shortcutSettings.NavigateDown != null && 
-            currentGesture.Equals(_shortcutSettings.NavigateDown))
-        {
-            isNavigateDown = true;
-        }
-        else if (_shortcutSettings.NavigateDownSecondary != null && 
-                 currentGesture.Equals(_shortcutSettings.NavigateDownSecondary))
-        {
-            isNavigateDown = true;
-        }
-        
-        // 如果匹配自定义导航快捷键，手动执行选中项切换
-        if (isNavigateUp || isNavigateDown)
-        {
-            var visibleItems = Navigation.GetVisibleItems();
-            
-            int currentIndex = visibleItems.IndexOf(selectedItem);
-            if (currentIndex >= 0)
-            {
-                if (isNavigateUp && currentIndex > 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置 Navigation.SelectedItem = {visibleItems[currentIndex - 1]}");
-                    Navigation.SelectedItem = visibleItems[currentIndex - 1];
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置后 Navigation.SelectedItem = {Navigation.SelectedItem}, ImageTreeView.SelectedItem = {ImageTreeView.SelectedItem}");
-                    e.Handled = true;
-                }
-                else if (isNavigateDown && currentIndex < visibleItems.Count - 1)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置 Navigation.SelectedItem = {visibleItems[currentIndex + 1]}");
-                    Navigation.SelectedItem = visibleItems[currentIndex + 1];
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] OnTreeViewKeyDown: 设置后 Navigation.SelectedItem = {Navigation.SelectedItem}, ImageTreeView.SelectedItem = {ImageTreeView.SelectedItem}");
-                    e.Handled = true;
-                }
-            }
+            oldRootItem = Navigation.GetParentImageItem(currentChildItem);
         }
 
         // 方向键处理：展开新焦点子项，收起旧焦点子项
-        if (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.Left || e.Key == Key.Right ||
-            isNavigateUp || isNavigateDown)
+        if (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.Left || e.Key == Key.Right)
         {
             // 延迟执行，等待SelectionChanged事件完成
             Dispatcher.UIThread.Post(() =>
@@ -1884,20 +1479,13 @@ public partial class MainWindow : Window
                 if (newSelectedItem == null) return;
 
                 ImageTreeItem? newRootItem = null;
-                if (newSelectedItem is ImageTreeItem)
+                if (newSelectedItem is ImageTreeItem rootItem)
                 {
-                    newRootItem = newSelectedItem as ImageTreeItem;
+                    newRootItem = rootItem;
                 }
                 else if (newSelectedItem is TranslationTreeItem newChildItem)
                 {
-                    foreach (var root in Navigation.TreeItems)
-                    {
-                        if (root.Translations.Contains(newChildItem))
-                        {
-                            newRootItem = root;
-                            break;
-                        }
-                    }
+                    newRootItem = Navigation.GetParentImageItem(newChildItem);
                 }
 
                 // 收起旧的焦点项（如果与新的不同）
@@ -1921,15 +1509,15 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 将视野中心对准指定编号的标注（委托给 CanvasViewModel）
+    /// 将视野中心对准指定编号的标注（委托给 CanvasWorkspaceViewModel）
     /// </summary>
     private void CenterOnLabel(int labelIndex)
     {
-        if (_currentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(_currentImagePath))
+        if (CanvasControl.CurrentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
             return;
         
         // 获取当前图片的标注数据
-        string imageName = Path.GetFileName(_currentImagePath);
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
         if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             return;
         
@@ -1946,18 +1534,8 @@ public partial class MainWindow : Window
         
         if (targetLabel == null) return;
         
-        // 委托给 CanvasVM（传入归一化坐标）
-        CanvasVM.CenterOnLabel(targetLabel.X, targetLabel.Y);
-    }
-
-    // ==================== 树视图拖拽排序 ====================
-
-    /// <summary>
-    /// 查找子节点对应的父节点 (ImageTreeItem)
-    /// </summary>
-    private ImageTreeItem? GetParentImageItem(TranslationTreeItem child)
-    {
-        return Navigation.GetParentImageItem(child);
+        // 委托给 CanvasWorkspace（传入归一化坐标）
+        CanvasWorkspace.CenterOnLabel(targetLabel.X, targetLabel.Y);
     }
 
     // ==================== TreeViewItem 拖拽事件处理（直接在 DataTemplate 中的元素上绑定）====================
@@ -1969,7 +1547,6 @@ public partial class MainWindow : Window
         if (point.Properties.IsLeftButtonPressed && sender is Control control)
         {
             var dataContext = control.DataContext;
-            System.Diagnostics.Debug.WriteLine($"[TreeView Drag] PointerPressed: sender={sender?.GetType().Name}, DataContext={dataContext?.GetType().Name}");
 
             // 仅允许拖拽 TranslationTreeItem (子节点)
             if (dataContext is TranslationTreeItem treeItem)
@@ -1977,11 +1554,9 @@ public partial class MainWindow : Window
                 _treeDragStartPoint = point.Position;
                 _isTreeItemDragging = true;
                 _draggedTreeItem = treeItem;
-                System.Diagnostics.Debug.WriteLine($"[TreeView Drag] Started dragging item: Index={treeItem.Index}, Text={treeItem.Text}");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[TreeView Drag] Not a TranslationTreeItem, ignoring");
             }
         }
     }
@@ -2002,8 +1577,6 @@ public partial class MainWindow : Window
         if (Math.Abs(diff.X) > 3 || Math.Abs(diff.Y) > 3)
         {
             _isTreeItemDragging = false; // 结束指针阶段，进入 DragDrop 阶段
-
-            System.Diagnostics.Debug.WriteLine($"[TreeView Drag] Starting drag for item: {_draggedTreeItem.Index}");
 
             // 拖拽前先提交当前文本编辑，防止状态丢失
             CommitCurrentEdit();
@@ -2032,8 +1605,6 @@ public partial class MainWindow : Window
 
     private void OnTreeViewDragOver(object? sender, DragEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("[TreeView Drag] DragOver triggered");
-
         // 验证拖拽数据是否为标注子项
         if (!e.Data.Contains("DraggedTranslationItem"))
         {
@@ -2055,8 +1626,8 @@ public partial class MainWindow : Window
         if (targetItem is TranslationTreeItem targetTranslationItem)
         {
             // 判断是否属于同一个图片 (不允许跨图片拖拽)
-            var sourceParent = GetParentImageItem(sourceItem);
-            var targetParent = GetParentImageItem(targetTranslationItem);
+            var sourceParent = Navigation.GetParentImageItem(sourceItem);
+            var targetParent = Navigation.GetParentImageItem(targetTranslationItem);
 
             if (sourceParent != null && sourceParent == targetParent)
             {
@@ -2070,8 +1641,6 @@ public partial class MainWindow : Window
 
     private void OnTreeViewDrop(object? sender, DragEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("[TreeView Drag] Drop triggered");
-
         if (!e.Data.Contains("DraggedTranslationItem")) return;
 
         var sourceItem = e.Data.Get("DraggedTranslationItem") as TranslationTreeItem;
@@ -2080,10 +1649,8 @@ public partial class MainWindow : Window
 
         if (sourceItem == null || targetItem == null || sourceItem == targetItem) return;
 
-        var parentImageItem = GetParentImageItem(sourceItem);
-        if (parentImageItem == null || parentImageItem != GetParentImageItem(targetItem)) return;
-
-        System.Diagnostics.Debug.WriteLine($"[TreeView Drag] Drop: {sourceItem.Index} -> {targetItem.Index}");
+        var parentImageItem = Navigation.GetParentImageItem(sourceItem);
+        if (parentImageItem == null || parentImageItem != Navigation.GetParentImageItem(targetItem)) return;
 
         // 获取底层数据并执行命令
         if (Document.TranslationData != null)
@@ -2100,7 +1667,7 @@ public partial class MainWindow : Window
                     int targetIndex = labels.IndexOf(targetModel);
 
                     // 执行拖拽重排命令
-                    CanvasVM.ReorderLabels(labels, sourceModel, targetIndex, targetIndex + 1);
+                    CanvasWorkspace.ReorderLabels(labels, sourceModel, targetIndex, targetIndex + 1);
                 }
             }
         }
