@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -40,8 +41,11 @@ public partial class MainWindow : Window
     
     // 树视图拖拽交互状态
     private Point _treeDragStartPoint;
-    private bool _isTreeItemDragging = false;
+    private bool _isTreeItemDragging = false;   // PENDING 状态：按下但未超过阈值
+    private bool _isDragActive = false;          // DRAGGING 状态：正在拖拽中
     private TranslationTreeItem? _draggedTreeItem;
+    private TranslationTreeItem? _currentDropTarget; // 当前放置目标
+    private TreeView? _imageTreeView;           // TreeView 引用缓存
     
     // 选中项同步防重入标志
     private bool _isSyncingSelection = false;
@@ -90,11 +94,8 @@ public partial class MainWindow : Window
             _translationTextBox.LostFocus += OnTranslationTextBoxLostFocus;
         }
         
-        // 获取树视图引用并初始化拖放
-        var imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
-        DragDrop.SetAllowDrop(imageTreeView, true);
-        imageTreeView.AddHandler(DragDrop.DragOverEvent, OnTreeViewDragOver);
-        imageTreeView.AddHandler(DragDrop.DropEvent, OnTreeViewDrop);
+        // 获取树视图引用
+        _imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
         
         // 订阅窗口关闭事件，确保清理资源
         this.Closing += OnWindowClosing;
@@ -231,27 +232,70 @@ public partial class MainWindow : Window
 
         var dialog = new Window
         {
-            Title = "未保存的更改",
-            Width = 400,
+            Title = "保存",
+            Width = 420,
             Height = 180,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
             ShowInTaskbar = false
         };
 
-        var panel = new StackPanel { Margin = new Thickness(20), Spacing = 15 };
-        panel.Children.Add(new TextBlock
+        // 根布局：上方内容区（*）+ 下方按钮栏（Auto）
+        var rootGrid = new Grid();
+        rootGrid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        rootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+
+        // 内容区：左侧叹号图标占位 + 右侧提示文本
+        var contentGrid = new Grid { Margin = new Thickness(24, 20, 24, 12) };
+        contentGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        contentGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+
+        // 叹号图标占位（资源待后续替换）
+        var iconPlaceholder = new Border
+        {
+            Width = 32,
+            Height = 32,
+            Margin = new Thickness(0, 0, 16, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            // TODO: 替换为实际叹号图标资源
+            // Child = new Image { Source = ... }
+        };
+        Grid.SetColumn(iconPlaceholder, 0);
+        contentGrid.Children.Add(iconPlaceholder);
+
+        // 提示文本
+        var textBlock = new TextBlock
         {
             Text = message,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            FontSize = 14
-        });
+            FontSize = 14,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        };
+        Grid.SetColumn(textBlock, 1);
+        contentGrid.Children.Add(textBlock);
+
+        Grid.SetRow(contentGrid, 0);
+        rootGrid.Children.Add(contentGrid);
+
+        // 底部按钮区域（含顶部分隔线）
+        var buttonArea = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Vertical,
+        };
+
+        var separator = new Border
+        {
+            Height = 1,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(204, 204, 204)),
+        };
+        buttonArea.Children.Add(separator);
 
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-            Spacing = 10
+            Spacing = 10,
+            Margin = new Thickness(0, 12, 16, 16),
         };
 
         var saveButton = new Button { Content = "保存", Width = 80 };
@@ -265,9 +309,12 @@ public partial class MainWindow : Window
         buttonPanel.Children.Add(saveButton);
         buttonPanel.Children.Add(discardButton);
         buttonPanel.Children.Add(cancelButton);
-        panel.Children.Add(buttonPanel);
+        buttonArea.Children.Add(buttonPanel);
 
-        dialog.Content = panel;
+        Grid.SetRow(buttonArea, 1);
+        rootGrid.Children.Add(buttonArea);
+
+        dialog.Content = rootGrid;
 
         await dialog.ShowDialog(this);
 
@@ -1538,11 +1585,13 @@ public partial class MainWindow : Window
         CanvasWorkspace.CenterOnLabel(targetLabel.X, targetLabel.Y);
     }
 
-    // ==================== TreeViewItem 拖拽事件处理（直接在 DataTemplate 中的元素上绑定）====================
+    // ==================== TreeViewItem 拖拽事件处理（纯 Pointer 事件 + 指针捕获）====================
+    // 状态机：IDLE → PRESSED → DRAGGING → IDLE
+    //   PRESSED: PointerPressed 后，等待超过防抖阈值
+    //   DRAGGING: 超过阈值后捕获指针，通过 hit-testing 查找放置目标
 
     private void OnTreeViewItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // 记录按下的位置和时间
         var point = e.GetCurrentPoint(sender as Control);
         if (point.Properties.IsLeftButtonPressed && sender is Control control)
         {
@@ -1555,118 +1604,122 @@ public partial class MainWindow : Window
                 _isTreeItemDragging = true;
                 _draggedTreeItem = treeItem;
             }
-            else
-            {
-            }
         }
     }
 
-    private PointerEventArgs? _savedPointerEventArgs;
-
-    private async void OnTreeViewItemPointerMoved(object? sender, PointerEventArgs e)
+    private void OnTreeViewItemPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_isTreeItemDragging || _draggedTreeItem == null) return;
-
-        // 保存 PointerEventArgs 供 DoDragDrop 使用
-        _savedPointerEventArgs = e;
-
-        var point = e.GetCurrentPoint(sender as Control);
-        var diff = point.Position - _treeDragStartPoint;
-
-        // 判断是否超过了防抖阈值 (例如 3 像素)
-        if (Math.Abs(diff.X) > 3 || Math.Abs(diff.Y) > 3)
+        // 阶段1：PENDING — 阈值检测，决定是否进入拖拽
+        if (_isTreeItemDragging && !_isDragActive && _draggedTreeItem != null)
         {
-            _isTreeItemDragging = false; // 结束指针阶段，进入 DragDrop 阶段
+            var point = e.GetCurrentPoint(sender as Control);
+            var diff = point.Position - _treeDragStartPoint;
 
-            // 拖拽前先提交当前文本编辑，防止状态丢失
-            CommitCurrentEdit();
-
-            // 使用 DataObject 设置拖拽数据
-            var dragData = new DataObject();
-            dragData.Set("DraggedTranslationItem", _draggedTreeItem);
-
-            // 启动 Avalonia 拖拽
-            if (_savedPointerEventArgs != null)
+            if (Math.Abs(diff.X) > 3 || Math.Abs(diff.Y) > 3)
             {
-                await DragDrop.DoDragDrop(_savedPointerEventArgs, dragData, DragDropEffects.Move);
+                // 进入 DRAGGING 状态
+                _isTreeItemDragging = false;
+                _isDragActive = true;
+                CommitCurrentEdit();
+
+                // 捕获指针 — 确保后续所有 Pointer 事件都发送到此控件
+                e.Pointer.Capture((Control)sender!);
+
+                // 设置拖拽光标
+                Cursor = new Cursor(StandardCursorType.SizeAll);
             }
-            _draggedTreeItem = null;
-            _savedPointerEventArgs = null;
+            return;
+        }
+
+        // 阶段2：DRAGGING — 通过 hit-testing 查找放置目标
+        if (_isDragActive && _draggedTreeItem != null && _imageTreeView != null)
+        {
+            var treeViewPos = e.GetPosition(_imageTreeView);
+            var newTarget = FindDropTarget(treeViewPos);
+
+            if (newTarget != _currentDropTarget)
+            {
+                _currentDropTarget = newTarget;
+                // 更新光标：有效目标 → Move，无效 → No
+                Cursor = (newTarget != null)
+                    ? new Cursor(StandardCursorType.SizeAll)
+                    : new Cursor(StandardCursorType.No);
+            }
         }
     }
 
     private void OnTreeViewItemPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_isDragActive && _draggedTreeItem != null && _currentDropTarget != null)
+        {
+            // 执行重排
+            PerformReorder(_draggedTreeItem, _currentDropTarget);
+        }
+
+        // 清理所有拖拽状态
+        if (_isDragActive)
+        {
+            e.Pointer.Capture(null!); // 释放指针捕获
+        }
+        _isDragActive = false;
         _isTreeItemDragging = false;
         _draggedTreeItem = null;
+        _currentDropTarget = null;
+        Cursor = null; // 恢复默认光标
     }
 
-    // ==================== TreeView 全局拖放事件处理 ====================
-
-    private void OnTreeViewDragOver(object? sender, DragEventArgs e)
+    /// <summary>
+    /// 在 TreeView 中通过坐标 hit-testing 查找有效的放置目标。
+    /// 仅允许同图片下的 TranslationTreeItem 作为目标。
+    /// </summary>
+    private TranslationTreeItem? FindDropTarget(Point positionInTreeView)
     {
-        // 验证拖拽数据是否为标注子项
-        if (!e.Data.Contains("DraggedTranslationItem"))
+        if (_imageTreeView == null || _draggedTreeItem == null) return null;
+
+        foreach (var item in _imageTreeView.GetVisualDescendants().OfType<TreeViewItem>())
         {
-            e.DragEffects = DragDropEffects.None;
-            return;
-        }
-
-        var sourceItem = e.Data.Get("DraggedTranslationItem") as TranslationTreeItem;
-        var targetControl = e.Source as Control;
-        var targetItem = targetControl?.DataContext;
-
-        if (sourceItem == null || targetItem == null)
-        {
-            e.DragEffects = DragDropEffects.None;
-            return;
-        }
-
-        // 仅允许放在 TranslationTreeItem 上
-        if (targetItem is TranslationTreeItem targetTranslationItem)
-        {
-            // 判断是否属于同一个图片 (不允许跨图片拖拽)
-            var sourceParent = Navigation.GetParentImageItem(sourceItem);
-            var targetParent = Navigation.GetParentImageItem(targetTranslationItem);
-
-            if (sourceParent != null && sourceParent == targetParent)
+            if (item.DataContext is TranslationTreeItem treeItem)
             {
-                e.DragEffects = DragDropEffects.Move;
-                return;
+                var itemPos = item.TranslatePoint(new Point(0, 0), _imageTreeView);
+                if (itemPos.HasValue)
+                {
+                    var bounds = new Rect(itemPos.Value, item.Bounds.Size);
+                    if (bounds.Contains(positionInTreeView))
+                    {
+                        // 不允许放在自身上
+                        if (treeItem == _draggedTreeItem) return null;
+
+                        // 仅允许同图片下的项
+                        var sourceParent = Navigation.GetParentImageItem(_draggedTreeItem);
+                        var targetParent = Navigation.GetParentImageItem(treeItem);
+                        if (sourceParent != null && sourceParent == targetParent)
+                            return treeItem;
+                    }
+                }
             }
         }
-
-        e.DragEffects = DragDropEffects.None;
+        return null;
     }
 
-    private void OnTreeViewDrop(object? sender, DragEventArgs e)
+    /// <summary>
+    /// 执行拖拽重排：将 sourceItem 移动到 targetItem 的位置。
+    /// </summary>
+    private void PerformReorder(TranslationTreeItem sourceItem, TranslationTreeItem targetItem)
     {
-        if (!e.Data.Contains("DraggedTranslationItem")) return;
-
-        var sourceItem = e.Data.Get("DraggedTranslationItem") as TranslationTreeItem;
-        var targetControl = e.Source as Control;
-        var targetItem = targetControl?.DataContext as TranslationTreeItem;
-
-        if (sourceItem == null || targetItem == null || sourceItem == targetItem) return;
-
         var parentImageItem = Navigation.GetParentImageItem(sourceItem);
         if (parentImageItem == null || parentImageItem != Navigation.GetParentImageItem(targetItem)) return;
 
-        // 获取底层数据并执行命令
         if (Document.TranslationData != null)
         {
             string imageName = parentImageItem.ImageName;
             if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
             {
-                // 找到对应的底层模型
                 var sourceModel = labels.FirstOrDefault(l => l.TextIndex == sourceItem.Index);
                 var targetModel = labels.FirstOrDefault(l => l.TextIndex == targetItem.Index);
 
                 if (sourceModel != null && targetModel != null)
                 {
                     int targetIndex = labels.IndexOf(targetModel);
-
-                    // 执行拖拽重排命令
                     CanvasWorkspace.ReorderLabels(labels, sourceModel, targetIndex, targetIndex + 1);
                 }
             }

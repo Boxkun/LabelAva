@@ -309,11 +309,6 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
     /// <summary>变换矩阵变更事件（code-behind 监听以同步到 UI）</summary>
     public event EventHandler? TransformChanged;
 
-    /// <summary>标签被点击事件（MainWindow 监听以同步树视图选中）</summary>
-    public event EventHandler<int>? LabelClicked;
-
-    /// <summary>标注数据变更事件（UserControl 监听以重建 Border）</summary>
-    public event EventHandler? LabelsChanged;
 
     // ========================
     // 构造函数

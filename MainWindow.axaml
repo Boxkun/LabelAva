@@ -12,8 +12,7 @@
         x:Class="LabelAva.MainWindow"
         Title="{Binding Document.WindowTitle}"
         Width="1200" Height="800"
-        WindowStartupLocation="CenterScreen"
-        DragDrop.AllowDrop="True">
+        WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <!-- 默认分组颜色资源 -->
@@ -91,7 +90,7 @@
                 </Border>
                 
                 <!-- 右侧 Panel：属性面板 -->
-                <Border Grid.Column="1" Background="#FAFAFA" DragDrop.AllowDrop="True">
+                <Border Grid.Column="1" Background="#FAFAFA">
                     <Grid RowDefinitions="*,Auto">
                         <!-- 上半部分：树状视图 -->
                         <DockPanel Grid.Row="0">

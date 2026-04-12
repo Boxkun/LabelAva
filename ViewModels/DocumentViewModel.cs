@@ -154,7 +154,7 @@ public partial class DocumentViewModel : ObservableObject
     {
         if (!IsDirty || TranslationData == null) return true;
 
-        var result = await _showUnsavedChangesDialog("检测到未保存的更改。是否保存？");
+        var result = await _showUnsavedChangesDialog("工程有尚未保存的更改。是否保存？");
 
         if (result == UnsavedChangesResult.Save)
         {
