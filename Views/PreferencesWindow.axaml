@@ -171,11 +171,11 @@
             </TabItem>
 
             <!-- 颜色设置页签 -->
-            <TabItem Header="颜色">
+            <TabItem Header="界面">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
                         <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="自定义左侧树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,8"/>
+                        <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,8"/>
 
                         <!-- 框内颜色设置 -->
                         <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
@@ -238,7 +238,7 @@
                         </Border>
 
                         <!-- 颜色格式提示 -->
-                        <TextBlock Text="提示：使用十六进制颜色代码，如 #FF0000 表示红色" FontSize="11" Foreground="#999" Margin="0,4,0,0"/>
+                        <TextBlock Text="提示：使用十六进制颜色代码" FontSize="11" Foreground="#999" Margin="0,4,0,0"/>
 
                         <!-- 重置按钮 -->
                         <Button Content="恢复默认颜色" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetColorDefaults"/>

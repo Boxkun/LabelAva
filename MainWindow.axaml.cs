@@ -7,6 +7,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using FluentIcons.Avalonia;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -74,14 +75,10 @@ public partial class MainWindow : Window
         // 初始化分组按钮快捷键提示
         UpdateGroupButtonsShortcutTips();
         
-        // 订阅快捷键设置更改事件
-        PreferencesWindow.SettingsChanged += OnShortcutSettingsChanged;
+        // 订阅首选项设置更改事件
+        PreferencesWindow.SettingsChanged += OnPreferencesChanged;
         
-        // 获取状态栏控件引用
-        // _statusText = this.FindControl<TextBlock>("_StatusText");
         StatusBar.UpdateStatus("就绪", StatusBarViewModel.StatusType.Success);
-        // _statusBar = this.FindControl<Border>("_StatusBar");
-        // _zoomText = this.FindControl<TextBlock>("_ZoomText");
         StatusBar.UpdateZoom(100);
         
         // 获取编辑面板控件引用
@@ -152,17 +149,27 @@ public partial class MainWindow : Window
     
     
     /// <summary>
-    /// 处理快捷键设置更改事件
+    /// 首选项设置更改总处理函数（合并快捷键与外观更新）
     /// </summary>
-    private void OnShortcutSettingsChanged(object? sender, ShortcutSettings settings)
+    private void OnPreferencesChanged(object? sender, ShortcutSettings settings)
     {
+        // ---- 快捷键相关更新 ----
         _shortcutSettings = settings;
         _shortcutRouter.UpdateSettings(settings);
-        
-        // 更新分组切换按钮的快捷键提示
         UpdateGroupButtonsShortcutTips();
         
-        StatusBar.UpdateStatus("快捷键设置已更新", StatusBarViewModel.StatusType.Success);
+        // ---- 外观/颜色相关更新 ----
+        GroupIndexToBrushConverter.ClearCache();
+        UpdateGroupButtonColors();
+        
+        if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
+        {
+            CanvasControl.HighlightLabel(selectedItem.Index);
+        }
+        
+        RefreshTreeView();
+        
+        StatusBar.UpdateStatus("首选项已更新", StatusBarViewModel.StatusType.Success);
     }
     
     /// <summary>
@@ -234,7 +241,7 @@ public partial class MainWindow : Window
         {
             Title = "保存",
             Width = 420,
-            Height = 180,
+            Height = 140,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
             ShowInTaskbar = false
@@ -245,37 +252,36 @@ public partial class MainWindow : Window
         rootGrid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
         rootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 
-        // 内容区：左侧叹号图标占位 + 右侧提示文本
-        var contentGrid = new Grid { Margin = new Thickness(24, 20, 24, 12) };
-        contentGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-        contentGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        // 内容区：DockPanel 实现左图标 + 右文本并排布局
+        var contentPanel = new DockPanel { Margin = new Thickness(24, 20, 24, 12) };
 
-        // 叹号图标占位（资源待后续替换）
-        var iconPlaceholder = new Border
+        // 叹号图标（FluentIcon 基于字体渲染，用 FontSize 控制大小）
+        var warningIcon = new FluentIcons.Avalonia.FluentIcon
         {
-            Width = 32,
-            Height = 32,
+            Icon = FluentIcons.Common.Icon.Warning,
+            IconVariant = FluentIcons.Common.IconVariant.Color,
+            FontSize = 48,
+            // Width = 36,
+            // Height = 36,
             Margin = new Thickness(0, 0, 16, 0),
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
-            // TODO: 替换为实际叹号图标资源
-            // Child = new Image { Source = ... }
         };
-        Grid.SetColumn(iconPlaceholder, 0);
-        contentGrid.Children.Add(iconPlaceholder);
+        DockPanel.SetDock(warningIcon, Dock.Left);
+        contentPanel.Children.Add(warningIcon);
 
-        // 提示文本
+        // 提示文本（顶部留出偏移以与图标视觉中心对齐）
         var textBlock = new TextBlock
         {
             Text = message,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             FontSize = 14,
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            Margin = new Thickness(0, 12, 0, 0),
         };
-        Grid.SetColumn(textBlock, 1);
-        contentGrid.Children.Add(textBlock);
+        contentPanel.Children.Add(textBlock);
 
-        Grid.SetRow(contentGrid, 0);
-        rootGrid.Children.Add(contentGrid);
+        Grid.SetRow(contentPanel, 0);
+        rootGrid.Children.Add(contentPanel);
 
         // 底部按钮区域（含顶部分隔线）
         var buttonArea = new StackPanel
@@ -283,18 +289,11 @@ public partial class MainWindow : Window
             Orientation = Avalonia.Layout.Orientation.Vertical,
         };
 
-        var separator = new Border
-        {
-            Height = 1,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(204, 204, 204)),
-        };
-        buttonArea.Children.Add(separator);
-
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-            Spacing = 10,
+            Spacing = 6,
             Margin = new Thickness(0, 12, 16, 16),
         };
 
@@ -484,34 +483,8 @@ public partial class MainWindow : Window
     private void OnPreferences(object? sender, RoutedEventArgs e)
     {
         var preferencesWindow = new Views.PreferencesWindow();
-
-        // 订阅设置变更事件
-        Views.PreferencesWindow.SettingsChanged += OnSettingsChanged;
-
-        preferencesWindow.Closed += (s, args) =>
-        {
-            Views.PreferencesWindow.SettingsChanged -= OnSettingsChanged;
-        };
-
+        // SettingsChanged 已在构造函数中统一订阅 OnPreferencesChanged，无需在此重复订阅
         preferencesWindow.Show();
-    }
-
-    private void OnSettingsChanged(object? sender, ShortcutSettings settings)
-    {
-        // 清除颜色缓存以应用新颜色
-        GroupIndexToBrushConverter.ClearCache();
-
-        // 刷新分组按钮颜色
-        UpdateGroupButtonColors();
-
-        // 如果有选中的标签，刷新高亮颜色
-        if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
-        {
-            CanvasControl.HighlightLabel(selectedItem.Index);
-        }
-
-        // 刷新树状视图以应用新的分组颜色
-        RefreshTreeView();
     }
 
     /// <summary>
@@ -953,10 +926,6 @@ public partial class MainWindow : Window
         }
     }
 
-
-    /// <summary>
-    /// 清除所有标注控件并解绑事件（防止内存泄漏和幽灵点击）
-    /// </summary>
     /// <summary>
     /// 根据索引选中文本节点并在树视图中聚焦
     /// </summary>
