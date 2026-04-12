@@ -7,6 +7,8 @@
         x:Class="LabelAva.Views.ImageSelectionWindow"
         Title="图片选择"
         Width="800" Height="500"
+        Background="{DynamicResource SystemChromeMediumLowBrush}"
+        TransparencyLevelHint="None"
         WindowStartupLocation="CenterOwner"
         CanResize="True">
     

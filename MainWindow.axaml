@@ -12,6 +12,9 @@
         x:Class="LabelAva.MainWindow"
         Title="{Binding Document.WindowTitle}"
         Width="1200" Height="800"
+        Background="{DynamicResource SystemChromeMediumLowBrush}"
+        Opacity="0"
+        TransparencyLevelHint="None"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>

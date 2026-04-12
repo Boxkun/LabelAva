@@ -52,6 +52,12 @@ public partial class AnnotationCanvas : UserControl
     private List<Control> _labelControls = new();
     
     // ========================
+    // 私有字段 - 设置缓存
+    // ========================
+    
+    private ShortcutSettings? _cachedSettings;
+    
+    // ========================
     // 私有字段 - 首次加载标志
     // ========================
     
@@ -302,44 +308,38 @@ public partial class AnnotationCanvas : UserControl
         _labelControls.Clear();
     }
     
+    /// <summary>更新缓存的快捷键设置（由 MainWindow 在设置变更时调用）</summary>
+    public void UpdateSettings(ShortcutSettings settings)
+    {
+        _cachedSettings = settings;
+    }
+    
     /// <summary>获取指定分组的背景颜色</summary>
     private IBrush GetGroupBrush(int groupIndex)
     {
-        try
+        var settings = _cachedSettings ?? ShortcutSettingsService.Load();
+        
+        if (settings.Colors.GroupColors.TryGetValue(groupIndex, out var colorHex) &&
+            !string.IsNullOrEmpty(colorHex) && colorHex.StartsWith("#"))
         {
-            var settings = ShortcutSettingsService.Load();
-
-            if (settings.Colors.GroupColors.TryGetValue(groupIndex, out var colorHex) &&
-                !string.IsNullOrEmpty(colorHex) && colorHex.StartsWith("#"))
+            try
             {
                 var color = Avalonia.Media.Color.Parse(colorHex);
                 return new SolidColorBrush(color, 0.8);
             }
+            catch { }
+        }
 
-            // 如果没有找到对应颜色，从默认设置中获取
-            var defaults = ColorSettings.CreateDefaults();
-            if (defaults.GroupColors.TryGetValue(groupIndex, out var defaultColorHex))
+        // 如果没有找到对应颜色，从默认设置中获取
+        var defaults = ColorSettings.CreateDefaults();
+        if (defaults.GroupColors.TryGetValue(groupIndex, out var defaultColorHex))
+        {
+            try
             {
                 var color = Avalonia.Media.Color.Parse(defaultColorHex);
                 return new SolidColorBrush(color, 0.8);
             }
-        }
-        catch
-        {
-            // 如果出错，从默认设置中获取
-            try
-            {
-                var defaults = ColorSettings.CreateDefaults();
-                if (defaults.GroupColors.TryGetValue(groupIndex, out var defaultColorHex))
-                {
-                    var color = Avalonia.Media.Color.Parse(defaultColorHex);
-                    return new SolidColorBrush(color, 0.8);
-                }
-            }
-            catch
-            {
-                // 如果还是出错，使用白色
-            }
+            catch { }
         }
 
         return new SolidColorBrush(Colors.White, 0.8);
@@ -348,41 +348,29 @@ public partial class AnnotationCanvas : UserControl
     /// <summary>获取当前设置中的选中高亮颜色</summary>
     private IBrush GetSelectedHighlightBrush()
     {
-        try
-        {
-            var settings = ShortcutSettingsService.Load();
-            var selectedColorHex = settings.Colors.SelectedColor;
+        var settings = _cachedSettings ?? ShortcutSettingsService.Load();
+        var selectedColorHex = settings.Colors.SelectedColor;
 
-            if (!string.IsNullOrEmpty(selectedColorHex) && selectedColorHex.StartsWith("#"))
+        if (!string.IsNullOrEmpty(selectedColorHex) && selectedColorHex.StartsWith("#"))
+        {
+            try
             {
                 var color = Avalonia.Media.Color.Parse(selectedColorHex);
                 return new SolidColorBrush(color, 0.9);
             }
+            catch { }
+        }
 
-            // 如果没有设置，从默认中获取
-            var defaults = ColorSettings.CreateDefaults();
-            if (!string.IsNullOrEmpty(defaults.SelectedColor))
+        // 如果没有设置，从默认中获取
+        var defaults = ColorSettings.CreateDefaults();
+        if (!string.IsNullOrEmpty(defaults.SelectedColor))
+        {
+            try
             {
                 var color = Avalonia.Media.Color.Parse(defaults.SelectedColor);
                 return new SolidColorBrush(color, 0.9);
             }
-        }
-        catch
-        {
-            // 如果出错，尝试从默认中获取
-            try
-            {
-                var defaults = ColorSettings.CreateDefaults();
-                if (!string.IsNullOrEmpty(defaults.SelectedColor))
-                {
-                    var color = Avalonia.Media.Color.Parse(defaults.SelectedColor);
-                    return new SolidColorBrush(color, 0.9);
-                }
-            }
-            catch
-            {
-                // 如果还是出错，使用白色
-            }
+            catch { }
         }
 
         return new SolidColorBrush(Colors.White, 0.9);

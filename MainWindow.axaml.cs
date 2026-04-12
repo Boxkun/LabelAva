@@ -142,9 +142,15 @@ public partial class MainWindow : Window
         // 注入回调和订阅事件
         CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
         CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
-        CanvasControl.LabelClicked += OnCanvasLabelClicked;
+        CanvasControl.LabelClicked += (_, labelIndex) => SelectLabelByIndex(labelIndex);
         CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
         CanvasControl.LabelMoved += OnCanvasLabelMoved;
+
+        this.Opened += (s, e) => 
+        {
+            // 这里的延迟是为了给 FluentIcon 预留解析时间
+            Dispatcher.UIThread.Post(() => this.Opacity = 1, DispatcherPriority.Background);
+        };
     }
     
     
@@ -159,6 +165,7 @@ public partial class MainWindow : Window
         UpdateGroupButtonsShortcutTips();
         
         // ---- 外观/颜色相关更新 ----
+        CanvasControl.UpdateSettings(settings);
         GroupIndexToBrushConverter.ClearCache();
         UpdateGroupButtonColors();
         
@@ -188,6 +195,23 @@ public partial class MainWindow : Window
             var shortcutText = ShortcutSettings.KeyGestureToString(_shortcutSettings.ToggleGroup1);
             ToolTip.SetTip(Group1RadioButton, $"切换到框外 ({shortcutText})");
         }
+    }
+    
+    /// <summary>
+    /// 获取当前图片的标签列表（常用守卫+查找模式的封装）
+    /// </summary>
+    /// <returns>如果当前有文档且图片有效且存在标签，返回标签列表；否则返回 null</returns>
+    private List<LabelItem>? TryGetCurrentLabels()
+    {
+        if (Document.TranslationData == null
+            || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
+            return null;
+
+        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
+        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+            return null;
+
+        return labels;
     }
     
     /// <summary>
@@ -244,7 +268,9 @@ public partial class MainWindow : Window
             Height = 140,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
-            ShowInTaskbar = false
+            ShowInTaskbar = false,
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
+            Background = Brushes.White
         };
 
         // 根布局：上方内容区（*）+ 下方按钮栏（Auto）
@@ -314,6 +340,8 @@ public partial class MainWindow : Window
         rootGrid.Children.Add(buttonArea);
 
         dialog.Content = rootGrid;
+        dialog.Measure(new Size(420, 140));
+        dialog.Arrange(new Rect(0, 0, 420, 140));
 
         await dialog.ShowDialog(this);
 
@@ -346,13 +374,12 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnDocumentOpened(object? sender, DocumentOpenedEventArgs e)
     {
-        // 初始化导航（TranslationData 由 DocumentViewModel 管理，通过 Document.TranslationData 访问）
+        // InitializeNavigation 内部设置 CurrentImageIndex = 0，
+        // 自动触发 CurrentImageChanged → OnNavigationCurrentImageChanged → LoadCurrentImage
         Navigation.InitializeNavigation(e.ImageFolderPath, e.ImageNames);
 
         if (Navigation.ImageNames.Count > 0)
         {
-            Navigation.CurrentImageIndex = 0;
-            LoadCurrentImage();
             Navigation.BuildTreeView(Document.TranslationData);
             ShowMainContent();
             _ = SetFocusAfterDelayAsync();
@@ -582,7 +609,7 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
         {
             var imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-            var treeItem = Navigation.TreeItems.FirstOrDefault(t => t.ImageName == imageName);
+            var treeItem = Navigation.FindTreeItemByImageName(imageName);
             if (treeItem != null)
             {
                 Navigation.CurrentTreeItem = treeItem;
@@ -652,6 +679,9 @@ public partial class MainWindow : Window
             Group0RadioButton.IsChecked = true;
         else if (groupIndex == 1 && Group1RadioButton != null)
             Group1RadioButton.IsChecked = true;
+        
+        // 统一更新分组按钮颜色
+        UpdateGroupButtonColors();
     }
 
     /// <summary>
@@ -682,7 +712,7 @@ public partial class MainWindow : Window
             {
                 Edit.SwitchGroupCommand.Execute(1);
             }
-            UpdateGroupButtonColors();
+            // RadioButton 同步和颜色更新由 OnGroupChanged 统一处理
         }
     }
 
@@ -696,7 +726,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var settings = ShortcutSettingsService.Load();
+            var settings = _shortcutSettings;
 
             // Group0 (框内) - 分组索引为1
             var group0ColorHex = settings.Colors.GroupColors.GetValueOrDefault(1, "#FFE6E6");
@@ -793,28 +823,27 @@ public partial class MainWindow : Window
     private void CommitCurrentEdit()
     {
         // 如果没有处于编辑模式，或者没有焦点/数据，直接返回
-        if (!Edit.IsEditMode || _translationTextBox == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
+        if (!Edit.IsEditMode || _translationTextBox == null)
+            return;
+
+        if (TryGetCurrentLabels() is not { } labels)
             return;
 
         // 只有当前树状图选中的是文本节点时，才需要结算
         if (Navigation.SelectedItem is TranslationTreeItem currentTreeItem)
         {
-            string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-            if (Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+            var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
+            if (labelItem != null)
             {
-                var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
-                if (labelItem != null)
-                {
-                    string newText = _translationTextBox.Text ?? string.Empty;
-                    string oldText = labelItem.Text ?? string.Empty;
+                string newText = _translationTextBox.Text ?? string.Empty;
+                string oldText = labelItem.Text ?? string.Empty;
 
-                    // 只有发生了实质性修改，才推入历史栈
-                    // 注意：如果文本没有变化，就不会触发 HistoryChanged，避免 RebuildCurrentView 清空 TextBox
-                    if (oldText != newText)
-                    {
-                        var command = new ChangeTextCommand(labelItem, oldText, newText);
-                        ViewModel.History.ExecuteCommand(command);
-                    }
+                // 只有发生了实质性修改，才推入历史栈
+                // 注意：如果文本没有变化，就不会触发 HistoryChanged，避免 RebuildCurrentView 清空 TextBox
+                if (oldText != newText)
+                {
+                    var command = new ChangeTextCommand(labelItem, oldText, newText);
+                    ViewModel.History.ExecuteCommand(command);
                 }
             }
         }
@@ -885,19 +914,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 切换到指定分组
-    /// </summary>
-    private void SwitchToGroup(int groupIndex)
-    {
-        Edit.SwitchGroupCommand.Execute(groupIndex);
-        // 同步 RadioButton 选中状态
-        if (groupIndex == 0 && Group0RadioButton != null)
-            Group0RadioButton.IsChecked = true;
-        else if (groupIndex == 1 && Group1RadioButton != null)
-            Group1RadioButton.IsChecked = true;
-    }
-
-    /// <summary>
     /// 执行快捷键动作（由 ShortcutRouter 匹配后统一调用）
     /// </summary>
     private void ExecuteShortcutAction(ShortcutAction action)
@@ -918,10 +934,10 @@ public partial class MainWindow : Window
                 }
                 break;
             case ShortcutAction.SwitchToGroup0:
-                SwitchToGroup(0);
+                Edit.SwitchGroupCommand.Execute(0);
                 break;
             case ShortcutAction.SwitchToGroup1:
-                SwitchToGroup(1);
+                Edit.SwitchGroupCommand.Execute(1);
                 break;
         }
     }
@@ -931,22 +947,13 @@ public partial class MainWindow : Window
     /// </summary>
     private void SelectLabelByIndex(int labelIndex)
     {
-        if (Navigation.CurrentTreeItem == null) return;
+        // 委托到 NavigationViewModel 执行核心选中逻辑
+        Navigation.SelectLabelByIndex(labelIndex);
         
-        // 在当前图片的翻译列表中查找对应索引的项
-        var translationItem = Navigation.CurrentTreeItem.Translations.FirstOrDefault(t => t.Index == labelIndex);
-        
-        if (translationItem != null)
+        // UI 层补充操作
+        if (Navigation.SelectedItem != null)
         {
-            // 选中树视图中的节点
-            Navigation.SelectedItem = translationItem;
-            
-            // 确保树节点已展开
-            Navigation.CurrentTreeItem.IsExpanded = true;
-            
-            // 聚焦到树视图，以便键盘导航
             ImageTreeView.Focus();
-            
             StatusBar.UpdateStatus($"已选中标注 #{labelIndex}", StatusBarViewModel.StatusType.Info);
         }
     }
@@ -961,7 +968,7 @@ public partial class MainWindow : Window
 
         string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
         
-        // 确保字典中有该图片的数据列表
+        // 确保字典中有该图片的数据列表（TryGetCurrentLabels 不适用，因为此处需要创建新列表）
         if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
         {
             labels = new List<LabelItem>();
@@ -1024,11 +1031,6 @@ public partial class MainWindow : Window
     
     // ==================== ImageContainer 事件处理 ====================
     
-    private void OnCanvasLabelClicked(object? sender, int labelIndex)
-    {
-        SelectLabelByIndex(labelIndex);
-    }
-    
     private void OnCanvasAddLabelRequested(object? sender, (double pixelX, double pixelY) coords)
     {
         // 检查是否在编辑模式
@@ -1039,10 +1041,10 @@ public partial class MainWindow : Window
         if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
             return;
         
-        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+        var labels = TryGetCurrentLabels();
+        if (labels == null)
         {
-            // 没有现有标签，直接添加
+            // 当前图片尚无标签，直接添加
             AddNewLabel(coords.pixelX, coords.pixelY);
             return;
         }
@@ -1068,11 +1070,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnCanvasLabelMoved(object? sender, (int textIndex, double oldNormX, double oldNormY, double newNormX, double newNormY) args)
     {
-        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
-            return;
-        
-        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (TryGetCurrentLabels() is not { } labels)
             return;
         
         var label = labels.FirstOrDefault(l => l.TextIndex == args.textIndex);
@@ -1098,16 +1096,11 @@ public partial class MainWindow : Window
         if (CanvasControl.CurrentImagePath == null || Navigation.TreeItems.Count == 0) return;
         
         string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-        
-        // 找到对应的 ImageTreeItem 并保存 fit 比例
-        foreach (var item in Navigation.TreeItems)
+        var item = Navigation.FindTreeItemByImageName(imageName);
+        if (item != null)
         {
-            if (item.ImageName == imageName)
-            {
-                item.FitScale = fitScale;
-                Navigation.CurrentTreeItem = item;
-                break;
-            }
+            item.FitScale = fitScale;
+            Navigation.CurrentTreeItem = item;
         }
     }
     
@@ -1119,12 +1112,7 @@ public partial class MainWindow : Window
     private void UpdateLabels()
     {
         // 没有图片或翻译数据时返回
-        if (CanvasControl.CurrentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
-            return;
-
-        // 获取当前图片的文件名（作为键）
-        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (CanvasControl.CurrentImage == null || TryGetCurrentLabels() is not { } labels)
             return;
 
         // 通过 CanvasControl 更新标注显示，并高亮当前选中项
@@ -1168,13 +1156,10 @@ public partial class MainWindow : Window
             
             // 找到当前图片对应的树视图项
             string imageName = Path.GetFileName(imagePath);
-            foreach (var item in Navigation.TreeItems)
+            var treeItem = Navigation.FindTreeItemByImageName(imageName);
+            if (treeItem != null)
             {
-                if (item.ImageName == imageName)
-                {
-                    Navigation.CurrentTreeItem = item;
-                    break;
-                }
+                Navigation.CurrentTreeItem = treeItem;
             }
             
             // 通知 CanvasWorkspace 图片尺寸
@@ -1269,12 +1254,7 @@ public partial class MainWindow : Window
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
 
-        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
-            return;
-
-        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (TryGetCurrentLabels() is not { } labels)
             return;
 
         var labelToToggle = labels.FirstOrDefault(l => l.TextIndex == translationItem.Index);
@@ -1302,13 +1282,7 @@ public partial class MainWindow : Window
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
         
-        if (Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
-            return;
-        
-        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-        
-        // 获取当前图片的所有标签
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (TryGetCurrentLabels() is not { } labels)
             return;
         
         // 找到要删除的项
@@ -1357,12 +1331,11 @@ public partial class MainWindow : Window
         }
 
         // 2. 图片切换（委托给 NavigationViewModel 判断）
+        // TrySwitchToImage 内部修改 CurrentImageIndex → 触发 CurrentImageChanged
+        // → OnNavigationCurrentImageChanged 自动执行 LoadCurrentImage + CalculateFitTransform + UpdateLabels
         if (targetRootItem != null && Navigation.TrySwitchToImage(targetRootItem.ImageName))
         {
-            LoadCurrentImage();
-            CalculateFitTransform();
-            // TransformChanged 事件会自动同步 ApplyTransform + StatusBar.UpdateZoom
-            UpdateLabels();
+            // 图片切换的 UI 更新已由 CurrentImageChanged 事件处理，此处无需额外操作
         }
 
         // 2. 动态展开/收起逻辑 (手风琴效果)
@@ -1529,12 +1502,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void CenterOnLabel(int labelIndex)
     {
-        if (CanvasControl.CurrentImage == null || Document.TranslationData == null || string.IsNullOrEmpty(CanvasControl.CurrentImagePath))
-            return;
-        
-        // 获取当前图片的标注数据
-        string imageName = Path.GetFileName(CanvasControl.CurrentImagePath);
-        if (!Document.TranslationData.ImageLabels.TryGetValue(imageName, out var labels))
+        if (CanvasControl.CurrentImage == null || TryGetCurrentLabels() is not { } labels)
             return;
         
         // 找到对应编号的标注

@@ -196,6 +196,12 @@ public partial class NavigationViewModel : ObservableObject
         return TreeItems.FirstOrDefault(root => root.Translations.Contains(child));
     }
 
+    /// <summary>根据图片名查找对应的 ImageTreeItem</summary>
+    public ImageTreeItem? FindTreeItemByImageName(string imageName)
+    {
+        return TreeItems.FirstOrDefault(t => t.ImageName == imageName);
+    }
+
     /// <summary>获取当前可见的树视图项列表（展开的节点包含子项）</summary>
     public List<object> GetVisibleItems()
     {
