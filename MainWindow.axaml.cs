@@ -29,7 +29,7 @@ namespace LabelAva;
 public partial class MainWindow : Window
 {
     // 快捷键设置
-    private ShortcutSettings _shortcutSettings;
+    private ShortcutSettings? _shortcutSettings;
     private ShortcutRouter _shortcutRouter = null!;
     
     // 编辑模式相关
@@ -51,6 +51,9 @@ public partial class MainWindow : Window
     // 选中项同步防重入标志
     private bool _isSyncingSelection = false;
 
+    // 异步初始化标志：防止初始化完成前的空引用
+    private bool _isInitialized = false;
+
     // 分组单选按钮（Avalonia 自动生成 x:Name 字段）
     
     public MainWindowViewModel ViewModel => ((MainWindowViewModel)DataContext!);
@@ -67,32 +70,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
-        
-        // 加载快捷键设置
-        _shortcutSettings = ShortcutSettingsService.Load();
-        _shortcutRouter = new ShortcutRouter(_shortcutSettings);
-        
-        // 初始化分组按钮快捷键提示
-        UpdateGroupButtonsShortcutTips();
-        
-        // 订阅首选项设置更改事件
-        PreferencesWindow.SettingsChanged += OnPreferencesChanged;
-        
-        StatusBar.UpdateStatus("就绪", StatusBarViewModel.StatusType.Success);
-        StatusBar.UpdateZoom(100);
-        
-        // 获取编辑面板控件引用
-        _translationTextBox = this.FindControl<TextBox>("TranslationTextBox");
-        _editPanel = this.FindControl<Border>("EditPanel");
 
-        // 订阅文本框失去焦点事件（用于实现命令模式的文本编辑）
-        if (_translationTextBox != null)
-        {
-            _translationTextBox.LostFocus += OnTranslationTextBoxLostFocus;
-        }
-        
-        // 获取树视图引用
-        _imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
+        // ===== 仅保留窗口级事件订阅（不依赖任何 VM） =====
         
         // 订阅窗口关闭事件，确保清理资源
         this.Closing += OnWindowClosing;
@@ -100,60 +79,97 @@ public partial class MainWindow : Window
         // 订阅鼠标按键事件（用于处理鼠标侧键快捷键）
         this.PointerPressed += OnMainWindowPointerPressed;
         
-        // 初始化历史记录管理器（通过 HistoryViewModel 封装）
-        var historyManager = new HistoryManager();
-        ViewModel.History = new HistoryViewModel(historyManager, CommitCurrentEdit, StatusBar);
-        ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
-        
-        // 初始化画布视图模型（合并原 ImageViewportViewModel + 标签操作）
-        ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
-        ViewModel.CanvasWorkspace.TransformChanged += OnCanvasTransformChanged;
-        
-        // 初始化编辑视图模型（仅编辑模式状态，标签操作已迁入 CanvasWorkspaceViewModel）
-        ViewModel.Edit = new EditViewModel(StatusBar);
-        ViewModel.Edit.EditModeChanged += OnEditModeChanged;
-        ViewModel.Edit.GroupChanged += OnGroupChanged;
-        
-        // 初始化导航视图模型
-        ViewModel.Navigation = new NavigationViewModel(StatusBar);
-        ViewModel.Navigation.CurrentImageChanged += OnNavigationCurrentImageChanged;
-        ViewModel.Navigation.SelectedItemChanged += OnNavigationSelectedItemChanged;
-        
-        // 初始化文档视图模型
-        var fileService = new FileDialogService(() => GetTopLevel(this));
-        ViewModel.Document = new DocumentViewModel(
-            fileService,
-            ViewModel.History,
-            StatusBar,
-            ShowUnsavedChangesDialogAsync,
-            ShowImageSelectionDialogAsync
-        );
-        ViewModel.Document.DocumentOpened += OnDocumentOpened;
-        ViewModel.Document.DocumentClosed += OnDocumentClosed;
-
-        // 订阅画布变换矩阵变更事件（同步矩阵到 UI 控件 + 状态栏 + FitScale）
-        // （已在上方 CanvasWorkspace 初始化时订阅）
-
-        // 【新增】注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
+        // 注册全局快捷键隧道拦截，在控件捕获前优先接管撤销/重做
         // Ctrl+Enter 提交功能也在这里处理（兼容主键盘 Return 和数字小键盘 Enter）
         this.AddHandler(InputElement.KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
         
-        // ==================== AnnotationCanvas 初始化 ====================
-        // 注入回调和订阅事件
-        CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
-        CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
-        CanvasControl.LabelClicked += (_, labelIndex) => SelectLabelByIndex(labelIndex);
-        CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
-        CanvasControl.LabelMoved += OnCanvasLabelMoved;
-
-        this.Opened += (s, e) => 
-        {
-            // 这里的延迟是为了给 FluentIcon 预留解析时间
-            Dispatcher.UIThread.Post(() => this.Opacity = 1, DispatcherPriority.Background);
-        };
+        // 异步初始化入口
+        this.Opened += OnWindowFirstOpened;
     }
     
     
+    /// <summary>
+    /// 首次打开窗口时的处理：等待首帧渲染完成后显示窗口
+    /// </summary>
+    private async void OnWindowFirstOpened(object? sender, EventArgs e)
+    {
+        this.Opened -= OnWindowFirstOpened;
+
+        // 等待首帧渲染完成（Render 优先级确保布局+渲染 pass 已执行）
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+        // 首帧已上屏，安全地显示窗口
+        this.Opacity = 1;
+
+        // 异步执行重工作
+        await InitializeAsync();
+    }
+
+    /// <summary>
+    /// 异步初始化方法：在后台执行文件 I/O + VM 创建 + 事件订阅
+    /// </summary>
+    private async Task InitializeAsync()
+    {
+        try
+        {
+            // ---- Phase 1: 文件 I/O 移到后台线程 ----
+            _shortcutSettings = await Task.Run(() => ShortcutSettingsService.Load());
+            _shortcutRouter = new ShortcutRouter(_shortcutSettings);
+
+            // ---- Phase 2: UI 线程上的轻量操作 ----
+            UpdateGroupButtonsShortcutTips();
+            PreferencesWindow.SettingsChanged += OnPreferencesChanged;
+
+            StatusBar.UpdateStatus("就绪", StatusBarViewModel.StatusType.Success);
+            StatusBar.UpdateZoom(100);
+
+            _translationTextBox = this.FindControl<TextBox>("TranslationTextBox");
+            _editPanel = this.FindControl<Border>("EditPanel");
+            if (_translationTextBox != null)
+                _translationTextBox.LostFocus += OnTranslationTextBoxLostFocus;
+
+            _imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
+
+            // ---- Phase 3: VM 创建（有依赖顺序） ----
+            var historyManager = new HistoryManager();
+            ViewModel.History = new HistoryViewModel(historyManager, CommitCurrentEdit, StatusBar);
+            ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
+
+            ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
+            ViewModel.CanvasWorkspace.TransformChanged += OnCanvasTransformChanged;
+
+            ViewModel.Edit = new EditViewModel(StatusBar);
+            ViewModel.Edit.EditModeChanged += OnEditModeChanged;
+            ViewModel.Edit.GroupChanged += OnGroupChanged;
+
+            ViewModel.Navigation = new NavigationViewModel(StatusBar);
+            ViewModel.Navigation.CurrentImageChanged += OnNavigationCurrentImageChanged;
+            ViewModel.Navigation.SelectedItemChanged += OnNavigationSelectedItemChanged;
+
+            var fileService = new FileDialogService(() => GetTopLevel(this));
+            ViewModel.Document = new DocumentViewModel(
+                fileService, ViewModel.History, StatusBar,
+                ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync
+            );
+            ViewModel.Document.DocumentOpened += OnDocumentOpened;
+            ViewModel.Document.DocumentClosed += OnDocumentClosed;
+
+            // ---- Phase 4: Canvas 初始化 ----
+            CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
+            CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
+            CanvasControl.LabelClicked += (_, labelIndex) => SelectLabelByIndex(labelIndex);
+            CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
+            CanvasControl.LabelMoved += OnCanvasLabelMoved;
+
+            // 初始化完成
+            _isInitialized = true;
+        }
+        catch (Exception ex)
+        {
+            StatusBar.UpdateStatus($"初始化失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
+        }
+    }
+
     /// <summary>
     /// 首选项设置更改总处理函数（合并快捷键与外观更新）
     /// </summary>
@@ -538,6 +554,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnHistoryStateChanged(object? sender, EventArgs e)
     {
+        // 【防卫】初始化未完成前不处理
+        if (!_isInitialized)
+            return;
+
         // 仅在文档打开时设置脏标记（避免关闭文档时 _history.Clear() 触发 SetDirty 覆盖 IsDirty=false）
         if (Document.HasDocument)
         {
@@ -822,6 +842,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void CommitCurrentEdit()
     {
+        // 【防卫】初始化未完成前不处理
+        if (!_isInitialized)
+            return;
+
         // 如果没有处于编辑模式，或者没有焦点/数据，直接返回
         if (!Edit.IsEditMode || _translationTextBox == null)
             return;
@@ -856,31 +880,26 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
+        // 【防卫】初始化未完成前只处理 Ctrl+Enter（不依赖任何 VM）
+        if (!_isInitialized)
+        {
+            var modifiersEarly = e.KeyModifiers;
+            bool isCtrlPressedEarly = (modifiersEarly & KeyModifiers.Control) != 0 || (modifiersEarly & KeyModifiers.Meta) != 0;
+            if (isCtrlPressedEarly && (e.Key == Key.Return || e.Key == Key.Enter))
+            {
+                if (_translationTextBox != null && _translationTextBox.IsFocused)
+                {
+                    CommitCurrentEdit();
+                    e.Handled = true;
+                }
+            }
+            return;
+        }
+
         var modifiers = e.KeyModifiers;
         // 兼容 Windows (Control) 和 Mac (Meta)
         bool isCtrlPressed = (modifiers & KeyModifiers.Control) != 0 || (modifiers & KeyModifiers.Meta) != 0;
         bool isShiftPressed = (modifiers & KeyModifiers.Shift) != 0;
-
-        // 【新增修复】：优先处理 Ctrl+Enter 提交并失焦
-        // 兼容主键盘 Return 和数字小键盘 Enter
-        if (isCtrlPressed && (e.Key == Key.Return || e.Key == Key.Enter))
-        {
-            // 检查 TextBox 是否有焦点
-            if (_translationTextBox != null && _translationTextBox.IsFocused)
-            {
-                CommitCurrentEdit();
-                e.Handled = true;
-
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    // 获取顶级窗口并强制清空焦点管理器中的当前焦点
-                    var topLevel = TopLevel.GetTopLevel(this);
-                    topLevel?.FocusManager?.ClearFocus();
-                });
-                
-                return;
-            }
-        }
 
         // ========== 撤销/重做：通过隧道拦截，手动路由到 HistoryViewModel Command ==========
         // 必须在隧道阶段拦截，防止 TextBox 等原生控件触发内置撤销逻辑

@@ -2,9 +2,19 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Avalonia.Input;
 
 namespace LabelAva.Services;
+
+/// <summary>
+/// AOT-友好的 JSON 序列化上下文
+/// Source Generator 在编译时生成序列化代码，支持 AOT 和 Trimming
+/// </summary>
+[JsonSerializable(typeof(ShortcutSettingsDto))]
+[JsonSerializable(typeof(ColorSettingsDto))]
+[JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+public partial class ShortcutSettingsContext : JsonSerializerContext { }
 
 /// <summary>
 /// 快捷键设置持久化服务
@@ -29,10 +39,10 @@ public static class ShortcutSettingsService
         {
             // 【绿色软件规则】配置保存在可执行文件同一目录，无需额外创建目录
             
-            var json = JsonSerializer.Serialize(new ShortcutSettingsDto(settings), new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(
+                new ShortcutSettingsDto(settings), 
+                ShortcutSettingsContext.Default.ShortcutSettingsDto
+            );
             
             File.WriteAllText(SettingsFile, json);
         }
@@ -55,7 +65,10 @@ public static class ShortcutSettingsService
             }
             
             var json = File.ReadAllText(SettingsFile);
-            var dto = JsonSerializer.Deserialize<ShortcutSettingsDto>(json);
+            var dto = JsonSerializer.Deserialize(
+                json, 
+                ShortcutSettingsContext.Default.ShortcutSettingsDto
+            );
             
             if (dto != null)
             {
