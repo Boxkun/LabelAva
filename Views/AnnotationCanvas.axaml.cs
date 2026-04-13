@@ -134,6 +134,12 @@ public partial class AnnotationCanvas : UserControl
             _currentImage = new Bitmap(imagePath);
             _currentImagePath = imagePath;
             
+            // 首次加载时隐藏 ImageWrapper，避免在 Fit 变换计算完成前以 Identity 矩阵渲染导致缩放跳变
+            if (!_isFirstImageLoaded)
+            {
+                ImageWrapper.Opacity = 0;
+            }
+            
             // 设置图片源
             MainImage.Source = _currentImage;
         }
@@ -252,6 +258,7 @@ public partial class AnnotationCanvas : UserControl
             return;
         
         var containerBounds = new Rect(0, 0, ImageContainer.Bounds.Width, ImageContainer.Bounds.Height);
+        
         if (containerBounds.Width <= 0 || containerBounds.Height <= 0)
         {
             // 容器未准备好，重试
@@ -281,12 +288,16 @@ public partial class AnnotationCanvas : UserControl
         _isFirstImageLoaded = false;
         ClearLabelControls();
         MainImage.Source = null;
+        // 重置可见性，确保下次首次加载时隐藏逻辑正常工作
+        ImageWrapper.Opacity = 1;
     }
     
     /// <summary>标记首次加载已完成（MainWindow 在首次 FitTransform 后调用）</summary>
     public void MarkFirstImageLoaded()
     {
         _isFirstImageLoaded = true;
+        // Fit 变换已计算完成，恢复 ImageWrapper 可见性
+        ImageWrapper.Opacity = 1;
     }
     
     // ========================
