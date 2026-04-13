@@ -62,12 +62,14 @@
             <Grid ColumnDefinitions="*,Auto">
                 <Border x:Name="_StatusBar" 
                         Classes="status-bar"
+                        Classes.status-info="{Binding IsInfo}"
                         Classes.status-success="{Binding IsSuccess}"
                         Classes.status-warn="{Binding IsWarn}"
                         Classes.status-error="{Binding IsError}"
                         HorizontalAlignment="Left" CornerRadius="4" Padding="8,2">
                      <TextBlock Text="{Binding StatusText}"
                                 Classes="status-text"
+                                Classes.status-info="{Binding IsInfo}"
                                 Classes.status-success="{Binding IsSuccess}"
                                 Classes.status-warn="{Binding IsWarn}"
                                 Classes.status-error="{Binding IsError}"

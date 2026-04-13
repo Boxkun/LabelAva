@@ -262,7 +262,7 @@ public partial class DocumentViewModel : ObservableObject
 
         if (imageFiles.Count == 0)
         {
-            _statusBar.UpdateStatus("所选文件夹中没有找到图片文件", StatusBarViewModel.StatusType.Warn);
+            _statusBar.UpdateStatus("所选文件夹中未找到图片文件", StatusBarViewModel.StatusType.Warn);
             return;
         }
 

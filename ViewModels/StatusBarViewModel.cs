@@ -29,6 +29,7 @@ public partial class StatusBarViewModel : ObservableObject
 
     private int _statusMessageId = 0;
 
+    public bool IsInfo => CurrentStatusType == StatusType.Info;
     public bool IsSuccess => CurrentStatusType == StatusType.Success;
     public bool IsWarn => CurrentStatusType == StatusType.Warn;
     public bool IsError => CurrentStatusType == StatusType.Error;
@@ -74,6 +75,7 @@ public partial class StatusBarViewModel : ObservableObject
 
     partial void OnCurrentStatusTypeChanged(StatusType value)
     {
+        OnPropertyChanged(nameof(IsInfo));
         OnPropertyChanged(nameof(IsSuccess));
         OnPropertyChanged(nameof(IsWarn));
         OnPropertyChanged(nameof(IsError));

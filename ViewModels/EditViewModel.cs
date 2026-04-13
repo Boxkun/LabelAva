@@ -54,8 +54,8 @@ public partial class EditViewModel : ObservableObject
         CurrentGroupIndex = groupIndex;
         GroupChanged?.Invoke(this, EventArgs.Empty);
         _statusBar.UpdateStatus(
-            $"当前分组：{(groupIndex == 0 ? "框内" : "框外")}，点击图片添加标记",
-            StatusBarViewModel.StatusType.Info);
+            $"当前分组：{(groupIndex == 0 ? "框内" : "框外")}"
+            );
     }
 
     // ========================
@@ -82,9 +82,9 @@ public partial class EditViewModel : ObservableObject
             EditModeChanged?.Invoke(this, EventArgs.Empty);
 
             _statusBar.UpdateStatus(
-                value ? "已进入编辑模式：左键点击图片以新建标签，中键/右键拖动平移"
-                       : "已退出编辑模式",
-                value ? StatusBarViewModel.StatusType.Success
+                value ? "编辑模式：左键点击图片以新建标签，中键/右键拖动平移"
+                       : "查看模式",
+                value ? StatusBarViewModel.StatusType.Info
                        : StatusBarViewModel.StatusType.Info);
         }
     }

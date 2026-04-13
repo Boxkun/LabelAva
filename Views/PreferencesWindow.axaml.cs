@@ -16,11 +16,12 @@ public partial class PreferencesWindow : Window
     // 当前正在捕获按键的按钮
     private Button? _capturingButton;
     
-    // 标志：设置是否有未保存的变更（窗口关闭时统一保存通知）
-    private bool _hasChanges = false;
+    private SettingsChangeKind _changeKind = SettingsChangeKind.None;
 
-    // 静态事件用于通知 MainWindow 设置已更改
-    public static event EventHandler<ShortcutSettings>? SettingsChanged;
+    // 防止 UpdateUI() 程序化赋值时触发变更处理器
+    private bool _isUpdatingUI = false;
+
+    public static event EventHandler<(ShortcutSettings settings, SettingsChangeKind changes, bool isPreview)>? SettingsChanged;
     
     public PreferencesWindow()
     {
@@ -49,32 +50,46 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private void UpdateUI()
     {
-        // 更新导航上
-        UpdateButtonDisplay(NavigateUpButton, NavigateUpText, _settings.NavigateUp);
-
-        // 更新导航上（次要）
-        UpdateButtonDisplay(NavigateUpSecondaryButton, NavigateUpSecondaryText, _settings.NavigateUpSecondary);
-
-        // 更新导航下
-        UpdateButtonDisplay(NavigateDownButton, NavigateDownText, _settings.NavigateDown);
-
-        // 更新导航下（次要）
-        UpdateButtonDisplay(NavigateDownSecondaryButton, NavigateDownSecondaryText, _settings.NavigateDownSecondary);
-
-        // 更新复制文本
-        UpdateButtonDisplay(CopyTextButton, CopyTextText, _settings.CopyText);
-
-        // 更新分组切换
-        UpdateButtonDisplay(ToggleGroup0Button, ToggleGroup0Text, _settings.ToggleGroup0);
-        UpdateButtonDisplay(ToggleGroup1Button, ToggleGroup1Text, _settings.ToggleGroup1);
-
-        // 更新颜色设置
-        UpdateColorUI();
-
-        // 更新自动聚焦设置
-        if (AutoFocusCheckBox != null)
+        _isUpdatingUI = true;
+        try
         {
-            AutoFocusCheckBox.IsChecked = _settings.AutoFocusTextBox;
+            // 更新导航上
+            UpdateButtonDisplay(NavigateUpButton, NavigateUpText, _settings.NavigateUp);
+
+            // 更新导航上（次要）
+            UpdateButtonDisplay(NavigateUpSecondaryButton, NavigateUpSecondaryText, _settings.NavigateUpSecondary);
+
+            // 更新导航下
+            UpdateButtonDisplay(NavigateDownButton, NavigateDownText, _settings.NavigateDown);
+
+            // 更新导航下（次要）
+            UpdateButtonDisplay(NavigateDownSecondaryButton, NavigateDownSecondaryText, _settings.NavigateDownSecondary);
+
+            // 更新复制文本
+            UpdateButtonDisplay(CopyTextButton, CopyTextText, _settings.CopyText);
+
+            // 更新分组切换
+            UpdateButtonDisplay(ToggleGroup0Button, ToggleGroup0Text, _settings.ToggleGroup0);
+            UpdateButtonDisplay(ToggleGroup1Button, ToggleGroup1Text, _settings.ToggleGroup1);
+
+            // 更新颜色设置
+            UpdateColorUI();
+
+            // 更新自动聚焦设置
+            if (AutoFocusCheckBox != null)
+            {
+                AutoFocusCheckBox.IsChecked = _settings.AutoFocusTextBox;
+            }
+            
+            // 更新标号大小设置
+            if (LabelSizeUpDown != null)
+            {
+                LabelSizeUpDown.Value = _settings.LabelSize;
+            }
+        }
+        finally
+        {
+            _isUpdatingUI = false;
         }
     }
 
@@ -135,6 +150,7 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private void OnGroup0ColorChanged(object? sender, TextChangedEventArgs e)
     {
+        if (_isUpdatingUI) return;
         var textBox = sender as TextBox;
         if (textBox == null) return;
 
@@ -143,7 +159,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.Colors.GroupColors[1] = colorHex!;
             UpdateColorPreview(Group0ColorPreview, colorHex);
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Colors;
         }
     }
 
@@ -152,6 +168,7 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private void OnGroup1ColorChanged(object? sender, TextChangedEventArgs e)
     {
+        if (_isUpdatingUI) return;
         var textBox = sender as TextBox;
         if (textBox == null) return;
 
@@ -160,7 +177,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.Colors.GroupColors[2] = colorHex!;
             UpdateColorPreview(Group1ColorPreview, colorHex);
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Colors;
         }
     }
 
@@ -169,6 +186,7 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private void OnSelectedColorChanged(object? sender, TextChangedEventArgs e)
     {
+        if (_isUpdatingUI) return;
         var textBox = sender as TextBox;
         if (textBox == null) return;
 
@@ -177,7 +195,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.Colors.SelectedColor = colorHex!;
             UpdateColorPreview(SelectedColorPreview, colorHex);
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Colors;
         }
     }
 
@@ -206,7 +224,7 @@ public partial class PreferencesWindow : Window
     {
         _settings.Colors = ColorSettings.CreateDefaults();
         UpdateColorUI();
-        _hasChanges = true;
+        _changeKind |= SettingsChangeKind.Colors;
     }
     
     /// <summary>
@@ -239,7 +257,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateUp = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
     
@@ -252,7 +270,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateUpSecondary = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
     
@@ -265,7 +283,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateDown = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
     
@@ -278,7 +296,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.NavigateDownSecondary = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
     
@@ -291,7 +309,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.CopyText = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
 
@@ -300,10 +318,24 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private void OnAutoFocusChanged(object? sender, RoutedEventArgs e)
     {
+        if (_isUpdatingUI) return;
         if (AutoFocusCheckBox == null) return;
 
         _settings.AutoFocusTextBox = AutoFocusCheckBox.IsChecked == true;
-        _hasChanges = true;
+        _changeKind |= SettingsChangeKind.AutoFocus;
+    }
+    
+    /// <summary>
+    /// 处理标号大小变更（实时预览，不保存到文件；关闭窗口时统一保存）
+    /// </summary>
+    private void OnLabelSizeChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (_isUpdatingUI) return;
+        if (LabelSizeUpDown == null) return;
+
+        _settings.LabelSize = (int)(LabelSizeUpDown.Value ?? 64);
+        _changeKind |= SettingsChangeKind.LabelSize;
+        NotifySettingsChanged(SettingsChangeKind.LabelSize, isPreview: true);
     }
     
     /// <summary>
@@ -315,7 +347,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.ToggleGroup0 = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
     
@@ -328,7 +360,7 @@ public partial class PreferencesWindow : Window
         {
             _settings.ToggleGroup1 = gesture;
             UpdateUI();
-            _hasChanges = true;
+            _changeKind |= SettingsChangeKind.Shortcuts;
         });
     }
     
@@ -527,7 +559,7 @@ public partial class PreferencesWindow : Window
     {
         _settings = ShortcutSettings.CreateDefaults();
         UpdateUI();
-        _hasChanges = true;
+        _changeKind |= SettingsChangeKind.All;
     }
     
     /// <summary>
@@ -535,31 +567,24 @@ public partial class PreferencesWindow : Window
     /// </summary>
     private void SaveAndNotify()
     {
-        // 保存到文件
         ShortcutSettingsService.Save(_settings);
-        
-        // 通知更改
-        NotifySettingsChanged();
+        NotifySettingsChanged(_changeKind, isPreview: false);
     }
     
-    /// <summary>
-    /// 通知设置已更改
-    /// </summary>
-    private void NotifySettingsChanged()
+    private void NotifySettingsChanged(SettingsChangeKind changes, bool isPreview)
     {
-        SettingsChanged?.Invoke(this, _settings);
+        SettingsChanged?.Invoke(this, (_settings, changes, isPreview));
     }
     
-    /// <summary>
-    /// 窗口关闭时统一保存并通知变更
-    /// </summary>
     private void OnPreferencesWindowClosed(object? sender, EventArgs e)
     {
         this.Closed -= OnPreferencesWindowClosed;
         
-        if (_hasChanges)
+        if (_changeKind != SettingsChangeKind.None)
         {
-            SaveAndNotify();
+            ShortcutSettingsService.Save(_settings);
+            SettingsChanged?.Invoke(this, (_settings, _changeKind, isPreview: false));
+            _changeKind = SettingsChangeKind.None;
         }
     }
     

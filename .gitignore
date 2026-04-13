@@ -3,6 +3,7 @@
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+binDebugnet10.0testbuild/
 
 # Visual Studio files
 .vs/
@@ -101,3 +102,5 @@ mono_crash.*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+plans/

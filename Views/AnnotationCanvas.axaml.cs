@@ -160,6 +160,10 @@ public partial class AnnotationCanvas : UserControl
         if (imageWidth <= 0 || imageHeight <= 0)
             return;
         
+        int labelSize = GetLabelSize();
+        double halfSize = labelSize / 2.0;
+        var matrix = (DataContext as CanvasWorkspaceViewModel)?.TransformMatrix ?? Matrix.Identity;
+        
         foreach (var label in labels)
         {
             // 根据分组获取对应的背景颜色
@@ -167,20 +171,20 @@ public partial class AnnotationCanvas : UserControl
 
             var border = new Border
             {
-                Width = 64,
-                Height = 64,
+                Width = labelSize,
+                Height = labelSize,
                 Background = groupBrush,
-                CornerRadius = new CornerRadius(16),
+                CornerRadius = new CornerRadius(labelSize / 4.0),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                // 存储元组 (TextIndex, GroupIndex) 用于后续高亮匹配
-                Tag = (label.TextIndex, label.GroupIndex),
+                // 存储元组 (TextIndex, GroupIndex, NormX, NormY) 用于后续高亮匹配和位置更新
+                Tag = (label.TextIndex, label.GroupIndex, label.X, label.Y),
                 Classes = { "label-marker" },
                 Child = new TextBlock
                 {
                     Text = label.TextIndex.ToString(),
                     Foreground = Brushes.White,
-                    FontSize = 48,
+                    FontSize = labelSize * 0.75,
                     FontFamily = new FontFamily("Sarasa Mono SC"),
                     FontWeight = FontWeight.Bold,
                     TextAlignment = TextAlignment.Center,
@@ -194,13 +198,15 @@ public partial class AnnotationCanvas : UserControl
             border.PointerMoved += OnLabelMarkerPointerMoved;
             border.PointerReleased += OnLabelMarkerPointerReleased;
             
-            // 设置归一化坐标对应的像素位置
-            Canvas.SetLeft(border, label.X * imageWidth - 32);
-            Canvas.SetTop(border, label.Y * imageHeight - 32);
+            // 通过变换矩阵将图像像素坐标转换为屏幕坐标定位标签
+            var screenPoint = matrix.Transform(new Point(label.X * imageWidth, label.Y * imageHeight));
+            Canvas.SetLeft(border, screenPoint.X - halfSize);
+            Canvas.SetTop(border, screenPoint.Y - halfSize);
             
             border.ZIndex = 10;
             
-            ImageWrapper.Children.Add(border);
+            // 标签添加到 ImageCanvas（不受 ImageWrapper 的 RenderTransform 影响）
+            ImageCanvas.Children.Add(border);
             _labelControls.Add(border);
         }
         
@@ -220,8 +226,8 @@ public partial class AnnotationCanvas : UserControl
         {
             if (control is Border border)
             {
-                // Tag 是一个元组 (TextIndex, GroupIndex)
-                if (border.Tag is ValueTuple<int, int> tag && tag.Item1 == labelIndex)
+                // Tag 是一个元组 (TextIndex, GroupIndex, NormX, NormY)
+                if (border.Tag is ValueTuple<int, int, double, double> tag && tag.Item1 == labelIndex)
                 {
                     // 高亮状态
                     border.Background = selectedBrush;
@@ -229,7 +235,7 @@ public partial class AnnotationCanvas : UserControl
                     border.BorderThickness = new Thickness(3);
                     border.ZIndex = 20;
                 }
-                else if (border.Tag is ValueTuple<int, int> normalTag)
+                else if (border.Tag is ValueTuple<int, int, double, double> normalTag)
                 {
                     // 普通状态
                     var groupIndex = normalTag.Item2;
@@ -249,6 +255,8 @@ public partial class AnnotationCanvas : UserControl
         {
             _matrixTransform.Matrix = CanvasWorkspace.TransformMatrix;
         }
+        // 标签在 ImageCanvas 上不受 RenderTransform 影响，需要手动更新位置
+        UpdateLabelPositions();
     }
     
     /// <summary>计算 Fit 变换（委托给 CanvasWorkspace）</summary>
@@ -314,15 +322,57 @@ public partial class AnnotationCanvas : UserControl
                 border.PointerMoved -= OnLabelMarkerPointerMoved;
                 border.PointerReleased -= OnLabelMarkerPointerReleased;
             }
-            ImageWrapper.Children.Remove(control);
+            ImageCanvas.Children.Remove(control);
         }
         _labelControls.Clear();
+    }
+    
+    /// <summary>获取当前标签大小（像素），从设置中读取并限制范围</summary>
+    private int GetLabelSize()
+    {
+        var settings = _cachedSettings ?? ShortcutSettingsService.Load();
+        return Math.Clamp(settings.LabelSize, 24, 128);
+    }
+    
+    /// <summary>根据当前变换矩阵重新计算所有标签的屏幕位置</summary>
+    public void UpdateLabelPositions()
+    {
+        if (_currentImage == null || DataContext is not CanvasWorkspaceViewModel vm)
+            return;
+
+        var matrix = vm.TransformMatrix;
+        double imageWidth = _currentImage.Size.Width;
+        double imageHeight = _currentImage.Size.Height;
+        double halfSize = GetLabelSize() / 2.0;
+
+        foreach (var control in _labelControls)
+        {
+            if (control is Border border &&
+                border.Tag is ValueTuple<int, int, double, double> tag)
+            {
+                // 跳过正在拖拽的标签
+                if (_isDraggingLabel && border == _draggedLabel)
+                    continue;
+
+                double normX = tag.Item3;
+                double normY = tag.Item4;
+
+                var screenPoint = matrix.Transform(
+                    new Point(normX * imageWidth, normY * imageHeight));
+
+                Canvas.SetLeft(border, screenPoint.X - halfSize);
+                Canvas.SetTop(border, screenPoint.Y - halfSize);
+            }
+        }
     }
     
     /// <summary>更新缓存的快捷键设置（由 MainWindow 在设置变更时调用）</summary>
     public void UpdateSettings(ShortcutSettings settings)
     {
         _cachedSettings = settings;
+        // 同步 LabelSize 到 CanvasWorkspaceViewModel（用于命中测试）
+        if (DataContext is CanvasWorkspaceViewModel vm)
+            vm.LabelSize = settings.LabelSize;
     }
     
     /// <summary>获取指定分组的背景颜色</summary>
@@ -411,7 +461,7 @@ public partial class AnnotationCanvas : UserControl
             return;
 
         int? labelIndex = null;
-        if (border.Tag is ValueTuple<int, int> tuple)
+        if (border.Tag is ValueTuple<int, int, double, double> tuple)
             labelIndex = tuple.Item1;
         else if (border.Tag is int intIndex)
             labelIndex = intIndex;
@@ -419,7 +469,7 @@ public partial class AnnotationCanvas : UserControl
         if (!labelIndex.HasValue)
             return;
 
-        var point = e.GetCurrentPoint(ImageWrapper);
+        var point = e.GetCurrentPoint(ImageCanvas);
         if (point.Properties.IsLeftButtonPressed)
         {
             e.Handled = true;
@@ -432,13 +482,11 @@ public partial class AnnotationCanvas : UserControl
             _labelDragLastPoint = point.Position;
             e.Pointer.Capture(border);
             
-            // 记录拖拽起始的归一化坐标（用于拖拽结束后计算位移）
-            if (_currentImage != null && labelIndex.HasValue)
+            // 从 Tag 中读取归一化坐标作为拖拽起始位置
+            if (border.Tag is ValueTuple<int, int, double, double> tag)
             {
-                double currentLeft = Canvas.GetLeft(border);
-                double currentTop = Canvas.GetTop(border);
-                _dragStartNormX = (currentLeft + 32) / _currentImage.Size.Width;
-                _dragStartNormY = (currentTop + 32) / _currentImage.Size.Height;
+                _dragStartNormX = tag.Item3;
+                _dragStartNormY = tag.Item4;
                 _draggingLabelIndex = labelIndex.Value;
             }
 
@@ -453,7 +501,7 @@ public partial class AnnotationCanvas : UserControl
         {
             e.Handled = true;
             
-            var currentPoint = e.GetPosition(ImageWrapper);
+            var currentPoint = e.GetPosition(ImageCanvas);
             var delta = currentPoint - _labelDragLastPoint;
             
             double currentLeft = Canvas.GetLeft(_draggedLabel);
@@ -461,17 +509,21 @@ public partial class AnnotationCanvas : UserControl
             
             double newLeft = currentLeft + delta.X;
             double newTop = currentTop + delta.Y;
+            double halfSize = GetLabelSize() / 2.0;
             
-            // 限制在图片范围内
-            if (_currentImage != null)
+            // 通过逆矩阵在图像空间中做边界检查
+            if (_currentImage != null && DataContext is CanvasWorkspaceViewModel vm)
             {
-                double minLeft = -32;
-                double maxLeft = Math.Max(-32, _currentImage.Size.Width - 32);
-                double minTop = -32;
-                double maxTop = Math.Max(-32, _currentImage.Size.Height - 32);
-                
-                newLeft = Math.Clamp(newLeft, minLeft, maxLeft);
-                newTop = Math.Clamp(newTop, minTop, maxTop);
+                var inverse = vm.TransformMatrix.Invert();
+                var imagePoint = inverse.Transform(new Point(newLeft + halfSize, newTop + halfSize));
+                double imgW = _currentImage.Size.Width;
+                double imgH = _currentImage.Size.Height;
+                imagePoint = new Point(
+                    Math.Clamp(imagePoint.X, 0, imgW),
+                    Math.Clamp(imagePoint.Y, 0, imgH));
+                var clampedScreen = vm.TransformMatrix.Transform(imagePoint);
+                newLeft = clampedScreen.X - halfSize;
+                newTop = clampedScreen.Y - halfSize;
             }
             
             Canvas.SetLeft(_draggedLabel, newLeft);
@@ -485,18 +537,25 @@ public partial class AnnotationCanvas : UserControl
     {
         if (_isDraggingLabel && _draggedLabel != null && sender == _draggedLabel)
         {
-            var point = e.GetCurrentPoint(ImageWrapper);
+            var point = e.GetCurrentPoint(ImageCanvas);
             if (point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonReleased)
             {
                 e.Handled = true;
                 
-                // 计算拖拽结束后的归一化坐标，并通过事件通知 MainWindow 保存到数据模型
-                if (_currentImage != null && _draggingLabelIndex.HasValue)
+                // 通过逆矩阵将屏幕坐标转换为图像像素坐标，再计算归一化坐标
+                if (_currentImage != null && _draggingLabelIndex.HasValue && DataContext is CanvasWorkspaceViewModel vm)
                 {
                     double finalLeft = Canvas.GetLeft(_draggedLabel);
                     double finalTop = Canvas.GetTop(_draggedLabel);
-                    double newNormX = (finalLeft + 32) / _currentImage.Size.Width;
-                    double newNormY = (finalTop + 32) / _currentImage.Size.Height;
+                    double halfSize = GetLabelSize() / 2.0;
+                    var inverse = vm.TransformMatrix.Invert();
+                    var imagePoint = inverse.Transform(new Point(finalLeft + halfSize, finalTop + halfSize));
+                    double newNormX = imagePoint.X / _currentImage.Size.Width;
+                    double newNormY = imagePoint.Y / _currentImage.Size.Height;
+                    
+                    // 更新 Tag 中的归一化坐标
+                    if (_draggedLabel.Tag is ValueTuple<int, int, double, double> oldTag)
+                        _draggedLabel.Tag = (oldTag.Item1, oldTag.Item2, newNormX, newNormY);
                     
                     // 只有位置实际发生变化时才触发事件
                     double dx = Math.Abs(newNormX - _dragStartNormX);

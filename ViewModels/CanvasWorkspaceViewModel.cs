@@ -44,6 +44,9 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
     /// <summary>当前高亮的标签索引（-1 表示无高亮）</summary>
     [ObservableProperty]
     private int _highlightedLabelIndex = -1;
+    
+    /// <summary>标签大小（像素），由 AnnotationCanvas 从设置中同步，默认 32</summary>
+    public double LabelSize { get; set; } = 32;
 
     /// <summary>待选中的新标签索引（添加标签后自动选中）</summary>
     private int? _pendingNewLabelIndex;
@@ -283,8 +286,10 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
         if (imageWidth <= 0 || imageHeight <= 0 || labels == null)
             return null;
 
-        // 标注的大小是64x64，一半是32
-        const double halfSize = 32;
+        // 标签在屏幕上固定大小，命中测试在图像像素空间进行
+        // 缩放越大，标签覆盖的图像像素越少，命中半径应反比于缩放比例
+        double currentScale = Math.Sqrt(TransformMatrix.M11 * TransformMatrix.M11 + TransformMatrix.M12 * TransformMatrix.M12);
+        double halfSize = (LabelSize / 2.0) / currentScale;
 
         foreach (var label in labels)
         {

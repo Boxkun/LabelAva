@@ -161,6 +161,9 @@ public class ShortcutSettingsDto
     // 编辑行为设置
     public bool AutoFocusTextBox { get; set; } = true;
 
+    // 标签显示设置
+    public int LabelSize { get; set; } = 64;
+
     public ShortcutSettingsDto() { }
 
     public ShortcutSettingsDto(Models.ShortcutSettings settings)
@@ -177,6 +180,7 @@ public class ShortcutSettingsDto
         ToggleGroup1 = GestureToString(settings.ToggleGroup1);
         Colors = new ColorSettingsDto(settings.Colors);
         AutoFocusTextBox = settings.AutoFocusTextBox;
+        LabelSize = settings.LabelSize;
     }
 
     public Models.ShortcutSettings ToSettings()
@@ -196,7 +200,8 @@ public class ShortcutSettingsDto
             ToggleGroup0 = StringToGesture(ToggleGroup0),
             ToggleGroup1 = StringToGesture(ToggleGroup1),
             Colors = colors,
-            AutoFocusTextBox = AutoFocusTextBox
+            AutoFocusTextBox = AutoFocusTextBox,
+            LabelSize = LabelSize
         };
     }
     

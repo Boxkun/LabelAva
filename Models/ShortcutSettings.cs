@@ -3,6 +3,17 @@ using Avalonia.Input;
 
 namespace LabelAva.Models;
 
+[Flags]
+public enum SettingsChangeKind
+{
+    None       = 0,
+    Shortcuts  = 1 << 0,
+    Colors     = 1 << 1,
+    LabelSize  = 1 << 2,
+    AutoFocus  = 1 << 3,
+    All        = Shortcuts | Colors | LabelSize | AutoFocus,
+}
+
 /// <summary>
 /// 颜色设置数据模型
 /// </summary>
@@ -81,6 +92,12 @@ public class ShortcutSettings
     /// </summary>
     public bool AutoFocusTextBox { get; set; } = true;
     
+    // 标签显示设置
+    /// <summary>
+    /// 标号大小（像素），默认 64
+    /// </summary>
+    public int LabelSize { get; set; } = 64;
+    
     /// <summary>
     /// 检查是否为黑名单中的鼠标按钮（不支持的输入）
     /// 左键、右键、滚轮中键被加入黑名单
@@ -128,7 +145,10 @@ public class ShortcutSettings
             ToggleGroup1 = new KeyGesture(Key.D2, KeyModifiers.Control),
 
             // 颜色设置 - 默认颜色
-            Colors = ColorSettings.CreateDefaults()
+            Colors = ColorSettings.CreateDefaults(),
+
+            // 标号大小 - 默认 64 像素
+            LabelSize = 64
         };
     }
     

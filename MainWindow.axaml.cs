@@ -50,6 +50,9 @@ public partial class MainWindow : Window
     
     // 选中项同步防重入标志
     private bool _isSyncingSelection = false;
+    
+    // 选中项来源标志：true 表示选中变更由画布交互触发，需跳过视野居中
+    private bool _isSelectionFromCanvas = false;
 
     // 异步初始化标志：防止初始化完成前的空引用
     private bool _isInitialized = false;
@@ -120,7 +123,7 @@ public partial class MainWindow : Window
             UpdateGroupButtonsShortcutTips();
             PreferencesWindow.SettingsChanged += OnPreferencesChanged;
 
-            StatusBar.UpdateStatus("就绪", StatusBarViewModel.StatusType.Success);
+            StatusBar.UpdateStatus("就绪", StatusBarViewModel.StatusType.Info);
             StatusBar.UpdateZoom(100);
 
             _translationTextBox = this.FindControl<TextBox>("TranslationTextBox");
@@ -157,7 +160,11 @@ public partial class MainWindow : Window
             // ---- Phase 4: Canvas 初始化 ----
             CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
             CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
-            CanvasControl.LabelClicked += (_, labelIndex) => SelectLabelByIndex(labelIndex);
+            CanvasControl.LabelClicked += (_, labelIndex) =>
+            {
+                _isSelectionFromCanvas = true;
+                SelectLabelByIndex(labelIndex);
+            };
             CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
             CanvasControl.LabelMoved += OnCanvasLabelMoved;
 
@@ -173,26 +180,37 @@ public partial class MainWindow : Window
     /// <summary>
     /// 首选项设置更改总处理函数（合并快捷键与外观更新）
     /// </summary>
-    private void OnPreferencesChanged(object? sender, ShortcutSettings settings)
+    private void OnPreferencesChanged(object? sender, (ShortcutSettings settings, SettingsChangeKind changes, bool isPreview) e)
     {
-        // ---- 快捷键相关更新 ----
+        var (settings, changes, isPreview) = e;
         _shortcutSettings = settings;
-        _shortcutRouter.UpdateSettings(settings);
-        UpdateGroupButtonsShortcutTips();
-        
-        // ---- 外观/颜色相关更新 ----
-        CanvasControl.UpdateSettings(settings);
-        GroupIndexToBrushConverter.ClearCache();
-        UpdateGroupButtonColors();
-        
-        if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
+
+        if (changes.HasFlag(SettingsChangeKind.Shortcuts))
         {
-            CanvasControl.HighlightLabel(selectedItem.Index);
+            _shortcutRouter.UpdateSettings(settings);
+            UpdateGroupButtonsShortcutTips();
         }
-        
-        RefreshTreeView();
-        
-        StatusBar.UpdateStatus("首选项已更新", StatusBarViewModel.StatusType.Success);
+
+        if (changes.HasFlag(SettingsChangeKind.Colors))
+        {
+            CanvasControl.UpdateSettings(settings);
+            GroupIndexToBrushConverter.ClearCache();
+            UpdateGroupButtonColors();
+            UpdateLabels();
+            if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
+                CanvasControl.HighlightLabel(selectedItem.Index);
+            RefreshTreeView();
+        }
+        else if (changes.HasFlag(SettingsChangeKind.LabelSize))
+        {
+            CanvasControl.UpdateSettings(settings);
+            UpdateLabels();
+            if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
+                CanvasControl.HighlightLabel(selectedItem.Index);
+        }
+
+        if (!isPreview && changes != SettingsChangeKind.None)
+            StatusBar.UpdateStatus("首选项已更新", StatusBarViewModel.StatusType.Info);
     }
     
     /// <summary>
@@ -949,7 +967,7 @@ public partial class MainWindow : Window
                 if (Navigation.SelectedItem is TranslationTreeItem item)
                 {
                     CopyToClipboard(item.Text);
-                    StatusBar.UpdateStatus($"已复制: {item.Text}");
+                    StatusBar.UpdateStatus($"已复制: {item.Text}", StatusBarViewModel.StatusType.Info);
                 }
                 break;
             case ShortcutAction.SwitchToGroup0:
@@ -1076,10 +1094,12 @@ public partial class MainWindow : Window
         
         if (hitIndex.HasValue)
         {
+            _isSelectionFromCanvas = true;
             SelectLabelByIndex(hitIndex.Value);
         }
         else
         {
+            _isSelectionFromCanvas = true;
             AddNewLabel(coords.pixelX, coords.pixelY);
         }
     }
@@ -1095,6 +1115,7 @@ public partial class MainWindow : Window
         var label = labels.FirstOrDefault(l => l.TextIndex == args.textIndex);
         if (label != null)
         {
+            _isSelectionFromCanvas = true;
             CanvasWorkspace.MoveLabel(label, args.oldNormX, args.oldNormY, args.newNormX, args.newNormY);
         }
     }
@@ -1214,7 +1235,7 @@ public partial class MainWindow : Window
             // 更新状态栏显示当前图片信息
             if (Navigation.ImageNames.Count > 0)
             {
-                StatusBar.UpdateStatus($"[{Navigation.CurrentImageIndex + 1}/{Navigation.ImageNames.Count}] {Path.GetFileName(imagePath)}", StatusBarViewModel.StatusType.Info);
+                StatusBar.UpdateStatus($"[{Navigation.CurrentImageIndex + 1}/{Navigation.ImageNames.Count}] {Path.GetFileName(imagePath)}");
             }
             else
             {
@@ -1373,10 +1394,12 @@ public partial class MainWindow : Window
             double fitScale = targetRootItem?.FitScale ?? 1.0;
             
             // 如果当前缩放比例大于 fit 比例（用户手动放大了）
-            if (currentScale > fitScale)
+            // 且选择变更非来自画布交互，才触发视野居中
+            if (currentScale > fitScale && !_isSelectionFromCanvas)
             {
                 CenterOnLabel(targetChildItem.Index);
             }
+            _isSelectionFromCanvas = false;
             
             // ======== 将选中节点的文本写入编辑框 ========
             if (_translationTextBox != null)

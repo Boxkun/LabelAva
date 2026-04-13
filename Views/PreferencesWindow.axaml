@@ -176,7 +176,27 @@
             <TabItem Header="界面">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
-                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <!-- 标号大小设置 -->
+                        <TextBlock Text="标号显示设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <Grid RowDefinitions="Auto">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="标号大小" VerticalAlignment="Center"/>
+                                <NumericUpDown x:Name="LabelSizeUpDown" Grid.Row="0" Grid.Column="2"
+                                               Minimum="24" Maximum="128"
+                                               FormatString="0"
+                                               Increment="1"
+                                               VerticalAlignment="Center"
+                                               ValueChanged="OnLabelSizeChanged"/>
+                            </Grid>
+                        </Border>
+                        
+                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,8"/>
                         <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,8"/>
 
                         <!-- 框内颜色设置 -->

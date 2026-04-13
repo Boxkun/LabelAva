@@ -39,7 +39,7 @@
         <Setter Property="Background" Value="#2196F3"/>
     </Style>
     
-    <!-- 状态变化时瞬间变色（取消淡入） -->
+    <!-- 状态变化时瞬间变色 -->
     <Style Selector="Border.status-bar.status-success, Border.status-bar.status-warn, Border.status-bar.status-error, Border.status-bar.status-info">
         <Setter Property="Transitions">
             <Transitions>
