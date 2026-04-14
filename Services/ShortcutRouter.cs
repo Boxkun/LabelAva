@@ -11,6 +11,9 @@ public enum ShortcutAction
     NavigateUp,
     NavigateDown,
     CopyText,
+    DeleteLabel,
+    OpenFile,
+    SaveFile,
     SwitchToGroup0,
     SwitchToGroup1,
 }
@@ -54,9 +57,19 @@ public class ShortcutRouter
         if (MatchesNavigateDown(gesture))
             return ShortcutAction.NavigateDown;
 
-        // 复制
+        if (!isTextBoxFocused)
+        {
+            if (_settings.DeleteLabel != null && gesture.Equals(_settings.DeleteLabel))
+                return ShortcutAction.DeleteLabel;
+        }
+
         if (_settings.CopyText != null && gesture.Equals(_settings.CopyText))
             return ShortcutAction.CopyText;
+
+        if (_settings.OpenFile != null && gesture.Equals(_settings.OpenFile))
+            return ShortcutAction.OpenFile;
+        if (_settings.SaveFile != null && gesture.Equals(_settings.SaveFile))
+            return ShortcutAction.SaveFile;
 
         return null;
     }

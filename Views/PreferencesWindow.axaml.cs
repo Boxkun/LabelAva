@@ -67,6 +67,9 @@ public partial class PreferencesWindow : Window
 
             // 更新复制文本
             UpdateButtonDisplay(CopyTextButton, CopyTextText, _settings.CopyText);
+            UpdateButtonDisplay(DeleteLabelButton, DeleteLabelText, _settings.DeleteLabel);
+            UpdateButtonDisplay(OpenFileButton, OpenFileText, _settings.OpenFile);
+            UpdateButtonDisplay(SaveFileButton, SaveFileText, _settings.SaveFile);
 
             // 更新分组切换
             UpdateButtonDisplay(ToggleGroup0Button, ToggleGroup0Text, _settings.ToggleGroup0);
@@ -308,6 +311,36 @@ public partial class PreferencesWindow : Window
         StartCapture(CopyTextButton, (gesture) =>
         {
             _settings.CopyText = gesture;
+            UpdateUI();
+            _changeKind |= SettingsChangeKind.Shortcuts;
+        });
+    }
+
+    private void OnDeleteLabelClick(object? sender, RoutedEventArgs e)
+    {
+        StartCapture(DeleteLabelButton, (gesture) =>
+        {
+            _settings.DeleteLabel = gesture;
+            UpdateUI();
+            _changeKind |= SettingsChangeKind.Shortcuts;
+        });
+    }
+
+    private void OnOpenFileClick(object? sender, RoutedEventArgs e)
+    {
+        StartCapture(OpenFileButton, (gesture) =>
+        {
+            _settings.OpenFile = gesture;
+            UpdateUI();
+            _changeKind |= SettingsChangeKind.Shortcuts;
+        });
+    }
+
+    private void OnSaveFileClick(object? sender, RoutedEventArgs e)
+    {
+        StartCapture(SaveFileButton, (gesture) =>
+        {
+            _settings.SaveFile = gesture;
             UpdateUI();
             _changeKind |= SettingsChangeKind.Shortcuts;
         });

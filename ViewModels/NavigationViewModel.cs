@@ -77,8 +77,17 @@ public partial class NavigationViewModel : ObservableObject
         int currentIndex = visibleItems.IndexOf(SelectedItem);
         if (currentIndex > 0)
         {
-            // 仅设置属性，partial void OnSelectedItemChanged() 会自动触发事件
-            SelectedItem = visibleItems[currentIndex - 1];
+            var target = visibleItems[currentIndex - 1];
+
+            if (target is ImageTreeItem rootItem && !rootItem.IsExpanded && rootItem.Translations.Count > 0)
+            {
+                rootItem.IsExpanded = true;
+                SelectedItem = rootItem.Translations[rootItem.Translations.Count - 1];
+            }
+            else
+            {
+                SelectedItem = target;
+            }
         }
     }
 

@@ -970,6 +970,15 @@ public partial class MainWindow : Window
                     StatusBar.UpdateStatus($"已复制: {item.Text}", StatusBarViewModel.StatusType.Info);
                 }
                 break;
+            case ShortcutAction.DeleteLabel:
+                DeleteSelectedLabel();
+                break;
+            case ShortcutAction.OpenFile:
+                ViewModel.Document.OpenCommand.Execute(null);
+                break;
+            case ShortcutAction.SaveFile:
+                ViewModel.Document.SaveCommand.Execute(null);
+                break;
             case ShortcutAction.SwitchToGroup0:
                 Edit.SwitchGroupCommand.Execute(0);
                 break;
@@ -1415,7 +1424,7 @@ public partial class MainWindow : Window
                 _isProgrammaticTextChange = false;
 
                 // 3. 异步渲染后置阶段：操作焦点与光标
-                if (Edit.IsEditMode && !_isUpdatingUI)
+                if (Edit.IsEditMode && !_isUpdatingUI && _shortcutSettings.AutoFocusTextBox)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {

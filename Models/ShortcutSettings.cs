@@ -74,6 +74,13 @@ public class ShortcutSettings
     // 复制快捷键
     public KeyGesture? CopyText { get; set; }
 
+    // 删除快捷键
+    public KeyGesture? DeleteLabel { get; set; }
+
+    // 文件操作快捷键
+    public KeyGesture? OpenFile { get; set; }
+    public KeyGesture? SaveFile { get; set; }
+
     // 缩放快捷键
     public KeyGesture? ZoomIn { get; set; }
     public KeyGesture? ZoomOut { get; set; }
@@ -134,6 +141,13 @@ public class ShortcutSettings
 
             // 复制 - Ctrl+C
             CopyText = new KeyGesture(Key.C, KeyModifiers.Control),
+
+            // 删除 - Delete
+            DeleteLabel = new KeyGesture(Key.Delete),
+
+            // 文件操作 - Ctrl+O (打开), Ctrl+S (保存)
+            OpenFile = new KeyGesture(Key.O, KeyModifiers.Control),
+            SaveFile = new KeyGesture(Key.S, KeyModifiers.Control),
 
             // 缩放 - Ctrl++/= (放大), Ctrl+- (缩小), Ctrl+0 (重置)
             ZoomIn = new KeyGesture(Key.OemPlus, KeyModifiers.Control),

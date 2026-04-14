@@ -146,6 +146,13 @@ public class ShortcutSettingsDto
     // 复制快捷键
     public string? CopyText { get; set; }
 
+    // 删除快捷键
+    public string? DeleteLabel { get; set; }
+
+    // 文件操作快捷键
+    public string? OpenFile { get; set; }
+    public string? SaveFile { get; set; }
+
     // 缩放快捷键
     public string? ZoomIn { get; set; }
     public string? ZoomOut { get; set; }
@@ -173,6 +180,9 @@ public class ShortcutSettingsDto
         NavigateUpSecondary = GestureToString(settings.NavigateUpSecondary);
         NavigateDownSecondary = GestureToString(settings.NavigateDownSecondary);
         CopyText = GestureToString(settings.CopyText);
+        DeleteLabel = GestureToString(settings.DeleteLabel);
+        OpenFile = GestureToString(settings.OpenFile);
+        SaveFile = GestureToString(settings.SaveFile);
         ZoomIn = GestureToString(settings.ZoomIn);
         ZoomOut = GestureToString(settings.ZoomOut);
         ResetZoom = GestureToString(settings.ResetZoom);
@@ -194,6 +204,9 @@ public class ShortcutSettingsDto
             NavigateUpSecondary = StringToGesture(NavigateUpSecondary),
             NavigateDownSecondary = StringToGesture(NavigateDownSecondary),
             CopyText = StringToGesture(CopyText),
+            DeleteLabel = StringToGesture(DeleteLabel),
+            OpenFile = StringToGesture(OpenFile),
+            SaveFile = StringToGesture(SaveFile),
             ZoomIn = StringToGesture(ZoomIn),
             ZoomOut = StringToGesture(ZoomOut),
             ResetZoom = StringToGesture(ResetZoom),

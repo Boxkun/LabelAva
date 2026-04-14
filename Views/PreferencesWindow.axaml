@@ -112,6 +112,20 @@
                                     </Button>
                                 </Grid>
 
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="删除标签" VerticalAlignment="Center"/>
+                                    <Button x:Name="DeleteLabelButton" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnDeleteLabelClick">
+                                        <TextBlock x:Name="DeleteLabelText" Text="Delete" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
+
                                 <!-- 自动聚焦开关 -->
                                 <Grid RowDefinitions="Auto" Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
@@ -127,6 +141,42 @@
                                     </CheckBox>
                                 </Grid>
                                 <TextBlock Text="按 Ctrl+Enter 提交更改" FontSize="11" Foreground="#999" Margin="92,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 文件设置组 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="打开和保存翻译文件" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="打开文件" VerticalAlignment="Center"/>
+                                    <Button x:Name="OpenFileButton" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnOpenFileClick">
+                                        <TextBlock x:Name="OpenFileText" Text="Ctrl + O" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
+
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="保存文件" VerticalAlignment="Center"/>
+                                    <Button x:Name="SaveFileButton" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnSaveFileClick">
+                                        <TextBlock x:Name="SaveFileText" Text="Ctrl + S" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
                             </StackPanel>
                         </Border>
 

@@ -230,7 +230,7 @@ public partial class DocumentViewModel : ObservableObject
             new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
         };
 
-        var newPath = await _fileService.PickSaveFileAsync("保存翻译文件", "txt", textFileFilter);
+        var newPath = await _fileService.PickSaveFileAsync("另存为", "txt", textFileFilter);
         if (newPath == null) return false; // 用户取消
 
         try
@@ -251,7 +251,7 @@ public partial class DocumentViewModel : ObservableObject
     private async Task CreateNewTranslationAsync()
     {
         // 1. 选择图片文件夹
-        var folderPath = await _fileService.PickFolderAsync("选择图片文件夹");
+        var folderPath = await _fileService.PickFolderAsync("新建翻译文件");
         if (folderPath == null) return;
 
         // 2. 扫描图片
