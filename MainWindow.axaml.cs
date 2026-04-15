@@ -152,7 +152,8 @@ public partial class MainWindow : Window
             var fileService = new FileDialogService(() => GetTopLevel(this));
             ViewModel.Document = new DocumentViewModel(
                 fileService, ViewModel.History, StatusBar,
-                ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync
+                ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync,
+                ShowImageAssociationDialogAsync
             );
             ViewModel.Document.DocumentOpened += OnDocumentOpened;
             ViewModel.Document.DocumentClosed += OnDocumentClosed;
@@ -404,13 +405,22 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 文件关联管理器对话框（作为回调注入 DocumentViewModel）
+    /// </summary>
+    private async Task<ImageAssociationResult?> ShowImageAssociationDialogAsync(
+        List<ImageAssociationItem> items, string imageFolderPath)
+    {
+        var associationWindow = new ImageAssociationWindow(items, imageFolderPath);
+        var dialogResult = await associationWindow.ShowDialog<bool>(this);
+        return dialogResult ? associationWindow.Result : null;
+    }
+
+    /// <summary>
     /// DocumentViewModel.DocumentOpened 事件处理
     /// </summary>
     private void OnDocumentOpened(object? sender, DocumentOpenedEventArgs e)
     {
-        // InitializeNavigation 内部设置 CurrentImageIndex = 0，
-        // 自动触发 CurrentImageChanged → OnNavigationCurrentImageChanged → LoadCurrentImage
-        Navigation.InitializeNavigation(e.ImageFolderPath, e.ImageNames);
+        Navigation.InitializeNavigation(e.ImageFolderPath, e.ImageNames, e.ImagePathMapping);
 
         if (Navigation.ImageNames.Count > 0)
         {
@@ -539,6 +549,29 @@ public partial class MainWindow : Window
     private void OnExit(object? sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private async void OnImageAssociationManager(object? sender, RoutedEventArgs e)
+    {
+        if (!Document.HasDocument) return;
+
+        var result = await Document.ShowImageAssociationManagerAsync();
+        if (result == null) return;
+
+        Document.ApplyAssociationResult(result);
+
+        // 同步 Navigation 的 ImagePathMapping
+        Navigation.ImagePathMapping = new Dictionary<string, string>(Document.ImagePathMapping);
+        if (!string.IsNullOrEmpty(Document.ImageFolderPath))
+        {
+            Navigation.ImageFolderPath = Document.ImageFolderPath;
+        }
+
+        // 刷新 UI
+        Navigation.BuildTreeView(Document.TranslationData);
+        LoadCurrentImage();
+        CalculateFitTransform();
+        UpdateLabels();
     }
     
     private void OnPreferences(object? sender, RoutedEventArgs e)
@@ -1184,16 +1217,25 @@ public partial class MainWindow : Window
             return;
         
         var imageName = Navigation.ImageNames[Navigation.CurrentImageIndex];
-        var imagePath = Path.Combine(Navigation.ImageFolderPath!, imageName);
+        var imagePath = ResolveImagePath(imageName);
         
-        if (File.Exists(imagePath))
+        if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
         {
             LoadImage(imagePath);
         }
         else
         {
-            StatusBar.UpdateStatus($"图片文件不存在: {imagePath}", StatusBarViewModel.StatusType.Error);
+            CanvasControl.ShowErrorPlaceholder(imageName);
+            StatusBar.UpdateStatus($"找不到指定的文件: {imageName}", StatusBarViewModel.StatusType.Warn);
         }
+    }
+    
+    private string ResolveImagePath(string imageName)
+    {
+        if (Navigation.ImagePathMapping.TryGetValue(imageName, out var mappedPath))
+            return mappedPath;
+
+        return Path.Combine(Navigation.ImageFolderPath!, imageName);
     }
     
     private void LoadImage(string imagePath)

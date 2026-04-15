@@ -349,7 +349,7 @@ public class TranslationParser
             var imageName = kvp.Key;
             var labels = kvp.Value;
 
-            // 图片头: >>>>>>>>[01.jpeg]<<<<<<<< (即使没有标注也写入，用于标定哪些图片在工程中)
+            // 图片头: >>>>>>>>[01.jpeg]<<<<<<<< (即使没有标注也写入，用于标定哪些图片在项目中)
             sb.AppendLine($">>>>>>>>[{imageName}]<<<<<<<<");
 
             // 空图片：不添加额外空行

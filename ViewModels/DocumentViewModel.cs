@@ -33,6 +33,7 @@ public class DocumentOpenedEventArgs : EventArgs
     public TranslationData TranslationData { get; set; } = null!;
     public string ImageFolderPath { get; set; } = string.Empty;
     public List<string> ImageNames { get; set; } = new();
+    public Dictionary<string, string> ImagePathMapping { get; set; } = new();
 }
 
 public partial class DocumentViewModel : ObservableObject
@@ -41,10 +42,15 @@ public partial class DocumentViewModel : ObservableObject
     private readonly HistoryViewModel _history;
     private readonly StatusBarViewModel _statusBar;
     private readonly TranslationParser _parser = new();
+    private readonly ImageValidationService _validationService = new();
 
     // 回调：自定义对话框（UI 层注入）
     private readonly Func<string, Task<UnsavedChangesResult>> _showUnsavedChangesDialog;
     private readonly Func<List<string>, string, Task<ImageSelectionResult?>> _showImageSelectionDialog;
+    private readonly Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> _showImageAssociationDialog;
+
+    // Redirect 模式专用路径映射
+    public Dictionary<string, string> ImagePathMapping { get; } = new();
 
     // 自动保存定时器
     private DispatcherTimer? _autoSaveTimer;
@@ -154,7 +160,7 @@ public partial class DocumentViewModel : ObservableObject
     {
         if (!IsDirty || TranslationData == null) return true;
 
-        var result = await _showUnsavedChangesDialog("工程有尚未保存的更改。是否保存？");
+        var result = await _showUnsavedChangesDialog("项目有尚未保存的更改。是否保存？");
 
         if (result == UnsavedChangesResult.Save)
         {
@@ -255,7 +261,7 @@ public partial class DocumentViewModel : ObservableObject
         if (folderPath == null) return;
 
         // 2. 扫描图片
-        var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
+        var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
         var imageFiles = Directory.GetFiles(folderPath)
             .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
             .ToList();
@@ -309,7 +315,8 @@ public partial class DocumentViewModel : ObservableObject
         {
             TranslationData = TranslationData,
             ImageFolderPath = ImageFolderPath!,
-            ImageNames = imageNames
+            ImageNames = imageNames,
+            ImagePathMapping = new Dictionary<string, string>(ImagePathMapping)
         });
 
         _statusBar.UpdateStatus($"已创建翻译文件，包含 {selectedImages.Count} 张图片", StatusBarViewModel.StatusType.Success);
@@ -346,11 +353,29 @@ public partial class DocumentViewModel : ObservableObject
         var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
         if (imageNames.Count > 0)
         {
+            var items = _validationService.Validate(ImageFolderPath!, imageNames);
+            var hasMissing = items.Any(i => i.Status == ImageValidationStatus.Missing);
+
+            if (hasMissing)
+            {
+                var associationResult = await _showImageAssociationDialog(items, ImageFolderPath!);
+
+                if (associationResult == null)
+                {
+                    CloseDocumentInternal();
+                    _statusBar.UpdateStatus("已取消加载", StatusBarViewModel.StatusType.Info);
+                    return;
+                }
+
+                ApplyAssociationResult(associationResult);
+            }
+
             DocumentOpened?.Invoke(this, new DocumentOpenedEventArgs
             {
                 TranslationData = TranslationData,
                 ImageFolderPath = ImageFolderPath!,
-                ImageNames = imageNames
+                ImageNames = imageNames,
+                ImagePathMapping = new Dictionary<string, string>(ImagePathMapping)
             });
 
             _statusBar.UpdateStatus($"已加载 {imageNames.Count} 张图片", StatusBarViewModel.StatusType.Success);
@@ -370,11 +395,72 @@ public partial class DocumentViewModel : ObservableObject
         ImageFolderPath = null;
         IsDirty = false;
         HasDocument = false;
+        ImagePathMapping.Clear();
 
         _history.Clear();
 
         DocumentClosed?.Invoke(this, EventArgs.Empty);
         _statusBar.UpdateStatus("就绪");
+    }
+
+    /// <summary>应用文件关联管理器的结果</summary>
+    public void ApplyAssociationResult(ImageAssociationResult result)
+    {
+        // 更新搜索文件夹路径
+        if (!string.IsNullOrEmpty(result.FolderPath) && result.FolderPath != ImageFolderPath)
+        {
+            ImageFolderPath = result.FolderPath;
+        }
+
+        foreach (var kvp in result.Remappings)
+        {
+            var imageName = kvp.Key;
+            var newPath = kvp.Value;
+
+            if (result.WriteToFile)
+            {
+                // Remap 模式：更新 ImageLabels key + LabelItem.ImageName
+                if (TranslationData!.ImageLabels.TryGetValue(imageName, out var labels))
+                {
+                    var newImageName = Path.GetFileName(newPath);
+                    TranslationData.ImageLabels.Remove(imageName);
+                    foreach (var label in labels)
+                    {
+                        label.ImageName = newImageName;
+                    }
+                    TranslationData.ImageLabels[newImageName] = labels;
+                }
+                IsDirty = true;
+            }
+            else
+            {
+                // Redirect 模式：存入 ImagePathMapping
+                ImagePathMapping[imageName] = newPath;
+            }
+        }
+    }
+
+    /// <summary>菜单栏手动触发文件关联管理器</summary>
+    public async Task<ImageAssociationResult?> ShowImageAssociationManagerAsync()
+    {
+        if (TranslationData == null || string.IsNullOrEmpty(ImageFolderPath))
+            return null;
+
+        var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
+        var items = _validationService.Validate(ImageFolderPath, imageNames);
+
+        // 将已有的 ImagePathMapping 回填到列表项
+        foreach (var item in items)
+        {
+            if (ImagePathMapping.TryGetValue(item.ImageName, out var mappedPath))
+            {
+                item.NewPath = mappedPath;
+                item.Status = File.Exists(mappedPath) ? ImageValidationStatus.OK : ImageValidationStatus.Missing;
+                item.StatusText = File.Exists(mappedPath) ? "\u2713 正常" : "\u2717 缺失";
+            }
+        }
+
+        return await _showImageAssociationDialog(items, ImageFolderPath);
     }
 
     /// <summary>生成翻译文件模板内容</summary>
@@ -497,12 +583,14 @@ public partial class DocumentViewModel : ObservableObject
         HistoryViewModel history,
         StatusBarViewModel statusBar,
         Func<string, Task<UnsavedChangesResult>> showUnsavedChangesDialog,
-        Func<List<string>, string, Task<ImageSelectionResult?>> showImageSelectionDialog)
+        Func<List<string>, string, Task<ImageSelectionResult?>> showImageSelectionDialog,
+        Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> showImageAssociationDialog)
     {
         _fileService = fileService;
         _history = history;
         _statusBar = statusBar;
         _showUnsavedChangesDialog = showUnsavedChangesDialog;
         _showImageSelectionDialog = showImageSelectionDialog;
+        _showImageAssociationDialog = showImageAssociationDialog;
     }
 }

@@ -146,6 +146,10 @@
         <Setter Property="Background" Value="#E0E0E0"/>
     </Style>
 
+    <!-- 文本框样式 -->
+    <Style Selector="TextBox">
+        <Setter Property="BorderBrush" Value="#DDD"/>
+    </Style>
     <!-- 基础模板（去掉圆点） -->
     <Style Selector="RadioButton.no-dot">
         <Setter Property="Template">

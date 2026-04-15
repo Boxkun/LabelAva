@@ -126,6 +126,8 @@ public partial class AnnotationCanvas : UserControl
     {
         try
         {
+            ClearErrorPlaceholder();
+            
             if (_currentImage != null)
             {
                 _currentImage.Dispose();
@@ -298,6 +300,27 @@ public partial class AnnotationCanvas : UserControl
         MainImage.Source = null;
         // 重置可见性，确保下次首次加载时隐藏逻辑正常工作
         ImageWrapper.Opacity = 1;
+        ClearErrorPlaceholder();
+    }
+    
+    /// <summary>显示错误占位符（图片无法加载时调用）</summary>
+    public void ShowErrorPlaceholder(string imageName)
+    {
+        ClearErrorPlaceholder();
+        
+        _currentImage = null;
+        _currentImagePath = imageName;
+        MainImage.Source = null;
+        
+        ErrorOverlayIcon.Text = "\u26a0";
+        ErrorOverlayText.Text = $"\u627e\u4e0d\u5230\u6307\u5b9a\u7684\u6587\u4ef6: {imageName}";
+        ErrorOverlay.IsVisible = true;
+    }
+    
+    /// <summary>清除错误占位符</summary>
+    private void ClearErrorPlaceholder()
+    {
+        ErrorOverlay.IsVisible = false;
     }
     
     /// <summary>标记首次加载已完成（MainWindow 在首次 FitTransform 后调用）</summary>

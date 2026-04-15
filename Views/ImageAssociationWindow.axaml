@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:LabelAva.Models"
+        mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="500"
+        x:Class="LabelAva.Views.ImageAssociationWindow"
+        Title="文件关联管理器"
+        Width="720" Height="520"
+        Background="White"
+        TransparencyLevelHint="None"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <DockPanel Margin="16">
+        <!-- 顶部说明区 -->
+        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="4,0,4,12">
+            
+            <!-- 搜索文件夹行 -->
+            <DockPanel>
+                <TextBlock Text="项目路径" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="13"/>
+                <Button DockPanel.Dock="Right" Content="浏览" Click="OnBrowseFolder" Margin="8,0,0,0" Padding="12,8" FontSize="13"/>
+                <TextBox x:Name="FolderPathBox" FontSize="13" TextChanged="OnFolderPathTextChanged"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- 底部按钮区域 -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" x:Name="StatusSummary" FontSize="13" Padding="12,8"/>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <CheckBox x:Name="WriteToFileCheckBox" Content="更新翻译文件" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="13"/>
+                <Button Content="确认" Click="OnConfirm" MinWidth="80" Padding="12,8" VerticalAlignment="Center" FontSize="13" Classes="primary"/>
+                <Button Content="取消" Click="OnCancel" MinWidth="80" Padding="12,8" VerticalAlignment="Center" FontSize="13"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- 主列表区 -->
+        <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="AssociationList" Margin="12,4,12,4">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:ImageAssociationItem">
+                            <Border BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="6,8">
+                                <Grid ColumnDefinitions="1*,1*,3*,Auto" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="0" Text="{Binding ImageName}" VerticalAlignment="Center" FontSize="13" FontFamily="Sarasa Mono SC" Margin="8,0,0,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="{Binding StatusForeground}" VerticalAlignment="Center" FontSize="13" Width="80"/>
+                                    <TextBox Grid.Column="2" Text="{Binding NewPath, Mode=TwoWay}" FontSize="13" VerticalContentAlignment="Center" Watermark="(项目路径)"/>
+                                    <Button Grid.Column="3" Content="选择" Click="OnSelectFile" FontSize="13" VerticalContentAlignment="Center" Margin="8,0,0,0"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</Window>

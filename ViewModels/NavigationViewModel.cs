@@ -36,6 +36,9 @@ public partial class NavigationViewModel : ObservableObject
     [ObservableProperty]
     private string? _imageFolderPath;
 
+    /// <summary>Redirect 模式专用路径映射</summary>
+    public Dictionary<string, string> ImagePathMapping { get; set; } = new();
+
     /// <summary>当前图片对应的树视图项</summary>
     [ObservableProperty]
     private ImageTreeItem? _currentTreeItem;
@@ -141,10 +144,11 @@ public partial class NavigationViewModel : ObservableObject
     }
 
     /// <summary>初始化导航状态（文档打开后调用）</summary>
-    public void InitializeNavigation(string imageFolderPath, List<string> imageNames)
+    public void InitializeNavigation(string imageFolderPath, List<string> imageNames, Dictionary<string, string>? imagePathMapping = null)
     {
         ImageFolderPath = imageFolderPath;
         ImageNames = imageNames;
+        ImagePathMapping = imagePathMapping ?? new Dictionary<string, string>();
         CurrentImageIndex = imageNames.Count > 0 ? 0 : -1;
         HasDocument = true;
     }
@@ -155,6 +159,7 @@ public partial class NavigationViewModel : ObservableObject
         TreeItems.Clear();
         ImageNames.Clear();
         ImageFolderPath = null;
+        ImagePathMapping.Clear();
         CurrentImageIndex = -1;
         CurrentTreeItem = null;
         LastFocusedRootItem = null;

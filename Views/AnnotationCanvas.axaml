@@ -13,14 +13,22 @@
             PointerReleased="OnImageContainerPointerReleased"
             PointerWheelChanged="OnImageContainerPointerWheelChanged"
             SizeChanged="OnImageContainerSizeChanged">
-        <Canvas x:Name="ImageCanvas">
-            <Canvas x:Name="ImageWrapper" RenderTransformOrigin="0,0">
-                <Image x:Name="MainImage" 
-                       Stretch="None" 
-                       HorizontalAlignment="Left" 
-                       VerticalAlignment="Top"
-                       RenderOptions.BitmapInterpolationMode="HighQuality" />
+        <Grid>
+            <Canvas x:Name="ImageCanvas">
+                <Canvas x:Name="ImageWrapper" RenderTransformOrigin="0,0">
+                    <Image x:Name="MainImage" 
+                           Stretch="None" 
+                           HorizontalAlignment="Left" 
+                           VerticalAlignment="Top"
+                           RenderOptions.BitmapInterpolationMode="HighQuality" />
+                </Canvas>
             </Canvas>
-        </Canvas>
+            <Border x:Name="ErrorOverlay" IsVisible="False" Background="#E0E0E0">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                    <TextBlock x:Name="ErrorOverlayIcon" FontSize="48" HorizontalAlignment="Center" Foreground="#999999"/>
+                    <TextBlock x:Name="ErrorOverlayText" FontSize="14" HorizontalAlignment="Center" Foreground="#666666" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Border>
 </UserControl>
