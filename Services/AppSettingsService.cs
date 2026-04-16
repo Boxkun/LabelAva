@@ -1,0 +1,275 @@
+using System;
+using System.IO;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Avalonia.Input;
+
+namespace LabelAva.Services;
+
+[JsonSerializable(typeof(AppSettingsDto))]
+[JsonSerializable(typeof(ShortcutBindingsDto))]
+[JsonSerializable(typeof(ColorSettingsDto))]
+[JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+public partial class AppSettingsContext : JsonSerializerContext { }
+
+public static class AppSettingsService
+{
+    private static readonly string ConfigFolder = AppContext.BaseDirectory;
+    private static readonly string SettingsFile = Path.Combine(ConfigFolder, "config.json");
+
+    public static void Save(Models.AppSettings settings)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                TypeInfoResolver = AppSettingsContext.Default
+            };
+            var json = JsonSerializer.Serialize(new AppSettingsDto(settings), typeof(AppSettingsDto), options);
+
+            File.WriteAllText(SettingsFile, json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"保存设置失败: {ex.Message}");
+        }
+    }
+
+    public static Models.AppSettings Load()
+    {
+        try
+        {
+            if (!File.Exists(SettingsFile))
+            {
+                return Models.AppSettings.CreateDefaults();
+            }
+
+            var json = File.ReadAllText(SettingsFile);
+
+            var dto = JsonSerializer.Deserialize(
+                json,
+                AppSettingsContext.Default.AppSettingsDto
+            );
+
+            if (dto != null)
+            {
+                return dto.ToSettings();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"加载设置失败: {ex.Message}");
+        }
+
+        return Models.AppSettings.CreateDefaults();
+    }
+}
+
+public class ColorSettingsDto
+{
+    public Dictionary<string, string> GroupColors { get; set; } = new();
+
+    public string? SelectedColor { get; set; }
+
+    public ColorSettingsDto() { }
+
+    public ColorSettingsDto(Models.ColorSettings settings)
+    {
+        GroupColors = settings.GroupColors.ToDictionary(
+            kvp => kvp.Key.ToString(),
+            kvp => kvp.Value
+        );
+        SelectedColor = settings.SelectedColor;
+    }
+
+    public Models.ColorSettings ToSettings()
+    {
+        var settings = new Models.ColorSettings();
+
+        foreach (var kvp in GroupColors)
+        {
+            if (int.TryParse(kvp.Key, out int groupIndex))
+            {
+                settings.GroupColors[groupIndex] = kvp.Value;
+            }
+        }
+
+        settings.SelectedColor = SelectedColor ?? "#33BA90";
+
+        return settings;
+    }
+}
+
+public class ShortcutBindingsDto
+{
+    public List<string>? NavigateUp { get; set; }
+    public List<string>? NavigateDown { get; set; }
+    public List<string>? NavigateUpSecondary { get; set; }
+    public List<string>? NavigateDownSecondary { get; set; }
+    public List<string>? CopyText { get; set; }
+    public List<string>? DeleteLabel { get; set; }
+    public List<string>? OpenFile { get; set; }
+    public List<string>? SaveFile { get; set; }
+    public List<string>? ZoomIn { get; set; }
+    public List<string>? ZoomOut { get; set; }
+    public List<string>? ResetZoom { get; set; }
+    public List<string>? ToggleGroup0 { get; set; }
+    public List<string>? ToggleGroup1 { get; set; }
+
+    public ShortcutBindingsDto() { }
+
+    public ShortcutBindingsDto(Models.ShortcutBindings bindings)
+    {
+        NavigateUp = GestureToList(bindings.NavigateUp);
+        NavigateDown = GestureToList(bindings.NavigateDown);
+        NavigateUpSecondary = GestureToList(bindings.NavigateUpSecondary);
+        NavigateDownSecondary = GestureToList(bindings.NavigateDownSecondary);
+        CopyText = GestureToList(bindings.CopyText);
+        DeleteLabel = GestureToList(bindings.DeleteLabel);
+        OpenFile = GestureToList(bindings.OpenFile);
+        SaveFile = GestureToList(bindings.SaveFile);
+        ZoomIn = GestureToList(bindings.ZoomIn);
+        ZoomOut = GestureToList(bindings.ZoomOut);
+        ResetZoom = GestureToList(bindings.ResetZoom);
+        ToggleGroup0 = GestureToList(bindings.ToggleGroup0);
+        ToggleGroup1 = GestureToList(bindings.ToggleGroup1);
+    }
+
+    public Models.ShortcutBindings ToBindings()
+    {
+        return new Models.ShortcutBindings
+        {
+            NavigateUp = ListToGesture(NavigateUp),
+            NavigateDown = ListToGesture(NavigateDown),
+            NavigateUpSecondary = ListToGesture(NavigateUpSecondary),
+            NavigateDownSecondary = ListToGesture(NavigateDownSecondary),
+            CopyText = ListToGesture(CopyText),
+            DeleteLabel = ListToGesture(DeleteLabel),
+            OpenFile = ListToGesture(OpenFile),
+            SaveFile = ListToGesture(SaveFile),
+            ZoomIn = ListToGesture(ZoomIn),
+            ZoomOut = ListToGesture(ZoomOut),
+            ResetZoom = ListToGesture(ResetZoom),
+            ToggleGroup0 = ListToGesture(ToggleGroup0),
+            ToggleGroup1 = ListToGesture(ToggleGroup1),
+        };
+    }
+
+    private static List<string>? GestureToList(KeyGesture? gesture)
+    {
+        if (gesture == null) return null;
+
+        var parts = new List<string>();
+        var key = gesture.Key;
+        var modifiers = Models.ShortcutBindings.NormalizeModifiers(key, gesture.KeyModifiers);
+
+        if (modifiers.HasFlag(KeyModifiers.Control))
+            parts.Add("Ctrl");
+        if (modifiers.HasFlag(KeyModifiers.Shift))
+            parts.Add("Shift");
+        if (modifiers.HasFlag(KeyModifiers.Alt))
+            parts.Add("Alt");
+        if (modifiers.HasFlag(KeyModifiers.Meta))
+            parts.Add("Win");
+
+        if (!Models.ShortcutBindings.IsModifierKey(key) && key != Key.None)
+            parts.Add(key.ToString());
+
+        return parts.Count > 0 ? parts : null;
+    }
+
+    private static KeyGesture? ListToGesture(List<string>? parts)
+    {
+        if (parts == null || parts.Count == 0) return null;
+
+        try
+        {
+            var modifiers = KeyModifiers.None;
+            var key = Key.None;
+
+            if (parts.Count == 1)
+            {
+                var mod = parts[0].Trim();
+                modifiers = mod switch
+                {
+                    "Ctrl" => KeyModifiers.Control,
+                    "Shift" => KeyModifiers.Shift,
+                    "Alt" => KeyModifiers.Alt,
+                    "Win" => KeyModifiers.Meta,
+                    _ => KeyModifiers.None
+                };
+                if (modifiers != KeyModifiers.None)
+                {
+                    return mod switch
+                    {
+                        "Ctrl" => new KeyGesture(Key.LeftCtrl, KeyModifiers.None),
+                        "Shift" => new KeyGesture(Key.LeftShift, KeyModifiers.None),
+                        "Alt" => new KeyGesture(Key.LeftAlt, KeyModifiers.None),
+                        "Win" => new KeyGesture(Key.LWin, KeyModifiers.None),
+                        _ => null
+                    };
+                }
+            }
+
+            for (int i = 0; i < parts.Count - 1; i++)
+            {
+                var mod = parts[i].Trim();
+                modifiers |= mod switch
+                {
+                    "Ctrl" => KeyModifiers.Control,
+                    "Shift" => KeyModifiers.Shift,
+                    "Alt" => KeyModifiers.Alt,
+                    "Win" => KeyModifiers.Meta,
+                    _ => KeyModifiers.None
+                };
+            }
+
+            var keyStr = parts[^1].Trim();
+            key = Enum.TryParse<Key>(keyStr, out var parsedKey) ? parsedKey : Key.None;
+
+            if (key == Key.None && modifiers == KeyModifiers.None) return null;
+
+            return new KeyGesture(key, modifiers);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}
+
+public class AppSettingsDto
+{
+    public ShortcutBindingsDto? Shortcuts { get; set; }
+    public ColorSettingsDto? Colors { get; set; }
+    public int LabelSize { get; set; } = 32;
+    public bool AutoFocusTextBox { get; set; } = true;
+
+    public AppSettingsDto() { }
+
+    public AppSettingsDto(Models.AppSettings settings)
+    {
+        Shortcuts = new ShortcutBindingsDto(settings.Shortcuts);
+        Colors = new ColorSettingsDto(settings.Colors);
+        LabelSize = settings.LabelSize;
+        AutoFocusTextBox = settings.AutoFocusTextBox;
+    }
+
+    public Models.AppSettings ToSettings()
+    {
+        var shortcuts = Shortcuts?.ToBindings() ?? Models.ShortcutBindings.CreateDefaults();
+        var colors = Colors?.ToSettings() ?? Models.ColorSettings.CreateDefaults();
+
+        return new Models.AppSettings
+        {
+            Shortcuts = shortcuts,
+            Colors = colors,
+            LabelSize = LabelSize,
+            AutoFocusTextBox = AutoFocusTextBox
+        };
+    }
+}

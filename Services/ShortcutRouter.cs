@@ -3,9 +3,6 @@ using LabelAva.Models;
 
 namespace LabelAva.Services;
 
-/// <summary>
-/// 快捷键动作类型
-/// </summary>
 public enum ShortcutAction
 {
     NavigateUp,
@@ -18,40 +15,27 @@ public enum ShortcutAction
     SwitchToGroup1,
 }
 
-/// <summary>
-/// 快捷键路由服务：将输入手势匹配为 ShortcutAction。
-/// 纯匹配逻辑，不执行任何副作用。
-/// </summary>
 public class ShortcutRouter
 {
-    private ShortcutSettings _settings;
+    private ShortcutBindings _bindings;
 
-    public ShortcutRouter(ShortcutSettings settings)
+    public ShortcutRouter(ShortcutBindings bindings)
     {
-        _settings = settings;
+        _bindings = bindings;
     }
 
-    /// <summary>更新快捷键设置（设置变更时调用）</summary>
-    public void UpdateSettings(ShortcutSettings settings) => _settings = settings;
+    public void UpdateSettings(ShortcutBindings bindings) => _bindings = bindings;
 
-    /// <summary>
-    /// 从 KeyGesture 匹配快捷键动作
-    /// </summary>
-    /// <param name="gesture">当前按键手势</param>
-    /// <param name="isTextBoxFocused">TextBox 是否有焦点（影响分组切换快捷键）</param>
-    /// <returns>匹配到的动作，未匹配返回 null</returns>
     public ShortcutAction? MatchKeyGesture(KeyGesture gesture, bool isTextBoxFocused = false)
     {
-        // 分组切换：TextBox 有焦点时不触发
         if (!isTextBoxFocused)
         {
-            if (_settings.ToggleGroup0 != null && gesture.Equals(_settings.ToggleGroup0))
+            if (_bindings.ToggleGroup0 != null && gesture.Equals(_bindings.ToggleGroup0))
                 return ShortcutAction.SwitchToGroup0;
-            if (_settings.ToggleGroup1 != null && gesture.Equals(_settings.ToggleGroup1))
+            if (_bindings.ToggleGroup1 != null && gesture.Equals(_bindings.ToggleGroup1))
                 return ShortcutAction.SwitchToGroup1;
         }
 
-        // 导航
         if (MatchesNavigateUp(gesture))
             return ShortcutAction.NavigateUp;
         if (MatchesNavigateDown(gesture))
@@ -59,24 +43,21 @@ public class ShortcutRouter
 
         if (!isTextBoxFocused)
         {
-            if (_settings.DeleteLabel != null && gesture.Equals(_settings.DeleteLabel))
+            if (_bindings.DeleteLabel != null && gesture.Equals(_bindings.DeleteLabel))
                 return ShortcutAction.DeleteLabel;
         }
 
-        if (_settings.CopyText != null && gesture.Equals(_settings.CopyText))
+        if (_bindings.CopyText != null && gesture.Equals(_bindings.CopyText))
             return ShortcutAction.CopyText;
 
-        if (_settings.OpenFile != null && gesture.Equals(_settings.OpenFile))
+        if (_bindings.OpenFile != null && gesture.Equals(_bindings.OpenFile))
             return ShortcutAction.OpenFile;
-        if (_settings.SaveFile != null && gesture.Equals(_settings.SaveFile))
+        if (_bindings.SaveFile != null && gesture.Equals(_bindings.SaveFile))
             return ShortcutAction.SaveFile;
 
         return null;
     }
 
-    /// <summary>
-    /// 从鼠标侧键 PointerUpdateKind 匹配快捷键动作
-    /// </summary>
     public ShortcutAction? MatchPointerUpdate(PointerUpdateKind updateKind)
     {
         var gesture = MouseButtonToKeyGesture(updateKind);
@@ -86,22 +67,22 @@ public class ShortcutRouter
 
     private bool MatchesNavigateUp(KeyGesture gesture)
     {
-        return (_settings.NavigateUp != null && gesture.Equals(_settings.NavigateUp)) ||
-               (_settings.NavigateUpSecondary != null && gesture.Equals(_settings.NavigateUpSecondary));
+        return (_bindings.NavigateUp != null && gesture.Equals(_bindings.NavigateUp)) ||
+               (_bindings.NavigateUpSecondary != null && gesture.Equals(_bindings.NavigateUpSecondary));
     }
 
     private bool MatchesNavigateDown(KeyGesture gesture)
     {
-        return (_settings.NavigateDown != null && gesture.Equals(_settings.NavigateDown)) ||
-               (_settings.NavigateDownSecondary != null && gesture.Equals(_settings.NavigateDownSecondary));
+        return (_bindings.NavigateDown != null && gesture.Equals(_bindings.NavigateDown)) ||
+               (_bindings.NavigateDownSecondary != null && gesture.Equals(_bindings.NavigateDownSecondary));
     }
 
-    internal static KeyGesture? MouseButtonToKeyGesture(PointerUpdateKind updateKind)
+    public static KeyGesture? MouseButtonToKeyGesture(PointerUpdateKind updateKind)
     {
         return updateKind switch
         {
-            PointerUpdateKind.XButton1Pressed => new KeyGesture(Key.F13),  // 鼠标侧键1
-            PointerUpdateKind.XButton2Pressed => new KeyGesture(Key.F14),  // 鼠标侧键2
+            PointerUpdateKind.XButton1Pressed => new KeyGesture(Key.F13),
+            PointerUpdateKind.XButton2Pressed => new KeyGesture(Key.F14),
             _ => null
         };
     }

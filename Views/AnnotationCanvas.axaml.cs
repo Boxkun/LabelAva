@@ -55,7 +55,13 @@ public partial class AnnotationCanvas : UserControl
     // 私有字段 - 设置缓存
     // ========================
     
-    private ShortcutSettings? _cachedSettings;
+    private AppSettingsProvider? _settingsProvider;
+
+    public AppSettingsProvider? SettingsProvider
+    {
+        get => _settingsProvider;
+        set => _settingsProvider = value;
+    }
     
     // ========================
     // 私有字段 - 首次加载标志
@@ -353,9 +359,10 @@ public partial class AnnotationCanvas : UserControl
     /// <summary>获取当前标签大小（像素），从设置中读取并限制范围</summary>
     private int GetLabelSize()
     {
-        var settings = _cachedSettings ?? ShortcutSettingsService.Load();
-        return Math.Clamp(settings.LabelSize, 24, 128);
+        return Math.Clamp(CurrentSettings.LabelSize, 24, 128);
     }
+
+    private AppSettings CurrentSettings => _settingsProvider?.Current ?? AppSettings.CreateDefaults();
     
     /// <summary>根据当前变换矩阵重新计算所有标签的屏幕位置</summary>
     public void UpdateLabelPositions()
@@ -390,10 +397,8 @@ public partial class AnnotationCanvas : UserControl
     }
     
     /// <summary>更新缓存的快捷键设置（由 MainWindow 在设置变更时调用）</summary>
-    public void UpdateSettings(ShortcutSettings settings)
+    public void UpdateSettings(AppSettings settings)
     {
-        _cachedSettings = settings;
-        // 同步 LabelSize 到 CanvasWorkspaceViewModel（用于命中测试）
         if (DataContext is CanvasWorkspaceViewModel vm)
             vm.LabelSize = settings.LabelSize;
     }
@@ -401,9 +406,9 @@ public partial class AnnotationCanvas : UserControl
     /// <summary>获取指定分组的背景颜色</summary>
     private IBrush GetGroupBrush(int groupIndex)
     {
-        var settings = _cachedSettings ?? ShortcutSettingsService.Load();
-        
-        if (settings.Colors.GroupColors.TryGetValue(groupIndex, out var colorHex) &&
+        var colors = CurrentSettings.Colors;
+
+        if (colors.GroupColors.TryGetValue(groupIndex, out var colorHex) &&
             !string.IsNullOrEmpty(colorHex) && colorHex.StartsWith("#"))
         {
             try
@@ -414,7 +419,6 @@ public partial class AnnotationCanvas : UserControl
             catch { }
         }
 
-        // 如果没有找到对应颜色，从默认设置中获取
         var defaults = ColorSettings.CreateDefaults();
         if (defaults.GroupColors.TryGetValue(groupIndex, out var defaultColorHex))
         {
@@ -432,8 +436,8 @@ public partial class AnnotationCanvas : UserControl
     /// <summary>获取当前设置中的选中高亮颜色</summary>
     private IBrush GetSelectedHighlightBrush()
     {
-        var settings = _cachedSettings ?? ShortcutSettingsService.Load();
-        var selectedColorHex = settings.Colors.SelectedColor;
+        var colors = CurrentSettings.Colors;
+        var selectedColorHex = colors.SelectedColor;
 
         if (!string.IsNullOrEmpty(selectedColorHex) && selectedColorHex.StartsWith("#"))
         {
@@ -445,7 +449,6 @@ public partial class AnnotationCanvas : UserControl
             catch { }
         }
 
-        // 如果没有设置，从默认中获取
         var defaults = ColorSettings.CreateDefaults();
         if (!string.IsNullOrEmpty(defaults.SelectedColor))
         {

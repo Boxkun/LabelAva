@@ -29,7 +29,7 @@ namespace LabelAva;
 public partial class MainWindow : Window
 {
     // 快捷键设置
-    private ShortcutSettings? _shortcutSettings;
+    private readonly AppSettingsProvider _settingsProvider = new();
     private ShortcutRouter _shortcutRouter = null!;
     
     // 编辑模式相关
@@ -123,12 +123,12 @@ public partial class MainWindow : Window
         try
         {
             // ---- Phase 1: 文件 I/O 移到后台线程 ----
-            _shortcutSettings = await Task.Run(() => ShortcutSettingsService.Load());
-            _shortcutRouter = new ShortcutRouter(_shortcutSettings);
+            await Task.Run(() => _settingsProvider.Load());
+            _shortcutRouter = new ShortcutRouter(_settingsProvider.Current.Shortcuts);
 
             // ---- Phase 2: UI 线程上的轻量操作 ----
             UpdateGroupButtonsShortcutTips();
-            PreferencesWindow.SettingsChanged += OnPreferencesChanged;
+            _settingsProvider.SettingsChanged += OnSettingsChanged;
 
             StatusBar.UpdateStatus("就绪", StatusBarViewModel.StatusType.Info);
             StatusBar.UpdateZoom(100);
@@ -166,6 +166,8 @@ public partial class MainWindow : Window
             ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
             // ---- Phase 4: Canvas 初始化 ----
+            CanvasControl.SettingsProvider = _settingsProvider;
+            GroupIndexToBrushConverter.Initialize(_settingsProvider);
             CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
             CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
             CanvasControl.LabelClicked += (_, labelIndex) =>
@@ -188,21 +190,20 @@ public partial class MainWindow : Window
     /// <summary>
     /// 首选项设置更改总处理函数（合并快捷键与外观更新）
     /// </summary>
-    private void OnPreferencesChanged(object? sender, (ShortcutSettings settings, SettingsChangeKind changes, bool isPreview) e)
+    private void OnSettingsChanged(object? sender, (AppSettings settings, SettingsChangeKind changes) e)
     {
-        var (settings, changes, isPreview) = e;
-        _shortcutSettings = settings;
+        var (settings, changes) = e;
 
         if (changes.HasFlag(SettingsChangeKind.Shortcuts))
         {
-            _shortcutRouter.UpdateSettings(settings);
+            _shortcutRouter.UpdateSettings(settings.Shortcuts);
             UpdateGroupButtonsShortcutTips();
         }
 
         if (changes.HasFlag(SettingsChangeKind.Colors))
         {
             CanvasControl.UpdateSettings(settings);
-            GroupIndexToBrushConverter.ClearCache();
+            GroupIndexToBrushConverter.InvalidateCache();
             UpdateGroupButtonColors();
             UpdateLabels();
             if (Navigation.SelectedItem is TranslationTreeItem selectedItem)
@@ -217,7 +218,7 @@ public partial class MainWindow : Window
                 CanvasControl.HighlightLabel(selectedItem.Index);
         }
 
-        if (!isPreview && changes != SettingsChangeKind.None)
+        if (changes != SettingsChangeKind.None)
             StatusBar.UpdateStatus("首选项已更新", StatusBarViewModel.StatusType.Info);
     }
     
@@ -226,15 +227,16 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateGroupButtonsShortcutTips()
     {
+        var shortcuts = _settingsProvider.Current.Shortcuts;
         if (Group0RadioButton != null)
         {
-            var shortcutText = ShortcutSettings.KeyGestureToString(_shortcutSettings.ToggleGroup0);
+            var shortcutText = ShortcutBindings.KeyGestureToString(shortcuts.ToggleGroup0);
             ToolTip.SetTip(Group0RadioButton, $"切换到框内 ({shortcutText})");
         }
         
         if (Group1RadioButton != null)
         {
-            var shortcutText = ShortcutSettings.KeyGestureToString(_shortcutSettings.ToggleGroup1);
+            var shortcutText = ShortcutBindings.KeyGestureToString(shortcuts.ToggleGroup1);
             ToolTip.SetTip(Group1RadioButton, $"切换到框外 ({shortcutText})");
         }
     }
@@ -583,8 +585,7 @@ public partial class MainWindow : Window
     
     private async void OnPreferences(object? sender, RoutedEventArgs e)
     {
-        var preferencesWindow = new Views.PreferencesWindow();
-        // SettingsChanged 已在构造函数中统一订阅 OnPreferencesChanged，无需在此重复订阅
+        var preferencesWindow = new Views.PreferencesWindow(_settingsProvider);
         await preferencesWindow.ShowDialog(this);
     }
 
@@ -715,7 +716,7 @@ public partial class MainWindow : Window
         
         // 【新增】如果有待选中的新标签已被选中，聚焦到文本框
         // 根据设置决定是否自动聚焦
-        if (CanvasWorkspace.PendingNewLabelIndex.HasValue && _shortcutSettings.AutoFocusTextBox)
+        if (CanvasWorkspace.PendingNewLabelIndex.HasValue && _settingsProvider.Current.AutoFocusTextBox)
         {
             // 清除待选中状态后，聚焦到文本框
             CanvasWorkspace.ClearPendingNewLabelIndex();
@@ -804,16 +805,16 @@ public partial class MainWindow : Window
 
         try
         {
-            var settings = _shortcutSettings;
+            var settings = _settingsProvider.Current;
 
             // Group0 (框内) - 分组索引为1
-            var group0ColorHex = settings.Colors.GroupColors.GetValueOrDefault(1, "#FFE6E6");
+            var group0ColorHex = settings.Colors.GroupColors.GetValueOrDefault(1, "#E74856");
             var group0Color = Avalonia.Media.Color.Parse(group0ColorHex);
             var group0HoverColor = AdjustBrightness(group0Color, 1.2); // 增加亮度
             var group0PressedColor = AdjustBrightness(group0Color, 0.7); // 减少亮度
 
             // Group1 (框外) - 分组索引为2
-            var group1ColorHex = settings.Colors.GroupColors.GetValueOrDefault(2, "#E6E6FF");
+            var group1ColorHex = settings.Colors.GroupColors.GetValueOrDefault(2, "#1E90FF");
             var group1Color = Avalonia.Media.Color.Parse(group1ColorHex);
             var group1HoverColor = AdjustBrightness(group1Color, 1.2);
             var group1PressedColor = AdjustBrightness(group1Color, 0.7);
@@ -1473,7 +1474,7 @@ public partial class MainWindow : Window
                 _isProgrammaticTextChange = false;
 
                 // 3. 异步渲染后置阶段：操作焦点与光标
-                if (Edit.IsEditMode && !_isUpdatingUI && _shortcutSettings.AutoFocusTextBox)
+                if (Edit.IsEditMode && !_isUpdatingUI && _settingsProvider.Current.AutoFocusTextBox)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {

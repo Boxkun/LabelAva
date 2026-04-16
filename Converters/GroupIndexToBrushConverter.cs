@@ -7,19 +7,18 @@ using LabelAva.Services;
 
 namespace LabelAva;
 
-/// <summary>
-/// 根据 GroupIndex 返回对应的背景色（从设置中读取，支持动态配置）
-/// </summary>
 public class GroupIndexToBrushConverter : IValueConverter
 {
-    // 静态实例用于 XAML 引用
     public static readonly GroupIndexToBrushConverter Instance = new();
 
-    // 缓存当前颜色设置
+    private AppSettingsProvider? _provider;
     private ColorSettings? _cachedColorSettings;
-
-    // 缓存的画刷
     private readonly Dictionary<int, IBrush> _brushCache = new();
+
+    public static void Initialize(AppSettingsProvider provider)
+    {
+        Instance._provider = provider;
+    }
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -35,47 +34,34 @@ public class GroupIndexToBrushConverter : IValueConverter
         throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// 获取指定分组索引的画刷
-    /// </summary>
     private IBrush GetBrushForGroup(int groupIndex)
     {
-        // 加载最新的颜色设置
-        var colorSettings = LoadColorSettings();
+        var colorSettings = _provider?.Current.Colors ?? ColorSettings.CreateDefaults();
 
-        // 检查缓存中是否存在该分组颜色
         if (_brushCache.TryGetValue(groupIndex, out var cachedBrush))
         {
-            // 验证缓存是否仍然有效
             if (IsCacheValid(colorSettings))
             {
                 return cachedBrush;
             }
         }
 
-        // 获取颜色字符串
         if (!colorSettings.GroupColors.TryGetValue(groupIndex, out var colorHex) || string.IsNullOrEmpty(colorHex))
         {
-            // 如果没有找到对应颜色，从默认设置中获取
             var defaults = ColorSettings.CreateDefaults();
             if (!defaults.GroupColors.TryGetValue(groupIndex, out colorHex))
             {
-                colorHex = "#FFFFFF"; // 完全找不到时使用白色
+                colorHex = "#FFFFFF";
             }
         }
 
-        // 创建新的画刷
         var brush = CreateBrushFromHex(colorHex);
 
-        // 更新缓存
         UpdateBrushCache(groupIndex, brush, colorSettings);
 
         return brush;
     }
 
-    /// <summary>
-    /// 从十六进制颜色代码创建画刷
-    /// </summary>
     private static IBrush CreateBrushFromHex(string hex)
     {
         try
@@ -89,31 +75,11 @@ public class GroupIndexToBrushConverter : IValueConverter
         }
     }
 
-    /// <summary>
-    /// 加载颜色设置
-    /// </summary>
-    private ColorSettings LoadColorSettings()
-    {
-        try
-        {
-            var settings = ShortcutSettingsService.Load();
-            return settings.Colors;
-        }
-        catch
-        {
-            return ColorSettings.CreateDefaults();
-        }
-    }
-
-    /// <summary>
-    /// 验证缓存是否有效
-    /// </summary>
     private bool IsCacheValid(ColorSettings settings)
     {
         if (_cachedColorSettings == null)
             return false;
 
-        // 简单比较：检查分组数量和颜色是否变化
         if (_cachedColorSettings.GroupColors.Count != settings.GroupColors.Count)
             return false;
 
@@ -128,19 +94,13 @@ public class GroupIndexToBrushConverter : IValueConverter
         return true;
     }
 
-    /// <summary>
-    /// 更新画刷缓存
-    /// </summary>
     private void UpdateBrushCache(int groupIndex, IBrush brush, ColorSettings settings)
     {
         _cachedColorSettings = settings.Clone();
         _brushCache[groupIndex] = brush;
     }
 
-    /// <summary>
-    /// 清除缓存（当设置更改时调用）
-    /// </summary>
-    public static void ClearCache()
+    public static void InvalidateCache()
     {
         Instance._brushCache.Clear();
         Instance._cachedColorSettings = null;

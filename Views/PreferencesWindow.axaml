@@ -261,11 +261,11 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="框内颜色" VerticalAlignment="Center"/>
                                 <TextBox x:Name="Group0ColorTextBox" Grid.Row="0" Grid.Column="2"
-                                         Watermark="#FFE6E6" TextChanged="OnGroup0ColorChanged"
+                                         Watermark="#E74856" TextChanged="OnGroup0ColorChanged"
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="Group0ColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
-                                        Background="#FFE6E6" BorderBrush="#CCC" BorderThickness="1"/>
+                                        Background="#E74856" BorderBrush="#CCC" BorderThickness="1"/>
                             </Grid>
                         </Border>
 
@@ -281,11 +281,11 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="框外颜色" VerticalAlignment="Center"/>
                                 <TextBox x:Name="Group1ColorTextBox" Grid.Row="0" Grid.Column="2"
-                                         Watermark="#E6E6FF" TextChanged="OnGroup1ColorChanged"
+                                         Watermark="#1E90FF" TextChanged="OnGroup1ColorChanged"
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="Group1ColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
-                                        Background="#E6E6FF" BorderBrush="#CCC" BorderThickness="1"/>
+                                        Background="#1E90FF" BorderBrush="#CCC" BorderThickness="1"/>
                             </Grid>
                         </Border>
 
@@ -301,11 +301,11 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="选中高亮" VerticalAlignment="Center"/>
                                 <TextBox x:Name="SelectedColorTextBox" Grid.Row="0" Grid.Column="2"
-                                         Watermark="#1E90FF" TextChanged="OnSelectedColorChanged"
+                                         Watermark="#33BA90" TextChanged="OnSelectedColorChanged"
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="SelectedColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
-                                        Background="#1E90FF" BorderBrush="#CCC" BorderThickness="1"/>
+                                        Background="#33BA90" BorderBrush="#CCC" BorderThickness="1"/>
                             </Grid>
                         </Border>
 
