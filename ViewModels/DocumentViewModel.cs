@@ -322,16 +322,19 @@ public partial class DocumentViewModel : ObservableObject
         _statusBar.UpdateStatus($"已创建翻译文件，包含 {selectedImages.Count} 张图片", StatusBarViewModel.StatusType.Success);
     }
 
-    private async Task OpenTranslationFileAsync()
+    public async Task OpenTranslationFileAsync(string? filePath = null)
     {
-        var textFileFilter = new[]
+        if (filePath == null)
         {
-            new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } },
-            new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
-        };
+            var textFileFilter = new[]
+            {
+                new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } },
+                new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
+            };
 
-        var filePath = await _fileService.PickOpenFileAsync("选择翻译文件", textFileFilter);
-        if (filePath == null) return;
+            filePath = await _fileService.PickOpenFileAsync("选择翻译文件", textFileFilter);
+            if (filePath == null) return;
+        }
 
         try
         {

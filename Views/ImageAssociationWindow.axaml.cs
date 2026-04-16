@@ -127,6 +127,24 @@ public partial class ImageAssociationWindow : Window
         if (files.Count > 0)
         {
             item.NewPath = files[0].Path.LocalPath;
+            RevalidateItem(item);
+            UpdateStatusSummary();
+        }
+    }
+
+    private void RevalidateItem(ImageAssociationItem item)
+    {
+        if (!string.IsNullOrEmpty(item.NewPath))
+        {
+            var exists = File.Exists(item.NewPath);
+            item.Status = exists ? ImageValidationStatus.OK : ImageValidationStatus.Missing;
+            item.StatusText = exists ? "\u2713 正常" : "\u2717 缺失";
+        }
+        else
+        {
+            var (status, statusText) = _validationService.ValidateSingleWithText(_imageFolderPath, item.ImageName);
+            item.Status = status;
+            item.StatusText = statusText;
         }
     }
 

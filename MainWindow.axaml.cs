@@ -76,8 +76,15 @@ public partial class MainWindow : Window
 
         // ===== 仅保留窗口级事件订阅（不依赖任何 VM） =====
         
+        // 启用拖放
+        DragDrop.SetAllowDrop(this, true);
+        
         // 订阅窗口关闭事件，确保清理资源
         this.Closing += OnWindowClosing;
+        
+        // 订阅拖放事件
+        this.AddHandler(DragDrop.DropEvent, OnFileDrop);
+        this.AddHandler(DragDrop.DragOverEvent, OnFileDragOver);
         
         // 订阅鼠标按键事件（用于处理鼠标侧键快捷键）
         this.PointerPressed += OnMainWindowPointerPressed;
@@ -574,11 +581,11 @@ public partial class MainWindow : Window
         UpdateLabels();
     }
     
-    private void OnPreferences(object? sender, RoutedEventArgs e)
+    private async void OnPreferences(object? sender, RoutedEventArgs e)
     {
         var preferencesWindow = new Views.PreferencesWindow();
         // SettingsChanged 已在构造函数中统一订阅 OnPreferencesChanged，无需在此重复订阅
-        preferencesWindow.Show();
+        await preferencesWindow.ShowDialog(this);
     }
 
     /// <summary>
@@ -1754,5 +1761,39 @@ public partial class MainWindow : Window
                 }
             }
         }
+    }
+    
+    // ==================== 文件拖放打开 ====================
+
+    private void OnFileDragOver(object? sender, DragEventArgs e)
+    {
+        var files = e.DataTransfer.TryGetFiles();
+        if (files == null || files.Length == 0)
+        {
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var hasTxtFile = files.Any(f =>
+            f.Path.IsFile &&
+            f.Path.AbsolutePath.EndsWith(".txt", StringComparison.OrdinalIgnoreCase));
+
+        e.DragEffects = hasTxtFile ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void OnFileDrop(object? sender, DragEventArgs e)
+    {
+        var files = e.DataTransfer.TryGetFiles();
+        var txtFile = files?.FirstOrDefault(f =>
+            f.Path.IsFile &&
+            f.Path.AbsolutePath.EndsWith(".txt", StringComparison.OrdinalIgnoreCase));
+
+        if (txtFile == null)
+            return;
+
+        var filePath = txtFile.Path.LocalPath;
+        await Document.OpenTranslationFileAsync(filePath);
     }
 }
