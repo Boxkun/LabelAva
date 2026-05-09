@@ -30,8 +30,15 @@ public class TranslationParser
     /// <returns>解析结果</returns>
     public TranslationData Parse(string filePath)
     {
-        var lines = File.ReadAllLines(filePath, Encoding.UTF8);
-        return Parse(lines);
+        try
+        {
+            var lines = File.ReadAllLines(filePath, Encoding.UTF8);
+            return Parse(lines);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new InvalidOperationException($"读取翻译文件失败: {ex.Message}", ex);
+        }
     }
     
     /// <summary>
@@ -281,9 +288,15 @@ public class TranslationParser
     /// <param name="data">翻译数据</param>
     public void Save(string filePath, TranslationData data)
     {
-        var content = GenerateFileContent(data);
-        // 使用 UTF8 编码保存
-        File.WriteAllText(filePath, content, Encoding.UTF8);
+        try
+        {
+            var content = GenerateFileContent(data);
+            File.WriteAllText(filePath, content, Encoding.UTF8);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new InvalidOperationException($"保存翻译文件失败: {ex.Message}", ex);
+        }
     }
 
     /// <summary>

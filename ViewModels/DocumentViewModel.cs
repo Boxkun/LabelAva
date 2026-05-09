@@ -260,66 +260,73 @@ public partial class DocumentViewModel : ObservableObject
         var folderPath = await _fileService.PickFolderAsync("新建翻译文件");
         if (folderPath == null) return;
 
-        // 2. 扫描图片
-        var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
-        var imageFiles = Directory.GetFiles(folderPath)
-            .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-            .ToList();
-
-        if (imageFiles.Count == 0)
+        try
         {
-            _statusBar.UpdateStatus("所选文件夹中未找到图片文件", StatusBarViewModel.StatusType.Warn);
-            return;
+            // 2. 扫描图片
+            var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+            var imageFiles = Directory.GetFiles(folderPath)
+                .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+
+            if (imageFiles.Count == 0)
+            {
+                _statusBar.UpdateStatus("所选文件夹中未找到图片文件", StatusBarViewModel.StatusType.Warn);
+                return;
+            }
+
+            // 3. 弹出图片选择对话框
+            var folderName = new DirectoryInfo(folderPath).Name;
+            var selectionResult = await _showImageSelectionDialog(imageFiles, folderName);
+
+            if (selectionResult == null || selectionResult.SelectedImagePaths.Count == 0)
+                return;
+
+            // 4. 生成翻译文件
+            var selectedImages = selectionResult.SelectedImagePaths;
+            var userFileName = selectionResult.FileName;
+            var content = GenerateTranslationFileContent(selectedImages);
+
+            var translationFileName = $"{userFileName}.txt";
+            var translationFilePath = Path.Combine(folderPath, translationFileName);
+
+            // 处理文件名冲突
+            var counter = 1;
+            while (File.Exists(translationFilePath))
+            {
+                translationFileName = $"{folderName}_translation_{counter}.txt";
+                translationFilePath = Path.Combine(folderPath, translationFileName);
+                counter++;
+            }
+
+            // 写入文件
+            await File.WriteAllTextAsync(translationFilePath, content, System.Text.Encoding.UTF8);
+
+            // 5. 加载翻译数据
+            ImageFolderPath = folderPath;
+            TranslationData = _parser.Parse(translationFilePath);
+            FilePath = translationFilePath;
+            IsDirty = false;
+            HasDocument = true;
+
+            // 6. 启动自动保存
+            StartAutoSaveTimer();
+
+            // 7. 通知 UI 层
+            var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
+            DocumentOpened?.Invoke(this, new DocumentOpenedEventArgs
+            {
+                TranslationData = TranslationData,
+                ImageFolderPath = ImageFolderPath!,
+                ImageNames = imageNames,
+                ImagePathMapping = new Dictionary<string, string>(ImagePathMapping)
+            });
+
+            _statusBar.UpdateStatus($"已创建翻译文件，包含 {selectedImages.Count} 张图片", StatusBarViewModel.StatusType.Success);
         }
-
-        // 3. 弹出图片选择对话框
-        var folderName = new DirectoryInfo(folderPath).Name;
-        var selectionResult = await _showImageSelectionDialog(imageFiles, folderName);
-
-        if (selectionResult == null || selectionResult.SelectedImagePaths.Count == 0)
-            return;
-
-        // 4. 生成翻译文件
-        var selectedImages = selectionResult.SelectedImagePaths;
-        var userFileName = selectionResult.FileName;
-        var content = GenerateTranslationFileContent(selectedImages);
-
-        var translationFileName = $"{userFileName}.txt";
-        var translationFilePath = Path.Combine(folderPath, translationFileName);
-
-        // 处理文件名冲突
-        var counter = 1;
-        while (File.Exists(translationFilePath))
+        catch (Exception ex)
         {
-            translationFileName = $"{folderName}_translation_{counter}.txt";
-            translationFilePath = Path.Combine(folderPath, translationFileName);
-            counter++;
+            _statusBar.UpdateStatus($"创建翻译文件失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
         }
-
-        // 写入文件
-        await File.WriteAllTextAsync(translationFilePath, content, System.Text.Encoding.UTF8);
-
-        // 5. 加载翻译数据
-        ImageFolderPath = folderPath;
-        TranslationData = _parser.Parse(translationFilePath);
-        FilePath = translationFilePath;
-        IsDirty = false;
-        HasDocument = true;
-
-        // 6. 启动自动保存
-        StartAutoSaveTimer();
-
-        // 7. 通知 UI 层
-        var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
-        DocumentOpened?.Invoke(this, new DocumentOpenedEventArgs
-        {
-            TranslationData = TranslationData,
-            ImageFolderPath = ImageFolderPath!,
-            ImageNames = imageNames,
-            ImagePathMapping = new Dictionary<string, string>(ImagePathMapping)
-        });
-
-        _statusBar.UpdateStatus($"已创建翻译文件，包含 {selectedImages.Count} 张图片", StatusBarViewModel.StatusType.Success);
     }
 
     public async Task OpenTranslationFileAsync(string? filePath = null)
@@ -536,9 +543,9 @@ public partial class DocumentViewModel : ObservableObject
                 IsDirty = false;
                 _statusBar.UpdateStatus("自动保存成功", StatusBarViewModel.StatusType.Success);
             }
-            catch
+            catch (Exception ex)
             {
-                // 自动保存失败，静默处理
+                _statusBar.UpdateStatus($"自动保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
             }
         }
     }

@@ -311,24 +311,31 @@ public partial class MainWindow : Window
     /// </summary>
     private void SaveWindowBounds()
     {
-        var s = _settingsProvider.Current;
-        if (WindowState == WindowState.Maximized)
+        try
         {
-            s.WindowMaximized = true;
-            s.WindowWidth = _normalWidth;
-            s.WindowHeight = _normalHeight;
-            s.WindowX = _normalPosition.X;
-            s.WindowY = _normalPosition.Y;
+            var s = _settingsProvider.Current;
+            if (WindowState == WindowState.Maximized)
+            {
+                s.WindowMaximized = true;
+                s.WindowWidth = _normalWidth;
+                s.WindowHeight = _normalHeight;
+                s.WindowX = _normalPosition.X;
+                s.WindowY = _normalPosition.Y;
+            }
+            else
+            {
+                s.WindowMaximized = false;
+                s.WindowWidth = Width;
+                s.WindowHeight = Height;
+                s.WindowX = Position.X;
+                s.WindowY = Position.Y;
+            }
+            _settingsProvider.Save();
         }
-        else
+        catch
         {
-            s.WindowMaximized = false;
-            s.WindowWidth = Width;
-            s.WindowHeight = Height;
-            s.WindowX = Position.X;
-            s.WindowY = Position.Y;
+            // 窗口尺寸保存失败不影响关闭
         }
-        _settingsProvider.Save();
     }
     
     /// <summary>
