@@ -73,15 +73,18 @@ public partial class MainWindow : Window
     private double _normalWidth;
     private double _normalHeight;
     private PixelPoint _normalPosition;
+    private DispatcherTimer? _sizeDebounce;
+    private bool _savedMaximized;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
 
-        // 恢复上次的窗口布局（必须早于 Opened 事件，避免闪烁）
+        // 恢复上次窗口尺寸/位置（不立即最大化，让 OS 先记录 Normal 尺寸）
         _settingsProvider.Load();
         var s = _settingsProvider.Current;
+        _savedMaximized = s.WindowMaximized;
         if (s.WindowX >= 0 && s.WindowY >= 0)
         {
             var pos = new PixelPoint(s.WindowX, s.WindowY);
@@ -92,7 +95,6 @@ public partial class MainWindow : Window
                 Height = s.WindowHeight;
             }
         }
-        WindowState = s.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
 
         // ===== 仅保留窗口级事件订阅（不依赖任何 VM） =====
         
@@ -142,23 +144,48 @@ public partial class MainWindow : Window
         // 等待首帧渲染完成（Render 优先级确保布局+渲染 pass 已执行）
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
+        // 延迟最大化：先以 Normal 尺寸呈现，让 OS 记录 Normal 尺寸后最大化
+        if (_savedMaximized)
+            WindowState = WindowState.Maximized;
+
         // 首帧已上屏，安全地显示窗口
         this.Opacity = 1;
 
         // 异步执行重工作
         await InitializeAsync();
 
-        // 初始化正常态尺寸追踪 & 订阅变化通知
-        _normalWidth = Width;
-        _normalHeight = Height;
-        _normalPosition = Position;
+        // 初始化正常态尺寸追踪（从 settings 读取，避免最大化状态下读到膨胀值）
+        {
+            var s = _settingsProvider.Current;
+            _normalWidth = s.WindowWidth;
+            _normalHeight = s.WindowHeight;
+            _normalPosition = new PixelPoint(s.WindowX, s.WindowY);
+        }
+
+        _sizeDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _sizeDebounce.Tick += (_, _) =>
+        {
+            _sizeDebounce.Stop();
+            if (WindowState != WindowState.Normal)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Debounce] SKIPPED, state={WindowState}");
+                return;
+            }
+            _normalWidth = Width;
+            _normalHeight = Height;
+            _normalPosition = Position;
+            System.Diagnostics.Debug.WriteLine($"[Debounce] saved normal: {Width}x{Height} @ {Position}");
+        };
+
         this.PropertyChanged += (_, e) =>
         {
-            if (WindowState != WindowState.Normal) return;
-            if (e.Property == WidthProperty || e.Property == HeightProperty)
+            if (WindowState == WindowState.Normal)
             {
-                _normalWidth = Width;
-                _normalHeight = Height;
+                if (e.Property == WidthProperty || e.Property == HeightProperty)
+                {
+                    _sizeDebounce.Stop();
+                    _sizeDebounce.Start();
+                }
             }
         };
     }
@@ -316,6 +343,7 @@ public partial class MainWindow : Window
             var s = _settingsProvider.Current;
             if (WindowState == WindowState.Maximized)
             {
+                System.Diagnostics.Debug.WriteLine($"[Save] Maximized, saving _normal*: {_normalWidth}x{_normalHeight} @ ({_normalPosition.X},{_normalPosition.Y})");
                 s.WindowMaximized = true;
                 s.WindowWidth = _normalWidth;
                 s.WindowHeight = _normalHeight;
@@ -324,6 +352,7 @@ public partial class MainWindow : Window
             }
             else
             {
+                System.Diagnostics.Debug.WriteLine($"[Save] Normal, saving current: {Width}x{Height} @ {Position}");
                 s.WindowMaximized = false;
                 s.WindowWidth = Width;
                 s.WindowHeight = Height;
@@ -362,6 +391,8 @@ public partial class MainWindow : Window
         this.Closing -= OnWindowClosing;
 
         SaveWindowBounds();
+        _sizeDebounce?.Stop();
+        _sizeDebounce = null;
         
         // 清空历史记录
         ViewModel.History.Clear();

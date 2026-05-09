@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Avalonia.Input;
@@ -22,14 +21,7 @@ public static class AppSettingsService
     {
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                TypeInfoResolver = AppSettingsContext.Default
-            };
-            var json = JsonSerializer.Serialize(new AppSettingsDto(settings), typeof(AppSettingsDto), options);
+            var json = JsonSerializer.Serialize(new AppSettingsDto(settings), AppSettingsContext.Default.AppSettingsDto);
 
             File.WriteAllText(SettingsFile, json);
         }
