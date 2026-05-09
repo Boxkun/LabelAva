@@ -28,7 +28,7 @@
         <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
             <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" x:Name="StatusSummary" FontSize="13" Padding="12,8"/>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <CheckBox x:Name="WriteToFileCheckBox" Content="更新翻译文件" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="13"/>
+                <CheckBox x:Name="WriteToFileCheckBox" Content="将新文件名写入翻译文件" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="13"/>
                 <Button Content="确认" Click="OnConfirm" MinWidth="80" Padding="12,8" VerticalAlignment="Center" FontSize="13" Classes="primary"/>
                 <Button Content="取消" Click="OnCancel" MinWidth="80" Padding="12,8" VerticalAlignment="Center" FontSize="13"/>
             </StackPanel>
@@ -45,7 +45,7 @@
                                     <TextBlock Grid.Column="0" Text="{Binding ImageName}" VerticalAlignment="Center" FontSize="13" FontFamily="Sarasa Mono SC" Margin="8,0,0,0"/>
                                     <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="{Binding StatusForeground}" VerticalAlignment="Center" FontSize="13" Width="80"/>
                                     <TextBox Grid.Column="2" Text="{Binding NewPath, Mode=TwoWay}" FontSize="13" VerticalContentAlignment="Center" Watermark="(项目路径)"/>
-                                    <Button Grid.Column="3" Content="选择" Click="OnSelectFile" FontSize="13" VerticalContentAlignment="Center" Margin="8,0,0,0"/>
+                                    <Button Grid.Column="3" Content="浏览" Click="OnSelectFile" FontSize="13" VerticalContentAlignment="Center" Margin="8,0,0,0"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>

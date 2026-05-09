@@ -38,7 +38,21 @@ public partial class ImageAssociationWindow : Window
         AssociationList.ItemsSource = _items;
         FolderPathBox.Text = imageFolderPath;
 
+        foreach (var item in _items)
+        {
+            item.PropertyChanged += OnItemPropertyChanged;
+        }
+
         UpdateStatusSummary();
+    }
+
+    private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ImageAssociationItem.NewPath) && sender is ImageAssociationItem item)
+        {
+            RevalidateItem(item);
+            UpdateStatusSummary();
+        }
     }
 
     private void UpdateStatusSummary()

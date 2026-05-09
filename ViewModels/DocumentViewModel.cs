@@ -415,6 +415,17 @@ public partial class DocumentViewModel : ObservableObject
             ImageFolderPath = result.FolderPath;
         }
 
+        // 在 Redirect 模式下，清理已被用户清除的旧映射（用户清空文本框后确认）
+        if (!result.WriteToFile)
+        {
+            var remappedNames = new HashSet<string>(result.Remappings.Keys);
+            foreach (var key in ImagePathMapping.Keys.ToList())
+            {
+                if (!remappedNames.Contains(key))
+                    ImagePathMapping.Remove(key);
+            }
+        }
+
         foreach (var kvp in result.Remappings)
         {
             var imageName = kvp.Key;
