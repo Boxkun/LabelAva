@@ -248,6 +248,11 @@ public class AppSettingsDto
     public ColorSettingsDto? Colors { get; set; }
     public int LabelSize { get; set; } = 32;
     public bool AutoFocusTextBox { get; set; } = true;
+    public double WindowWidth { get; set; } = 1200;
+    public double WindowHeight { get; set; } = 800;
+    public int WindowX { get; set; } = -1;
+    public int WindowY { get; set; } = -1;
+    public bool WindowMaximized { get; set; }
 
     public AppSettingsDto() { }
 
@@ -257,6 +262,11 @@ public class AppSettingsDto
         Colors = new ColorSettingsDto(settings.Colors);
         LabelSize = settings.LabelSize;
         AutoFocusTextBox = settings.AutoFocusTextBox;
+        WindowWidth = settings.WindowWidth;
+        WindowHeight = settings.WindowHeight;
+        WindowX = settings.WindowX;
+        WindowY = settings.WindowY;
+        WindowMaximized = settings.WindowMaximized;
     }
 
     public Models.AppSettings ToSettings()
@@ -269,7 +279,12 @@ public class AppSettingsDto
             Shortcuts = shortcuts,
             Colors = colors,
             LabelSize = LabelSize,
-            AutoFocusTextBox = AutoFocusTextBox
+            AutoFocusTextBox = AutoFocusTextBox,
+            WindowWidth = WindowWidth,
+            WindowHeight = WindowHeight,
+            WindowX = WindowX,
+            WindowY = WindowY,
+            WindowMaximized = WindowMaximized,
         };
     }
 }

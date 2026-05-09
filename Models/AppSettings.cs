@@ -245,6 +245,11 @@ public class AppSettings
     public ColorSettings Colors { get; set; } = ColorSettings.CreateDefaults();
     public int LabelSize { get; set; } = 32;
     public bool AutoFocusTextBox { get; set; } = true;
+    public double WindowWidth { get; set; } = 1200;
+    public double WindowHeight { get; set; } = 800;
+    public int WindowX { get; set; } = -1;
+    public int WindowY { get; set; } = -1;
+    public bool WindowMaximized { get; set; }
 
     public static AppSettings CreateDefaults()
     {
@@ -254,6 +259,11 @@ public class AppSettings
             Colors = ColorSettings.CreateDefaults(),
             LabelSize = 32,
             AutoFocusTextBox = true,
+            WindowWidth = 1200,
+            WindowHeight = 800,
+            WindowX = -1,
+            WindowY = -1,
+            WindowMaximized = false,
         };
     }
 }

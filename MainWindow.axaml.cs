@@ -69,10 +69,30 @@ public partial class MainWindow : Window
     // ==================== AnnotationCanvas 便捷属性 ====================
     public AnnotationCanvas CanvasControl => this.FindControl<AnnotationCanvas>("AnnotationCanvasControl")!;
 
+    // 内存追踪正常态窗口尺寸（最大化时用于保存恢复尺寸）
+    private double _normalWidth;
+    private double _normalHeight;
+    private PixelPoint _normalPosition;
+
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
+
+        // 恢复上次的窗口布局（必须早于 Opened 事件，避免闪烁）
+        _settingsProvider.Load();
+        var s = _settingsProvider.Current;
+        if (s.WindowX >= 0 && s.WindowY >= 0)
+        {
+            var pos = new PixelPoint(s.WindowX, s.WindowY);
+            if (IsPositionValid(pos, s.WindowWidth, s.WindowHeight))
+            {
+                Position = pos;
+                Width = s.WindowWidth;
+                Height = s.WindowHeight;
+            }
+        }
+        WindowState = s.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
 
         // ===== 仅保留窗口级事件订阅（不依赖任何 VM） =====
         
@@ -97,6 +117,20 @@ public partial class MainWindow : Window
         this.Opened += OnWindowFirstOpened;
     }
     
+    /// <summary>
+    /// 校验保存的窗口位置在当前屏幕配置下是否至少标题栏可见
+    /// </summary>
+    private bool IsPositionValid(PixelPoint pos, double w, double h)
+    {
+        if (Screens is null) return false;
+        var titleArea = new PixelRect(pos, new PixelSize((int)w, 60));
+        foreach (var screen in Screens.All)
+        {
+            if (screen.Bounds.Intersects(titleArea))
+                return true;
+        }
+        return false;
+    }
     
     /// <summary>
     /// 首次打开窗口时的处理：等待首帧渲染完成后显示窗口
@@ -113,6 +147,20 @@ public partial class MainWindow : Window
 
         // 异步执行重工作
         await InitializeAsync();
+
+        // 初始化正常态尺寸追踪 & 订阅变化通知
+        _normalWidth = Width;
+        _normalHeight = Height;
+        _normalPosition = Position;
+        this.PropertyChanged += (_, e) =>
+        {
+            if (WindowState != WindowState.Normal) return;
+            if (e.Property == WidthProperty || e.Property == HeightProperty)
+            {
+                _normalWidth = Width;
+                _normalHeight = Height;
+            }
+        };
     }
 
     /// <summary>
@@ -259,6 +307,31 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
+    /// 保存当前窗口尺寸/位置/最大化状态到设置文件
+    /// </summary>
+    private void SaveWindowBounds()
+    {
+        var s = _settingsProvider.Current;
+        if (WindowState == WindowState.Maximized)
+        {
+            s.WindowMaximized = true;
+            s.WindowWidth = _normalWidth;
+            s.WindowHeight = _normalHeight;
+            s.WindowX = _normalPosition.X;
+            s.WindowY = _normalPosition.Y;
+        }
+        else
+        {
+            s.WindowMaximized = false;
+            s.WindowWidth = Width;
+            s.WindowHeight = Height;
+            s.WindowX = Position.X;
+            s.WindowY = Position.Y;
+        }
+        _settingsProvider.Save();
+    }
+    
+    /// <summary>
     /// 窗口关闭时清理所有资源
     /// </summary>
     private async void OnWindowClosing(object? sender, WindowClosingEventArgs e)
@@ -280,6 +353,8 @@ public partial class MainWindow : Window
         // 取消订阅事件
         // ImageContainer 已迁入 AnnotationCanvas，无需在此处理
         this.Closing -= OnWindowClosing;
+
+        SaveWindowBounds();
         
         // 清空历史记录
         ViewModel.History.Clear();
