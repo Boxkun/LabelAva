@@ -24,6 +24,10 @@ public partial class NavigationViewModel : ObservableObject
     [ObservableProperty]
     private object? _selectedItem;
 
+    /// <summary>选中的翻译节点（当 SelectedItem 为 TranslationTreeItem 时有值）</summary>
+    [ObservableProperty]
+    private TranslationTreeItem? _selectedTranslationItem;
+
     /// <summary>当前图片索引</summary>
     [ObservableProperty]
     private int _currentImageIndex = -1;
@@ -325,9 +329,16 @@ public partial class NavigationViewModel : ObservableObject
 
     partial void OnSelectedItemChanged(object? value)
     {
-        // 当 SelectedItem 被任何源（热键、命令、代码）修改时，自动触发事件
-        // 这确保无论从哪里设置选中项，MainWindow 都能收到通知
+        SelectedTranslationItem = value as TranslationTreeItem;
         OnSelectedItemChangedFromVM();
+    }
+
+    partial void OnSelectedTranslationItemChanged(TranslationTreeItem? value)
+    {
+#if DEBUG
+        var preview = value?.Text is { Length: > 0 } t ? t[..Math.Min(t.Length, 10)] : "null";
+        System.Diagnostics.Debug.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [T{Environment.CurrentManagedThreadId}] SelectedTranslationItem → {preview}");
+#endif
     }
 
     partial void OnCurrentImageIndexChanged(int value)

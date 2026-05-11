@@ -33,9 +33,12 @@ public partial class MainWindow : Window
     private ShortcutRouter _shortcutRouter = null!;
     
     // 编辑模式相关
-    private bool _isProgrammaticTextChange = false; // 程序化设置文本时的标志
     private TextBox? _translationTextBox;
     private Border? _editPanel;
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void Log(string msg) =>
+        System.Diagnostics.Debug.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [T{Environment.CurrentManagedThreadId}] {msg}");
     
     // UI 锁：防止命令执行时触发 UI 事件污染历史栈
     private bool _isUpdatingUI = false;
@@ -330,6 +333,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyDligConfig()
     {
+        Log("ApplyDligConfig 开始");
         if (_translationTextBox == null)
             return;
 
@@ -340,6 +344,7 @@ public partial class MainWindow : Window
             _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
             _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
             Edit.QuickInputSlots.Clear();
+            Log("ApplyDligConfig 结束（无配置）");
             return;
         }
 
@@ -352,6 +357,7 @@ public partial class MainWindow : Window
             StatusBar.UpdateStatus(
                 $"连字配置 '{configName}' 加载失败，已回退到默认",
                 StatusBarViewModel.StatusType.Warn);
+            Log("ApplyDligConfig 结束（加载失败）");
             return;
         }
 
@@ -365,7 +371,10 @@ public partial class MainWindow : Window
 
         // 应用字体和 OpenType 特性
         if (string.IsNullOrWhiteSpace(config.FontFamily))
+        {
+            Log("ApplyDligConfig 结束（无 FontFamily）");
             return;
+        }
 
         var fontFamily = new FontFamily(config.FontFamily);
         var typeface = new Typeface(fontFamily);
@@ -377,10 +386,14 @@ public partial class MainWindow : Window
             StatusBar.UpdateStatus(
                 $"字体 '{config.FontFamily}' 未安装，连字功能不可用",
                 StatusBarViewModel.StatusType.Warn);
+            Log("ApplyDligConfig 结束（字体未安装）");
             return;
         }
 
+        Log("ApplyDligConfig FontFamily 赋值");
+        Log("ApplyDligConfig FontFamily 赋值前");
         _translationTextBox.FontFamily = fontFamily;
+        Log("ApplyDligConfig FontFamily 赋值后");
         QuickInputItemsControl.FontFamily = fontFamily;
 
         FontFeatureCollection? features = null;
@@ -393,6 +406,8 @@ public partial class MainWindow : Window
             _translationTextBox.FontFeatures = features;
             QuickInputItemsControl.FontFeatures = features;
         }
+        Log("ApplyDligConfig 结束");
+        Log("ApplyDligConfig 结束");
     }
 
     /// <summary>
@@ -973,23 +988,19 @@ public partial class MainWindow : Window
 
     private void OnQuickInputButtonClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.DataContext is QuickInputSlot slot)
-        {
-            if (!string.IsNullOrEmpty(slot.Character) && _translationTextBox != null && _translationTextBox.IsEnabled)
-            {
-                var caretIndex = _translationTextBox.CaretIndex;
-                var currentText = _translationTextBox.Text ?? "";
-                var newText = currentText.Insert(caretIndex, slot.Character);
+        if (sender is not Button button) return;
+        if (button.DataContext is not QuickInputSlot slot) return;
+        if (string.IsNullOrEmpty(slot.Character)) return;
+        if (Navigation.SelectedTranslationItem is not { } item) return;
+        if (_translationTextBox is not { IsEnabled: true }) return;
 
-                _isProgrammaticTextChange = true;
-                _translationTextBox.Text = newText;
-                _translationTextBox.CaretIndex = caretIndex + slot.Character.Length;
-                _isProgrammaticTextChange = false;
+        var caretIndex = _translationTextBox.CaretIndex;
+        var current = item.Text ?? "";
+        item.Text = current.Insert(caretIndex, slot.Character);
 
-                _translationTextBox.Focus();
-                CommitCurrentEdit();
-            }
-        }
+        _translationTextBox.CaretIndex = caretIndex + slot.Character.Length;
+        _translationTextBox.Focus();
+        CommitCurrentEdit();
     }
 
     /// <summary>
@@ -1072,34 +1083,56 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 当文本框内容修改时，同步到树状图节点（禁止直接修改底层数据）
-    /// 底层数据的修改必须通过 ChangeTextCommand 进行
+    /// TextBox 获得焦点时，将光标移至文本末尾
     /// </summary>
-    private void OnTranslationTextChanged(object? sender, TextChangedEventArgs e)
+    private void OnTranslationTextBoxGotFocus(object? sender, GotFocusEventArgs e)
     {
-        // 如果是程序化设置文本，则仅设置光标位置并返回
-        if (_isProgrammaticTextChange)
+        var tb = _translationTextBox;
+        if (tb == null) return;
+
+        var len = tb.Text?.Length ?? 0;
+        Log($"GotFocus, Text.Length={len}, CaretIndex={tb.CaretIndex}");
+
+        if (len > 0)
         {
-            if (!string.IsNullOrEmpty(_translationTextBox?.Text))
+            tb.CaretIndex = len;
+            tb.SelectionStart = len;
+            tb.SelectionEnd = len;
+        }
+        Log($"GotFocus after set, CaretIndex={tb.CaretIndex}");
+
+        // TextLayout 可能还没用新 Text 重建完，再 Post 一帧（Render 优先级）
+        // 确保在下一次渲染之前、Layout 完成之后重新设置光标，坐标转换正确
+        Dispatcher.UIThread.Post(() =>
+        {
+            Log($"GotFocus +1frame(Render), CaretIndex before={tb.CaretIndex}");
+            if (tb.IsFocused && len > 0)
             {
-                var len = _translationTextBox.Text.Length;
-                _translationTextBox.CaretIndex = len;
-                _translationTextBox.SelectionStart = len;
-                _translationTextBox.SelectionEnd = len;
+                tb.CaretIndex = len;
+                tb.SelectionStart = len;
+                tb.SelectionEnd = len;
             }
-            return;
-        }
-
-        // 在 UI 重建期间，忽略文本改变事件
-        if (_isUpdatingUI || !Edit.IsEditMode || _translationTextBox == null) return;
-
-        if (Navigation.SelectedItem is TranslationTreeItem selectedTreeItem)
-        {
-            // 仅同步修改树节点的显示文本（注意：这里不修改底层数据模型，底层修改由 Commit 负责）
-            selectedTreeItem.Text = _translationTextBox.Text ?? string.Empty;
-        }
+            Log($"GotFocus +1frame(Render), CaretIndex after={tb.CaretIndex}");
+        }, DispatcherPriority.Render);
     }
-    
+
+    /// <summary>
+    /// Text 变更时主动重置 CaretIndex 到末尾，不等 GotFocus
+    /// </summary>
+    private void OnTranslationTextBoxTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        var tb = _translationTextBox;
+        if (tb == null) return;
+
+        var len = tb.Text?.Length ?? 0;
+        Log($"TextChanged: CaretIndex before={tb.CaretIndex}, Text.Length={len}");
+        tb.CaretIndex = 0; // 先重置到开头，触发内部更新. Fuck Avalonia
+        tb.CaretIndex = len;
+        tb.SelectionStart = len;
+        tb.SelectionEnd = len;
+        Log($"TextChanged: CaretIndex after={tb.CaretIndex}");
+    }
+
     /// <summary>
     /// 文本框失去焦点时，直接结算当前文本
     /// </summary>
@@ -1117,34 +1150,20 @@ public partial class MainWindow : Window
     /// </summary>
     private void CommitCurrentEdit()
     {
-        // 【防卫】初始化未完成前不处理
-        if (!_isInitialized)
-            return;
+        if (!_isInitialized || !Edit.IsEditMode) return;
+        if (TryGetCurrentLabels() is not { } labels) return;
+        if (Navigation.SelectedTranslationItem is not { } currentTreeItem) return;
 
-        // 如果没有处于编辑模式，或者没有焦点/数据，直接返回
-        if (!Edit.IsEditMode || _translationTextBox == null)
-            return;
+        var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
+        if (labelItem == null) return;
 
-        if (TryGetCurrentLabels() is not { } labels)
-            return;
+        string newText = currentTreeItem.Text ?? string.Empty;
+        string oldText = labelItem.Text ?? string.Empty;
 
-        // 只有当前树状图选中的是文本节点时，才需要结算
-        if (Navigation.SelectedItem is TranslationTreeItem currentTreeItem)
+        if (oldText != newText)
         {
-            var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
-            if (labelItem != null)
-            {
-                string newText = _translationTextBox.Text ?? string.Empty;
-                string oldText = labelItem.Text ?? string.Empty;
-
-                // 只有发生了实质性修改，才推入历史栈
-                // 注意：如果文本没有变化，就不会触发 HistoryChanged，避免 RebuildCurrentView 清空 TextBox
-                if (oldText != newText)
-                {
-                    var command = new ChangeTextCommand(labelItem, oldText, newText);
-                    ViewModel.History.ExecuteCommand(command);
-                }
-            }
+            var command = new ChangeTextCommand(labelItem, oldText, newText);
+            ViewModel.History.ExecuteCommand(command);
         }
     }
 
@@ -1618,114 +1637,46 @@ public partial class MainWindow : Window
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         var selectedItem = ImageTreeView.SelectedItem;
-        
-        // 同步选中项到 NavigationViewModel（防重入：仅在非同步期间更新 VM，避免循环触发）
+
         if (!_isSyncingSelection)
-        {
             Navigation.SelectedItem = selectedItem;
-        }
-        
-        // 重置文本框占位符
-        if (_translationTextBox != null)
-        {
-            _translationTextBox.Watermark = "选中文本节点以编辑";
-        }
-        
+
         if (selectedItem == null) return;
 
         ImageTreeItem? targetRootItem = null;
-
-        // 1. 判断选中项是父节点(图片)还是子节点(翻译文本)
-        if (selectedItem is ImageTreeItem rootItem)
-        {
-            targetRootItem = rootItem;
-        }
-        else if (selectedItem is TranslationTreeItem childItem)
-        {
+        if (selectedItem is TranslationTreeItem childItem)
             targetRootItem = Navigation.GetParentImageItem(childItem);
-        }
+        else if (selectedItem is ImageTreeItem rootItem)
+            targetRootItem = rootItem;
 
-        // 2. 图片切换（委托给 NavigationViewModel 判断）
-        // TrySwitchToImage 内部修改 CurrentImageIndex → 触发 CurrentImageChanged
-        // → OnNavigationCurrentImageChanged 自动执行 LoadCurrentImage + CalculateFitTransform + UpdateLabels
         if (targetRootItem != null && Navigation.TrySwitchToImage(targetRootItem.ImageName))
-        {
-            // 图片切换的 UI 更新已由 CurrentImageChanged 事件处理，此处无需额外操作
-        }
+        { }
 
-        // 2. 动态展开/收起逻辑 (手风琴效果)
         if (targetRootItem != null)
-        {
             Navigation.ApplyAccordion(targetRootItem);
-        }
-        
-        // 3. 高亮与视野居中处理
+
         if (selectedItem is TranslationTreeItem targetChildItem)
         {
-            // 切换图片视图中的编号高亮
             CanvasControl.HighlightLabel(targetChildItem.Index);
-            
+
             double currentScale = CanvasWorkspace.ZoomPercent / 100;
             double fitScale = targetRootItem?.FitScale ?? 1.0;
-            
-            // 如果当前缩放比例大于 fit 比例（用户手动放大了）
-            // 且选择变更非来自画布交互，才触发视野居中
             if (currentScale > fitScale && !_isSelectionFromCanvas)
-            {
                 CenterOnLabel(targetChildItem.Index);
-            }
             _isSelectionFromCanvas = false;
-            
-            // ======== 将选中节点的文本写入编辑框 ========
-            if (_translationTextBox != null)
+
+            if (Edit.IsEditMode && _settingsProvider.Current.AutoFocusTextBox)
             {
-                // 1. 设置程序化标志，防止 TextChanged 事件中的逻辑干扰
-                _isProgrammaticTextChange = true;
-
-                // 2. 同步阶段：赋值
-                _translationTextBox.IsEnabled = true;
-                _translationTextBox.Watermark = "请输入文本";
-                _translationTextBox.Text = targetChildItem.Text;
-
-                _isProgrammaticTextChange = false;
-
-                // 3. 异步渲染后置阶段：操作焦点与光标
-                // 优先级: Background(4) < Loaded(6) < Render(7)
-                // 先 ApplyDligConfig（可能触发 InvalidateMeasure），再等 layout 重建，最后设光标
-                if (Edit.IsEditMode && !_isUpdatingUI && _settingsProvider.Current.AutoFocusTextBox)
+                Dispatcher.UIThread.Post(() =>
                 {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        if (!_translationTextBox.IsEnabled) return;
-                        ApplyDligConfig();
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            if (_translationTextBox.IsEnabled)
-                            {
-                                var len = _translationTextBox.Text?.Length ?? 0;
-                                _translationTextBox.CaretIndex = len;
-                                _translationTextBox.SelectionStart = len;
-                                _translationTextBox.SelectionEnd = len;
-                                _translationTextBox.Focus();
-                            }
-                        }, DispatcherPriority.Render);
-                    }, DispatcherPriority.Loaded);
-                }
+                    Log($"Post(Loaded) Focus() 执行, Text.Length={_translationTextBox?.Text?.Length}, CaretIndex={_translationTextBox?.CaretIndex}");
+                    _translationTextBox?.Focus();
+                }, DispatcherPriority.Loaded);
             }
         }
         else if (selectedItem is ImageTreeItem)
         {
-            // 如果选中的是图片本身，禁用编辑框
             CanvasControl.HighlightLabel(-1);
-
-            if (_translationTextBox != null)
-            {
-                _isProgrammaticTextChange = true;
-                _translationTextBox.Text = string.Empty;
-                _isProgrammaticTextChange = false;
-                _translationTextBox.IsEnabled = false;
-                _translationTextBox.Watermark = "选中文本节点以编辑";
-            }
         }
     }
     

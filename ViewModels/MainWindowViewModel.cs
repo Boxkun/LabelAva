@@ -19,4 +19,27 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private CanvasWorkspaceViewModel _canvasWorkspace = null!; // 由 MainWindow 构造时注入（替代原 ImageViewportViewModel）
+
+    public bool IsTextEditable =>
+        Edit != null && Navigation != null && Edit.IsEditMode && Navigation.SelectedTranslationItem != null;
+
+    partial void OnEditChanged(EditViewModel value)
+    {
+        if (value != null)
+            value.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(EditViewModel.IsEditMode))
+                    OnPropertyChanged(nameof(IsTextEditable));
+            };
+    }
+
+    partial void OnNavigationChanged(NavigationViewModel value)
+    {
+        if (value != null)
+            value.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(NavigationViewModel.SelectedTranslationItem))
+                    OnPropertyChanged(nameof(IsTextEditable));
+            };
+    }
 }

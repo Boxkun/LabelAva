@@ -210,9 +210,13 @@
                                          TextWrapping="Wrap" 
                                          MinHeight="120"
                                          MaxHeight="300"
-                                         IsEnabled="False"
+                                         IsEnabled="{Binding IsTextEditable}"
                                          Watermark="选中文本节点以编辑"
-                                         TextChanged="OnTranslationTextChanged"/>
+                                         Text="{Binding Navigation.SelectedTranslationItem.Text,
+                                                        Mode=TwoWay,
+                                                        UpdateSourceTrigger=PropertyChanged}"
+                                         TextChanged="OnTranslationTextBoxTextChanged"
+                                         />
                             </DockPanel>
                         </Border>
                     </Grid>
