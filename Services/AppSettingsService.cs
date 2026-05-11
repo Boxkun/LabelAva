@@ -245,6 +245,7 @@ public class AppSettingsDto
     public int WindowX { get; set; } = -1;
     public int WindowY { get; set; } = -1;
     public bool WindowMaximized { get; set; }
+    public string? ActiveDligConfig { get; set; }
 
     public AppSettingsDto() { }
 
@@ -259,6 +260,7 @@ public class AppSettingsDto
         WindowX = settings.WindowX;
         WindowY = settings.WindowY;
         WindowMaximized = settings.WindowMaximized;
+        ActiveDligConfig = settings.ActiveDligConfig;
     }
 
     public Models.AppSettings ToSettings()
@@ -277,6 +279,7 @@ public class AppSettingsDto
             WindowX = WindowX,
             WindowY = WindowY,
             WindowMaximized = WindowMaximized,
+            ActiveDligConfig = ActiveDligConfig,
         };
     }
 }

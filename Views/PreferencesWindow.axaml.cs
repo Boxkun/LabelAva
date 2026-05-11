@@ -35,7 +35,8 @@ public partial class PreferencesWindow : Window
             Shortcuts = source.Shortcuts,
             Colors = source.Colors.Clone(),
             LabelSize = source.LabelSize,
-            AutoFocusTextBox = source.AutoFocusTextBox
+            AutoFocusTextBox = source.AutoFocusTextBox,
+            ActiveDligConfig = source.ActiveDligConfig,
         };
     }
 
@@ -57,6 +58,8 @@ public partial class PreferencesWindow : Window
             UpdateButtonDisplay(ToggleGroup1Button, ToggleGroup1Text, s.ToggleGroup1);
 
             UpdateColorUI();
+
+            UpdateDligUI();
 
             if (AutoFocusCheckBox != null)
                 AutoFocusCheckBox.IsChecked = _settings.AutoFocusTextBox;
@@ -221,6 +224,175 @@ public partial class PreferencesWindow : Window
         _changeKind |= SettingsChangeKind.All;
     }
 
+    // ========================
+    // 字体/连字配置
+    // ========================
+
+    private string? _currentDligConfigName;
+    private DligFontConfig? _currentDligConfig;
+
+    private void UpdateDligUI()
+    {
+        if (DligConfigComboBox == null) return;
+
+        _isUpdatingUI = true;
+        try
+        {
+            var configs = DligConfigService.ListConfigNames();
+
+            DligConfigComboBox.Items.Clear();
+            DligConfigComboBox.Items.Add("(系统默认)");
+            foreach (var name in configs)
+                DligConfigComboBox.Items.Add(name);
+
+            var activeConfig = _settings.ActiveDligConfig;
+            if (!string.IsNullOrWhiteSpace(activeConfig) && configs.Contains(activeConfig))
+            {
+                DligConfigComboBox.SelectedIndex = configs.IndexOf(activeConfig) + 1;
+            }
+            else
+            {
+                DligConfigComboBox.SelectedIndex = 0;
+            }
+
+            LoadCurrentDligConfigFields();
+        }
+        finally
+        {
+            _isUpdatingUI = false;
+        }
+    }
+
+    private void LoadCurrentDligConfigFields()
+    {
+        if (DligConfigComboBox.SelectedIndex <= 0)
+        {
+            _currentDligConfigName = null;
+            _currentDligConfig = null;
+        }
+        else
+        {
+            _currentDligConfigName = DligConfigComboBox.SelectedItem?.ToString();
+            _currentDligConfig = DligConfigService.LoadConfig(_currentDligConfigName!) ?? new DligFontConfig();
+        }
+
+        RefreshDligFields();
+    }
+
+    private void RefreshDligFields()
+    {
+        var isEditable = _currentDligConfigName != null;
+
+        if (DligFontFamilyTextBox != null)
+        {
+            DligFontFamilyTextBox.IsEnabled = isEditable;
+            DligFontFamilyTextBox.Text = _currentDligConfig?.FontFamily ?? "";
+        }
+
+        if (DligFontFeaturesTextBox != null)
+        {
+            DligFontFeaturesTextBox.IsEnabled = isEditable;
+            DligFontFeaturesTextBox.Text = _currentDligConfig?.FontFeatures ?? "";
+        }
+
+        DeleteDligConfigButton.IsEnabled = isEditable;
+
+        if (QuickInputSlotsItemsControl != null)
+        {
+            QuickInputSlotsItemsControl.ItemsSource = _currentDligConfig?.QuickInputs;
+        }
+    }
+
+    private void CommitCurrentDligConfig()
+    {
+        if (_currentDligConfigName == null || _currentDligConfig == null) return;
+
+        _currentDligConfig.FontFamily = DligFontFamilyTextBox?.Text ?? "";
+        _currentDligConfig.FontFeatures = DligFontFeaturesTextBox?.Text ?? "dlig=1";
+
+        DligConfigService.SaveConfig(_currentDligConfigName, _currentDligConfig);
+    }
+
+    private void OnDligConfigSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingUI) return;
+
+        if (DligConfigComboBox.SelectedIndex > 0)
+        {
+            CommitCurrentDligConfig();
+        }
+
+        LoadCurrentDligConfigFields();
+
+        var newConfigName = DligConfigComboBox.SelectedIndex > 0
+            ? DligConfigComboBox.SelectedItem?.ToString()
+            : null;
+
+        if (_settings.ActiveDligConfig == newConfigName) return;
+
+        _settings.ActiveDligConfig = newConfigName;
+        _changeKind |= SettingsChangeKind.DligConfig;
+    }
+
+    private void OnNewDligConfig(object? sender, RoutedEventArgs e)
+    {
+        CommitCurrentDligConfig();
+
+        var configName = "新配置";
+        var configs = DligConfigService.ListConfigNames();
+        var baseName = configName;
+        var counter = 1;
+        while (configs.Contains(configName))
+        {
+            configName = $"{baseName} {counter}";
+            counter++;
+        }
+
+        DligConfigService.SaveConfig(configName, new DligFontConfig());
+        _changeKind |= SettingsChangeKind.DligConfig;
+        UpdateDligUI();
+
+        var newIndex = DligConfigComboBox.Items.IndexOf(configName);
+        if (newIndex >= 0)
+            DligConfigComboBox.SelectedIndex = newIndex;
+    }
+
+    private void OnDeleteDligConfig(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentDligConfigName)) return;
+
+        DligConfigService.DeleteConfig(_currentDligConfigName);
+
+        if (_settings.ActiveDligConfig == _currentDligConfigName)
+        {
+            _settings.ActiveDligConfig = null;
+        }
+
+        _currentDligConfigName = null;
+        _currentDligConfig = null;
+        _changeKind |= SettingsChangeKind.DligConfig;
+        UpdateDligUI();
+    }
+
+    private void OnOpenDligConfFolder(object? sender, RoutedEventArgs e)
+    {
+        DligConfigService.EnsureDirectory();
+        var dir = DligConfigService.GetConfigDir();
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = dir,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    // ========================
+    // 快捷键捕获
+    // ========================
+
     private void StartCapture(Button button, Action<KeyGesture?> onCaptured)
     {
         if (_capturingButton != null)
@@ -331,6 +503,8 @@ public partial class PreferencesWindow : Window
     private void OnPreferencesWindowClosed(object? sender, EventArgs e)
     {
         this.Closed -= OnPreferencesWindowClosed;
+
+        CommitCurrentDligConfig();
 
         if (_changeKind != SettingsChangeKind.None)
         {

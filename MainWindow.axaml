@@ -184,12 +184,26 @@
                         <Border x:Name="EditPanel" Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10" IsVisible="{Binding Edit.IsEditPanelVisible}">
                             <DockPanel>
                                 <!-- 工具栏：快捷输入按钮 -->
-                                <Border DockPanel.Dock="Top" Background="#F8F8F8" Margin="0,0,0,8">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Button x:Name="QuickInputBtn1" Content="占位1" Click="OnQuickInputButtonClick" Classes="toolbar-button"/>
-                                        <Button x:Name="QuickInputBtn2" Content="占位2" Click="OnQuickInputButtonClick" Classes="toolbar-button"/>
-                                        <Button x:Name="QuickInputBtn3" Content="占位3" Click="OnQuickInputButtonClick" Classes="toolbar-button"/>
-                                    </StackPanel>
+                                <Border x:Name="QuickInputToolbar" DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <ScrollViewer x:Name="ToolbarScrollViewer" 
+                                                  HorizontalScrollBarVisibility="Hidden"
+                                                  PointerWheelChanged="OnToolbarScrollWheel">
+                                        <ItemsControl x:Name="QuickInputItemsControl"
+                                                      ItemsSource="{Binding Edit.QuickInputSlots}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:QuickInputSlot">
+                                                    <Button Content="{Binding DisplayLabel}" 
+                                                            Click="OnQuickInputButtonClick"
+                                                            Classes="toolbar-button"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
                                 </Border>
                                 <TextBox x:Name="TranslationTextBox" 
                                          AcceptsReturn="True" 
@@ -277,6 +291,8 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="#CCC"/>
+            <!-- <Setter Property="MinWidth" Value="36"/>
+            <Setter Property="MinHeight" Value="32"/> -->
         </Style>
         <Style Selector="Button.toolbar-button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#F0F0F0"/>

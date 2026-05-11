@@ -11,7 +11,8 @@ public enum SettingsChangeKind
     Colors     = 1 << 1,
     LabelSize  = 1 << 2,
     AutoFocus  = 1 << 3,
-    All        = Shortcuts | Colors | LabelSize | AutoFocus,
+    DligConfig = 1 << 4,
+    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig,
 }
 
 public class ShortcutBindings
@@ -250,6 +251,7 @@ public class AppSettings
     public int WindowX { get; set; } = -1;
     public int WindowY { get; set; } = -1;
     public bool WindowMaximized { get; set; }
+    public string? ActiveDligConfig { get; set; }
 
     public static AppSettings CreateDefaults()
     {
@@ -264,6 +266,7 @@ public class AppSettings
             WindowX = -1,
             WindowY = -1,
             WindowMaximized = false,
+            ActiveDligConfig = null,
         };
     }
 }

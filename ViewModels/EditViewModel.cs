@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LabelAva.Models;
 
 namespace LabelAva.ViewModels;
 
@@ -36,6 +38,9 @@ public partial class EditViewModel : ObservableObject
 
     /// <summary>分组按钮是否可见</summary>
     public bool AreGroupButtonsVisible => IsEditMode;
+
+    /// <summary>快捷输入按钮集合</summary>
+    public ObservableCollection<QuickInputSlot> QuickInputSlots { get; } = new();
 
     // ========================
     // 命令
@@ -102,6 +107,15 @@ public partial class EditViewModel : ObservableObject
     }
 
     // ========================
+    // 快捷输入
+    // ========================
+
+    public void RequestInsertCharacter(string character)
+    {
+        CharacterInsertRequested?.Invoke(character);
+    }
+
+    // ========================
     // 事件
     // ========================
 
@@ -110,4 +124,7 @@ public partial class EditViewModel : ObservableObject
 
     /// <summary>分组变更事件（通知 MainWindow 更新 RadioButton 状态）</summary>
     public event EventHandler? GroupChanged;
+
+    /// <summary>快捷字符插入请求（由 MainWindow 订阅处理文本框操作）</summary>
+    public event Action<string>? CharacterInsertRequested;
 }

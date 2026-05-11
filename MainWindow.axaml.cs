@@ -255,6 +255,10 @@ public partial class MainWindow : Window
 
             // 初始化完成
             _isInitialized = true;
+
+            // 应用连字配置
+            DligConfigService.EnsureDirectory();
+            ApplyDligConfig();
         }
         catch (Exception ex)
         {
@@ -293,6 +297,11 @@ public partial class MainWindow : Window
                 CanvasControl.HighlightLabel(selectedItem.Index);
         }
 
+        if (changes.HasFlag(SettingsChangeKind.DligConfig))
+        {
+            ApplyDligConfig();
+        }
+
         if (changes != SettingsChangeKind.None)
             StatusBar.UpdateStatus("首选项已更新", StatusBarViewModel.StatusType.Info);
     }
@@ -315,7 +324,77 @@ public partial class MainWindow : Window
             ToolTip.SetTip(Group1RadioButton, $"切换到框外 ({shortcutText})");
         }
     }
-    
+
+    /// <summary>
+    /// 应用连字配置：设置编辑器字体、OpenType 特性、快捷输入按钮
+    /// </summary>
+    private void ApplyDligConfig()
+    {
+        if (_translationTextBox == null)
+            return;
+
+        var configName = _settingsProvider.Current.ActiveDligConfig;
+
+        if (string.IsNullOrWhiteSpace(configName))
+        {
+            _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
+            _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
+            Edit.QuickInputSlots.Clear();
+            return;
+        }
+
+        var config = DligConfigService.LoadConfig(configName);
+        if (config == null)
+        {
+            _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
+            _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
+            Edit.QuickInputSlots.Clear();
+            StatusBar.UpdateStatus(
+                $"连字配置 '{configName}' 加载失败，已回退到默认",
+                StatusBarViewModel.StatusType.Warn);
+            return;
+        }
+
+        // 应用快捷输入按钮
+        Edit.QuickInputSlots.Clear();
+        if (config.QuickInputs != null)
+        {
+            foreach (var slot in config.QuickInputs)
+                Edit.QuickInputSlots.Add(slot);
+        }
+
+        // 应用字体和 OpenType 特性
+        if (string.IsNullOrWhiteSpace(config.FontFamily))
+            return;
+
+        var fontFamily = new FontFamily(config.FontFamily);
+        var typeface = new Typeface(fontFamily);
+        var fontInstalled = FontManager.Current.TryGetGlyphTypeface(typeface, out var glyphTypeface)
+            && string.Equals(glyphTypeface.FamilyName, config.FontFamily, StringComparison.OrdinalIgnoreCase);
+
+        if (!fontInstalled)
+        {
+            StatusBar.UpdateStatus(
+                $"字体 '{config.FontFamily}' 未安装，连字功能不可用",
+                StatusBarViewModel.StatusType.Warn);
+            return;
+        }
+
+        _translationTextBox.FontFamily = fontFamily;
+        QuickInputItemsControl.FontFamily = fontFamily;
+
+        FontFeatureCollection? features = null;
+        if (!string.IsNullOrWhiteSpace(config.FontFeatures))
+        {
+            features = new FontFeatureCollection();
+            foreach (var part in config.FontFeatures.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                features.Add(FontFeature.Parse(part));
+
+            _translationTextBox.FontFeatures = features;
+            QuickInputItemsControl.FontFeatures = features;
+        }
+    }
+
     /// <summary>
     /// 获取当前图片的标签列表（常用守卫+查找模式的封装）
     /// </summary>
@@ -853,10 +932,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnEditModeChanged(object? sender, EventArgs e)
     {
-        // 更新分组按钮颜色（仍需 code-behind，因为涉及 Window Resources）
         if (Edit.IsEditMode)
         {
             UpdateGroupButtonColors();
+            // ApplyDligConfig 已移入选中标记时的光标链（Loaded→Render），避免此项与光标竞态
         }
     }
 
@@ -880,12 +959,36 @@ public partial class MainWindow : Window
     /// 快捷输入按钮点击事件（占位处理函数）
     /// 后续可在此实现插入预设文本或特殊符号的功能
     /// </summary>
+    private void OnToolbarScrollWheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
+    {
+        if (sender is ScrollViewer sv && sv.Extent.Width > sv.Viewport.Width)
+        {
+            var offset = sv.Offset;
+            var newX = offset.X - e.Delta.Y * 20;
+            newX = Math.Max(0, Math.Min(newX, sv.Extent.Width - sv.Viewport.Width));
+            sv.Offset = new Vector(newX, offset.Y);
+            e.Handled = true;
+        }
+    }
+
     private void OnQuickInputButtonClick(object? sender, RoutedEventArgs e)
     {
-        // TODO: 实现快捷输入功能
-        if (sender is Button button)
+        if (sender is Button button && button.DataContext is QuickInputSlot slot)
         {
-            StatusBar.UpdateStatus($"快捷输入按钮 '{button.Content}' 被点击", StatusBarViewModel.StatusType.Info);
+            if (!string.IsNullOrEmpty(slot.Character) && _translationTextBox != null && _translationTextBox.IsEnabled)
+            {
+                var caretIndex = _translationTextBox.CaretIndex;
+                var currentText = _translationTextBox.Text ?? "";
+                var newText = currentText.Insert(caretIndex, slot.Character);
+
+                _isProgrammaticTextChange = true;
+                _translationTextBox.Text = newText;
+                _translationTextBox.CaretIndex = caretIndex + slot.Character.Length;
+                _isProgrammaticTextChange = false;
+
+                _translationTextBox.Focus();
+                CommitCurrentEdit();
+            }
         }
     }
 
@@ -1587,21 +1690,26 @@ public partial class MainWindow : Window
                 _isProgrammaticTextChange = false;
 
                 // 3. 异步渲染后置阶段：操作焦点与光标
+                // 优先级: Background(4) < Loaded(6) < Render(7)
+                // 先 ApplyDligConfig（可能触发 InvalidateMeasure），再等 layout 重建，最后设光标
                 if (Edit.IsEditMode && !_isUpdatingUI && _settingsProvider.Current.AutoFocusTextBox)
                 {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    Dispatcher.UIThread.Post(() =>
                     {
-                        // 确保控件仍处于可用状态且确实需要焦点
-                        if (_translationTextBox.IsEnabled)
+                        if (!_translationTextBox.IsEnabled) return;
+                        ApplyDligConfig();
+                        Dispatcher.UIThread.Post(() =>
                         {
-                            _translationTextBox.Focus();
-                            // 强制将光标移动到文本末尾（同时设置 SelectionStart/End 确保视觉刷新）
-                            var len = _translationTextBox.Text?.Length ?? 0;
-                            _translationTextBox.CaretIndex = len;
-                            _translationTextBox.SelectionStart = len;
-                            _translationTextBox.SelectionEnd = len;
-                        }
-                    }, Avalonia.Threading.DispatcherPriority.Loaded); // 使用 Loaded 优先级，确保在布局/渲染/焦点处理之后执行
+                            if (_translationTextBox.IsEnabled)
+                            {
+                                var len = _translationTextBox.Text?.Length ?? 0;
+                                _translationTextBox.CaretIndex = len;
+                                _translationTextBox.SelectionStart = len;
+                                _translationTextBox.SelectionEnd = len;
+                                _translationTextBox.Focus();
+                            }
+                        }, DispatcherPriority.Render);
+                    }, DispatcherPriority.Loaded);
                 }
             }
         }
@@ -1612,7 +1720,9 @@ public partial class MainWindow : Window
 
             if (_translationTextBox != null)
             {
+                _isProgrammaticTextChange = true;
                 _translationTextBox.Text = string.Empty;
+                _isProgrammaticTextChange = false;
                 _translationTextBox.IsEnabled = false;
                 _translationTextBox.Watermark = "选中文本节点以编辑";
             }

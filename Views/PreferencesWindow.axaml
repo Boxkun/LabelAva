@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
+        xmlns:models="clr-namespace:LabelAva.Models"
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
         x:Class="LabelAva.Views.PreferencesWindow"
         Title="首选项"
@@ -314,6 +315,60 @@
 
                         <!-- 重置按钮 -->
                         <Button Content="恢复默认颜色" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetColorDefaults"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 字体设置页签 -->
+            <TabItem Header="字体">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12" Spacing="12">
+                        <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="选择连字配置以启用编辑器专用字体和 OpenType 连字特性" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+
+                        <!-- 配置选择 -->
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="80,12,*">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="当前配置" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="DligConfigComboBox" Grid.Row="0" Grid.Column="2"
+                                          SelectionChanged="OnDligConfigSelectionChanged"
+                                          VerticalAlignment="Center"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="字体家族" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                                <TextBox x:Name="DligFontFamilyTextBox" Grid.Row="1" Grid.Column="2"
+                                         Watermark="如 攸望"
+                                         Margin="0,8,0,0" VerticalAlignment="Center"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="OpenType" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                                <TextBox x:Name="DligFontFeaturesTextBox" Grid.Row="2" Grid.Column="2"
+                                         Watermark="dlig=1"
+                                         Margin="0,8,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- 快捷输入按钮 -->
+                        <TextBlock Text="快捷输入按钮" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="4">
+                                <ItemsControl x:Name="QuickInputSlotsItemsControl">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:QuickInputSlot">
+                                            <Grid ColumnDefinitions="*,*" Margin="0,2">
+                                                <TextBox Grid.Column="0" Text="{Binding Label}" Watermark="标签" Margin="0,0,4,0"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Character}" Watermark="字符" Margin="4,0,0,0"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 操作按钮 -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <Button x:Name="NewDligConfigButton" Content="新建配置" Click="OnNewDligConfig"/>
+                            <Button x:Name="DeleteDligConfigButton" Content="删除配置" Click="OnDeleteDligConfig"/>
+                            <Button x:Name="OpenDligConfFolderButton" Content="打开配置目录" Click="OnOpenDligConfFolder"/>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
