@@ -14,7 +14,7 @@
 
     <DockPanel Margin="16">
         <!-- 顶部说明区 -->
-        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="4,0,4,12">
+        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
             
             <!-- 搜索文件夹行 -->
             <DockPanel>
@@ -23,6 +23,41 @@
                 <TextBox x:Name="FolderPathBox" FontSize="13" TextChanged="OnFolderPathTextChanged"/>
             </DockPanel>
         </StackPanel>
+
+        <!-- 自动匹配提示横幅 -->
+        <Border x:Name="AutoMatchBanner"
+                IsVisible="False"
+                Background="#E3F2FD"
+                BorderBrush="#1976D2"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12,10"
+                Margin="0,0,0,12"
+                DockPanel.Dock="Top">
+            <DockPanel LastChildFill="False">
+                <TextBlock x:Name="AutoMatchBannerText"
+                           DockPanel.Dock="Left"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="#1565C0"
+                           TextWrapping="Wrap" />
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <Button Content="自动填入"
+                            Click="OnAutoFill"
+                            FontSize="13"
+                            Padding="10,6"
+                            Background="#1976D2"
+                            Foreground="White" />
+                    <Button Content="忽略"
+                            Click="OnDismissBanner"
+                            FontSize="13"
+                            Padding="10,6" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
         <!-- 底部按钮区域 -->
         <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">

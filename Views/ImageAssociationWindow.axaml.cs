@@ -20,6 +20,7 @@ public partial class ImageAssociationWindow : Window
     private readonly ImageValidationService _validationService = new();
     private ObservableCollection<ImageAssociationItem> _items = new();
     private string _imageFolderPath = string.Empty;
+    private Dictionary<string, string>? _autoMatches;
 
     public ImageAssociationResult? Result { get; private set; }
 
@@ -44,6 +45,7 @@ public partial class ImageAssociationWindow : Window
         }
 
         UpdateStatusSummary();
+        CheckAutoMatch();
     }
 
     private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -109,7 +111,10 @@ public partial class ImageAssociationWindow : Window
 
     private void OnFolderPathTextChanged(object? sender, TextChangedEventArgs e)
     {
+        _autoMatches = null;
+        AutoMatchBanner.IsVisible = false;
         RevalidateAllItems();
+        CheckAutoMatch();
     }
 
     private async void OnSelectFile(object? sender, RoutedEventArgs e)
@@ -122,7 +127,7 @@ public partial class ImageAssociationWindow : Window
 
         var imageFilter = new[]
         {
-            new FilePickerFileType("图片文件") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif" } },
+            new FilePickerFileType("图片文件") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.tiff", "*.webp"} },
             new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
         };
 
@@ -279,5 +284,67 @@ public partial class ImageAssociationWindow : Window
     {
         Result = null;
         Close(false);
+    }
+
+    private void CheckAutoMatch()
+    {
+        if (string.IsNullOrEmpty(_imageFolderPath))
+            return;
+
+        var missingImageNames = _items
+            .Where(i => i.Status == ImageValidationStatus.Missing && string.IsNullOrEmpty(i.NewPath))
+            .Select(i => i.ImageName)
+            .ToList();
+
+        if (missingImageNames.Count == 0)
+            return;
+
+        _autoMatches = _validationService.FindAlternateExtensionMatches(
+            _imageFolderPath, missingImageNames);
+
+        if (_autoMatches.Count == 0)
+            return;
+
+        var srcExtensions = _autoMatches.Keys
+            .Select(n => Path.GetExtension(n).ToLowerInvariant())
+            .Distinct()
+            .ToArray();
+        var dstExtensions = _autoMatches.Values
+            .Select(p => Path.GetExtension(p).ToLowerInvariant())
+            .Distinct()
+            .ToArray();
+        var extText = $"{string.Join(" / ", srcExtensions)} → {string.Join(" / ", dstExtensions)}";
+
+        AutoMatchBannerText.Text = _autoMatches.Count == missingImageNames.Count
+            ? $"检测到全部 {missingImageNames.Count} 个缺失文件均可通过同名文件（{extText}）匹配，要自动填入吗？"
+            : $"检测到 {_autoMatches.Count}/{missingImageNames.Count} 个缺失文件可通过同名文件（{extText}）匹配，要自动填入吗？";
+
+        AutoMatchBanner.IsVisible = true;
+    }
+
+    private void OnAutoFill(object? sender, RoutedEventArgs e)
+    {
+        if (_autoMatches == null)
+            return;
+
+        foreach (var kvp in _autoMatches)
+        {
+            var item = _items.FirstOrDefault(i => i.ImageName == kvp.Key);
+            if (item != null && string.IsNullOrEmpty(item.NewPath))
+            {
+                item.NewPath = kvp.Value;
+                RevalidateItem(item);
+            }
+        }
+
+        _autoMatches = null;
+        AutoMatchBanner.IsVisible = false;
+        UpdateStatusSummary();
+    }
+
+    private void OnDismissBanner(object? sender, RoutedEventArgs e)
+    {
+        _autoMatches = null;
+        AutoMatchBanner.IsVisible = false;
     }
 }
