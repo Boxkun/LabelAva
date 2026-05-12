@@ -333,14 +333,6 @@ public partial class NavigationViewModel : ObservableObject
         OnSelectedItemChangedFromVM();
     }
 
-    partial void OnSelectedTranslationItemChanged(TranslationTreeItem? value)
-    {
-#if DEBUG
-        var preview = value?.Text is { Length: > 0 } t ? t[..Math.Min(t.Length, 10)] : "null";
-        System.Diagnostics.Debug.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [T{Environment.CurrentManagedThreadId}] SelectedTranslationItem → {preview}");
-#endif
-    }
-
     partial void OnCurrentImageIndexChanged(int value)
     {
         OnPropertyChanged(nameof(CurrentImageName));

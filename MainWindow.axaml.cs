@@ -35,10 +35,6 @@ public partial class MainWindow : Window
     // 编辑模式相关
     private TextBox? _translationTextBox;
     private Border? _editPanel;
-
-    [System.Diagnostics.Conditional("DEBUG")]
-    private static void Log(string msg) =>
-        System.Diagnostics.Debug.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [T{Environment.CurrentManagedThreadId}] {msg}");
     
     // UI 锁：防止命令执行时触发 UI 事件污染历史栈
     private bool _isUpdatingUI = false;
@@ -333,7 +329,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyDligConfig()
     {
-        Log("ApplyDligConfig 开始");
         if (_translationTextBox == null)
             return;
 
@@ -344,7 +339,6 @@ public partial class MainWindow : Window
             _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
             _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
             Edit.QuickInputSlots.Clear();
-            Log("ApplyDligConfig 结束（无配置）");
             return;
         }
 
@@ -357,7 +351,6 @@ public partial class MainWindow : Window
             StatusBar.UpdateStatus(
                 $"连字配置 '{configName}' 加载失败，已回退到默认",
                 StatusBarViewModel.StatusType.Warn);
-            Log("ApplyDligConfig 结束（加载失败）");
             return;
         }
 
@@ -371,10 +364,7 @@ public partial class MainWindow : Window
 
         // 应用字体和 OpenType 特性
         if (string.IsNullOrWhiteSpace(config.FontFamily))
-        {
-            Log("ApplyDligConfig 结束（无 FontFamily）");
             return;
-        }
 
         var fontFamily = new FontFamily(config.FontFamily);
         var typeface = new Typeface(fontFamily);
@@ -386,14 +376,10 @@ public partial class MainWindow : Window
             StatusBar.UpdateStatus(
                 $"字体 '{config.FontFamily}' 未安装，连字功能不可用",
                 StatusBarViewModel.StatusType.Warn);
-            Log("ApplyDligConfig 结束（字体未安装）");
             return;
         }
 
-        Log("ApplyDligConfig FontFamily 赋值");
-        Log("ApplyDligConfig FontFamily 赋值前");
         _translationTextBox.FontFamily = fontFamily;
-        Log("ApplyDligConfig FontFamily 赋值后");
         QuickInputItemsControl.FontFamily = fontFamily;
 
         FontFeatureCollection? features = null;
@@ -406,8 +392,6 @@ public partial class MainWindow : Window
             _translationTextBox.FontFeatures = features;
             QuickInputItemsControl.FontFeatures = features;
         }
-        Log("ApplyDligConfig 结束");
-        Log("ApplyDligConfig 结束");
     }
 
     /// <summary>
@@ -1082,42 +1066,9 @@ public partial class MainWindow : Window
         return Avalonia.Media.Color.FromArgb(color.A, r, g, b);
     }
 
-    /// <summary>
-    /// TextBox 获得焦点时，将光标移至文本末尾
-    /// </summary>
-    private void OnTranslationTextBoxGotFocus(object? sender, GotFocusEventArgs e)
-    {
-        var tb = _translationTextBox;
-        if (tb == null) return;
-
-        var len = tb.Text?.Length ?? 0;
-        Log($"GotFocus, Text.Length={len}, CaretIndex={tb.CaretIndex}");
-
-        if (len > 0)
-        {
-            tb.CaretIndex = len;
-            tb.SelectionStart = len;
-            tb.SelectionEnd = len;
-        }
-        Log($"GotFocus after set, CaretIndex={tb.CaretIndex}");
-
-        // TextLayout 可能还没用新 Text 重建完，再 Post 一帧（Render 优先级）
-        // 确保在下一次渲染之前、Layout 完成之后重新设置光标，坐标转换正确
-        Dispatcher.UIThread.Post(() =>
-        {
-            Log($"GotFocus +1frame(Render), CaretIndex before={tb.CaretIndex}");
-            if (tb.IsFocused && len > 0)
-            {
-                tb.CaretIndex = len;
-                tb.SelectionStart = len;
-                tb.SelectionEnd = len;
-            }
-            Log($"GotFocus +1frame(Render), CaretIndex after={tb.CaretIndex}");
-        }, DispatcherPriority.Render);
-    }
 
     /// <summary>
-    /// Text 变更时主动重置 CaretIndex 到末尾，不等 GotFocus
+    /// Text 变更时主动重置 CaretIndex 到末尾
     /// </summary>
     private void OnTranslationTextBoxTextChanged(object? sender, TextChangedEventArgs e)
     {
@@ -1125,12 +1076,10 @@ public partial class MainWindow : Window
         if (tb == null) return;
 
         var len = tb.Text?.Length ?? 0;
-        Log($"TextChanged: CaretIndex before={tb.CaretIndex}, Text.Length={len}");
-        tb.CaretIndex = 0; // 先重置到开头，触发内部更新. Fuck Avalonia
+        tb.CaretIndex = 0; // Avalonia 对 CaretIndex 有短路优化，先重置到开头触发 invalidation
         tb.CaretIndex = len;
         tb.SelectionStart = len;
         tb.SelectionEnd = len;
-        Log($"TextChanged: CaretIndex after={tb.CaretIndex}");
     }
 
     /// <summary>
@@ -1667,11 +1616,9 @@ public partial class MainWindow : Window
 
             if (Edit.IsEditMode && _settingsProvider.Current.AutoFocusTextBox)
             {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    Log($"Post(Loaded) Focus() 执行, Text.Length={_translationTextBox?.Text?.Length}, CaretIndex={_translationTextBox?.CaretIndex}");
-                    _translationTextBox?.Focus();
-                }, DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(
+                    () => _translationTextBox?.Focus(),
+                    DispatcherPriority.Loaded);
             }
         }
         else if (selectedItem is ImageTreeItem)
