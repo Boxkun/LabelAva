@@ -610,9 +610,11 @@ public partial class ImageAssociationWindow : Window
             return new DetailItem(entry.ImageName, fileName, status, fg);
         }).ToList();
 
-        // 行模板（与主列表样式一致）
-        var itemTemplate = new FuncDataTemplate<object>((_, _) =>
+        // 行模板（与主列表样式一致），直接使用 item 赋值避免反射绑定
+        var itemTemplate = new FuncDataTemplate<object>((data, _) =>
         {
+            var item = (DetailItem)data;
+
             var border = new Border
             {
                 BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
@@ -633,33 +635,33 @@ public partial class ImageAssociationWindow : Window
 
             var imageNameText = new TextBlock
             {
+                Text = item.ImageName,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 13,
                 FontFamily = Avalonia.Media.FontFamily.Parse("Sarasa Mono SC"),
                 Margin = new Avalonia.Thickness(8, 0, 0, 0)
             };
-            imageNameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("ImageName"));
             Grid.SetColumn(imageNameText, 0);
             grid.Children.Add(imageNameText);
 
             var fileNameText = new TextBlock
             {
+                Text = item.FileName,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 13,
                 FontFamily = Avalonia.Media.FontFamily.Parse("Sarasa Mono SC"),
             };
-            fileNameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("FileName"));
             Grid.SetColumn(fileNameText, 1);
             grid.Children.Add(fileNameText);
 
             var statusText = new TextBlock
             {
+                Text = item.Status,
+                Foreground = item.StatusForeground,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 13,
                 FontFamily = Avalonia.Media.FontFamily.Parse("Sarasa Mono SC")
             };
-            statusText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Status"));
-            statusText.Bind(TextBlock.ForegroundProperty, new Avalonia.Data.Binding("StatusForeground"));
             Grid.SetColumn(statusText, 2);
             grid.Children.Add(statusText);
 
