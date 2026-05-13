@@ -79,6 +79,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
+        Resources["DligFontFamily"] = null;
+        Resources["DligFontFeatures"] = null;
 
         // 恢复上次窗口尺寸/位置（不立即最大化，让 OS 先记录 Normal 尺寸）
         _settingsProvider.Load();
@@ -325,7 +327,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 应用连字配置：设置编辑器字体、OpenType 特性、快捷输入按钮
+    /// 应用连字配置：设置编辑器字体、OpenType 特性、快捷输入按钮、树状图译文字体
     /// </summary>
     private void ApplyDligConfig()
     {
@@ -339,6 +341,8 @@ public partial class MainWindow : Window
             _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
             _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
             Edit.QuickInputSlots.Clear();
+            Resources["DligFontFamily"] = null;
+            Resources["DligFontFeatures"] = null;
             return;
         }
 
@@ -351,6 +355,8 @@ public partial class MainWindow : Window
             StatusBar.UpdateStatus(
                 $"连字配置 '{configName}' 加载失败，已回退到默认",
                 StatusBarViewModel.StatusType.Warn);
+            Resources["DligFontFamily"] = null;
+            Resources["DligFontFeatures"] = null;
             return;
         }
 
@@ -364,7 +370,11 @@ public partial class MainWindow : Window
 
         // 应用字体和 OpenType 特性
         if (string.IsNullOrWhiteSpace(config.FontFamily))
+        {
+            Resources["DligFontFamily"] = null;
+            Resources["DligFontFeatures"] = null;
             return;
+        }
 
         var fontFamily = new FontFamily(config.FontFamily);
         var typeface = new Typeface(fontFamily);
@@ -376,6 +386,8 @@ public partial class MainWindow : Window
             StatusBar.UpdateStatus(
                 $"字体 '{config.FontFamily}' 未安装，连字功能不可用",
                 StatusBarViewModel.StatusType.Warn);
+            Resources["DligFontFamily"] = null;
+            Resources["DligFontFeatures"] = null;
             return;
         }
 
@@ -392,6 +404,9 @@ public partial class MainWindow : Window
             _translationTextBox.FontFeatures = features;
             QuickInputItemsControl.FontFeatures = features;
         }
+
+        Resources["DligFontFamily"] = fontFamily;
+        Resources["DligFontFeatures"] = features;
     }
 
     /// <summary>

@@ -170,6 +170,8 @@
                                                     TextWrapping="Wrap" 
                                                     LineHeight="20" 
                                                     Margin="4,0,4,0"
+                                                    FontFamily="{DynamicResource DligFontFamily}"
+                                                    FontFeatures="{DynamicResource DligFontFeatures}"
                                                     VerticalAlignment="Center" />
                                         </Grid>
                                     </TreeDataTemplate>
