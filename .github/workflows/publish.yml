@@ -1,0 +1,51 @@
+# .github/workflows/publish.yml
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            runner: windows-latest
+          - rid: osx-x64
+            runner: macos-13
+          - rid: osx-arm64
+            runner: macos-latest
+          - rid: linux-x64
+            runner: ubuntu-latest
+          - rid: linux-arm64
+            runner: [self-hosted, linux, arm64]
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install macOS workload
+        if: runner.os == 'macOS'
+        run: dotnet workload install macos
+
+      - name: Publish
+        run: >
+          dotnet publish LabelAva.csproj
+          -r ${{ matrix.rid }}
+          -c Release
+          --self-contained
+          -p:PublishAot=true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LabelAva-${{ matrix.rid }}
+          path: bin/Release/net10.0/${{ matrix.rid }}/publish/

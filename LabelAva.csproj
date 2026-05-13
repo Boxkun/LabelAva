@@ -32,4 +32,25 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="FluentIcons.Avalonia" Version="2.0.321" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(IntermediateOutputPath)BuildInfo.g.cs">
+      <Visible>false</Visible>
+    </Compile>
+  </ItemGroup>
+
+  <Target Name="GenerateBuildInfo" BeforeTargets="BeforeBuild">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitHash"/>
+    </Exec>
+    <WriteLinesToFile
+      File="$(IntermediateOutputPath)BuildInfo.g.cs"
+      Lines="namespace LabelAva%3B
+public static class BuildInfo
+{
+    public const string CommitHash = &quot;$(GitHash.Trim())&quot;%3B
+    public const string BuildTime = &quot;$([System.DateTime]::Now.ToString(&quot;yyyy/M/d HH:mm:ss&quot;))&quot;%3B
+}"
+      Overwrite="true"/>
+  </Target>
 </Project>
