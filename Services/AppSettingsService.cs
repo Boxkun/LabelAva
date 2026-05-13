@@ -14,8 +14,7 @@ public partial class AppSettingsContext : JsonSerializerContext { }
 
 public static class AppSettingsService
 {
-    private static readonly string ConfigFolder = AppContext.BaseDirectory;
-    private static readonly string SettingsFile = Path.Combine(ConfigFolder, "config.json");
+    private static readonly string SettingsFile = AppDataHelper.SettingsFilePath;
 
     public static void Save(Models.AppSettings settings)
     {

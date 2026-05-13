@@ -18,8 +18,7 @@ internal partial class DligConfigContext : JsonSerializerContext { }
 
 public static class DligConfigService
 {
-    private static readonly string ConfigDir =
-        Path.Combine(AppContext.BaseDirectory, "dlig_conf");
+    private static readonly string ConfigDir = AppDataHelper.DligConfigFolder;
 
     public static void EnsureDirectory()
     {

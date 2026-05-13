@@ -12,6 +12,10 @@
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
     <IlcDisableReflection>true</IlcDisableReflection>
 
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
+    <StripSymbols>false</StripSymbols>
+
     <UseAppHost>true</UseAppHost>
 
     <TrimMode>full</TrimMode>
