@@ -380,15 +380,14 @@ public partial class ImageAssociationWindow : Window
             var sb = new StringBuilder();
             sb.AppendLine($"找不到翻译文件内指定的图片。在当前文件夹下发现 {_matchEntries.Count} 张同名的其他格式图片（{extText}）。");
 
-            if (_matchEntries.Count <= 3)
-            {
-                sb.AppendLine();
-                foreach (var entry in _matchEntries)
-                {
-                    var fileName = Path.GetFileName(entry.FilePath);
-                    sb.AppendLine($"  {entry.ImageName} → {fileName}  ✓");
-                }
-            }
+            // if (_matchEntries.Count <= 3)
+            // {
+            //     foreach (var entry in _matchEntries)
+            //     {
+            //         var fileName = Path.GetFileName(entry.FilePath);
+            //         sb.AppendLine($"{entry.ImageName} → {fileName}");
+            //     }
+            // }
 
             sb.Append("要使用找到的图片替代吗？");
 
@@ -450,23 +449,22 @@ public partial class ImageAssociationWindow : Window
             return;
 
         var sb2 = new StringBuilder();
-        sb2.AppendLine($"发现 {_matchEntries.Count} 张图片的实际格式与扩展名不符，可能导致Photoshop加载错误。");
+        sb2.AppendLine($"发现 {_matchEntries.Count} 张图片的实际格式与扩展名不符，可能导致 Photoshop 加载错误。");
 
-        if (_matchEntries.Count <= 3)
-        {
-            sb2.AppendLine();
-            foreach (var entry in _matchEntries)
-            {
-                var fileName = Path.GetFileName(entry.FilePath);
-                sb2.AppendLine($"  {entry.ImageName} → {fileName} ⚠ {entry.ActualExtension}");
-            }
-        }
+        // if (_matchEntries.Count <= 3)
+        // {
+        //     foreach (var entry in _matchEntries)
+        //     {
+        //         var fileName = Path.GetFileName(entry.FilePath);
+        //         sb2.AppendLine($"{entry.ImageName} → {fileName} ⚠ {entry.ActualExtension}");
+        //     }
+        // }
 
         sb2.Append("要修正扩展名错误，并且更新翻译文件吗？");
 
         AutoMatchBannerText.Text = sb2.ToString();
         ActionButton.Content = "修正";
-        ViewDetailsButton.IsVisible = _matchEntries.Count >= 4;
+        ViewDetailsButton.IsVisible = true;
 
         AutoMatchBannerText.Foreground = Avalonia.Media.Brush.Parse("#C62828");
         ActionButton.Background = Avalonia.Media.Brush.Parse("#C62828");
