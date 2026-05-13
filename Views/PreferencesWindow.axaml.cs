@@ -241,7 +241,7 @@ public partial class PreferencesWindow : Window
             var configs = DligConfigService.ListConfigNames();
 
             DligConfigComboBox.Items.Clear();
-            DligConfigComboBox.Items.Add("(系统默认)");
+            DligConfigComboBox.Items.Add("(无)");
             foreach (var name in configs)
                 DligConfigComboBox.Items.Add(name);
 

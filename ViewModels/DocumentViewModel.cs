@@ -293,7 +293,7 @@ public partial class DocumentViewModel : ObservableObject
             var counter = 1;
             while (File.Exists(translationFilePath))
             {
-                translationFileName = $"{folderName}_translation_{counter}.txt";
+                translationFileName = $"{folderName}_{counter}.txt";
                 translationFilePath = Path.Combine(folderPath, translationFileName);
                 counter++;
             }
@@ -311,8 +311,33 @@ public partial class DocumentViewModel : ObservableObject
             // 6. 启动自动保存
             StartAutoSaveTimer();
 
-            // 7. 通知 UI 层
+            // 6.5 检查格式错误（Case 2）
             var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
+            var items = _validationService.Validate(folderPath, imageNames);
+            if (ImageValidationService.HasAnyFormatIssue(folderPath, items))
+            {
+                var associationResult = await _showImageAssociationDialog(items, folderPath);
+                if (associationResult != null)
+                {
+                    ApplyAssociationResult(associationResult);
+                    imageNames = new List<string>(TranslationData.ImageLabels.Keys);
+                    if (associationResult.WriteToFile)
+                    {
+                        try
+                        {
+                            _parser.Save(translationFilePath, TranslationData!);
+                            IsDirty = false;
+                        }
+                        catch (Exception ex)
+                        {
+                            _statusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
+                        }
+                    }
+                }
+            }
+
+            // 7. 通知 UI 层
+            imageNames = new List<string>(TranslationData.ImageLabels.Keys);
             DocumentOpened?.Invoke(this, new DocumentOpenedEventArgs
             {
                 TranslationData = TranslationData,
@@ -365,8 +390,9 @@ public partial class DocumentViewModel : ObservableObject
         {
             var items = _validationService.Validate(ImageFolderPath!, imageNames);
             var hasMissing = items.Any(i => i.Status == ImageValidationStatus.Missing);
+            var hasFormatIssue = !hasMissing && ImageValidationService.HasAnyFormatIssue(ImageFolderPath!, items);
 
-            if (hasMissing)
+            if (hasMissing || hasFormatIssue)
             {
                 var associationResult = await _showImageAssociationDialog(items, ImageFolderPath!);
 
@@ -378,6 +404,23 @@ public partial class DocumentViewModel : ObservableObject
                 }
 
                 ApplyAssociationResult(associationResult);
+
+                // ApplyAssociationResult 可能修改了 ImageLabels 的 key（Remap 模式重命名），刷新 imageNames
+                imageNames = new List<string>(TranslationData.ImageLabels.Keys);
+
+                // 用户勾选了"写入文件"——立即持久化，不等自动保存
+                if (associationResult.WriteToFile && !string.IsNullOrEmpty(FilePath))
+                {
+                    try
+                    {
+                        _parser.Save(FilePath, TranslationData!);
+                        IsDirty = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        _statusBar.UpdateStatus($"保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
+                    }
+                }
             }
 
             DocumentOpened?.Invoke(this, new DocumentOpenedEventArgs

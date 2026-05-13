@@ -104,3 +104,7 @@ ehthumbs.db
 Thumbs.db
 
 plans/
+misc/
+.kilo/
+AGENTS.md
+LabelAva.code-workspace

@@ -336,7 +336,7 @@
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="字体家族" VerticalAlignment="Center" Margin="0,8,0,0"/>
                                 <TextBox x:Name="DligFontFamilyTextBox" Grid.Row="1" Grid.Column="2"
-                                         Watermark="如 攸望"
+                                         Watermark="如 Source Han Sans"
                                          Margin="0,8,0,0" VerticalAlignment="Center"/>
 
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="OpenType" VerticalAlignment="Center" Margin="0,8,0,0"/>

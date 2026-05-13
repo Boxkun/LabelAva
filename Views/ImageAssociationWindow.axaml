@@ -27,6 +27,7 @@
         <!-- 自动匹配提示横幅 -->
         <Border x:Name="AutoMatchBanner"
                 IsVisible="False"
+                Opacity="0"
                 Background="#E3F2FD"
                 BorderBrush="#1976D2"
                 BorderThickness="1"
@@ -34,29 +35,40 @@
                 Padding="12,10"
                 Margin="0,0,0,12"
                 DockPanel.Dock="Top">
-            <DockPanel LastChildFill="False">
+            <Grid ColumnDefinitions="*,Auto">
                 <TextBlock x:Name="AutoMatchBannerText"
-                           DockPanel.Dock="Left"
+                           Grid.Column="0"
                            VerticalAlignment="Center"
                            FontSize="13"
                            Foreground="#1565C0"
-                           TextWrapping="Wrap" />
-                <StackPanel DockPanel.Dock="Right"
+                           TextWrapping="Wrap">
+                    <TextBlock.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+                        </Transitions>
+                    </TextBlock.Transitions>
+                </TextBlock>
+                <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             Spacing="8"
-                            VerticalAlignment="Center">
-                    <Button Content="自动填入"
+                            VerticalAlignment="Center"
+                            Margin="12,0,0,0">
+                    <Button x:Name="ActionButton"
+                            Content="填入"
                             Click="OnAutoFill"
-                            FontSize="13"
-                            Padding="10,6"
-                            Background="#1976D2"
-                            Foreground="White" />
-                    <Button Content="忽略"
+                            FontSize="13" Padding="10,6"
+                            Background="#1976D2" Foreground="White" />
+                    <Button x:Name="ViewDetailsButton"
+                            Content="详情"
+                            Click="OnViewDetails"
+                            IsVisible="False"
+                            FontSize="13" Padding="10,6" />
+                    <Button x:Name="DismissButton"
+                            Content="忽略"
                             Click="OnDismissBanner"
-                            FontSize="13"
-                            Padding="10,6" />
+                            FontSize="13" Padding="10,6" />
                 </StackPanel>
-            </DockPanel>
+            </Grid>
         </Border>
 
         <!-- 底部按钮区域 -->

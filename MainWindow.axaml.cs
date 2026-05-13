@@ -1295,9 +1295,10 @@ public partial class MainWindow : Window
         Edit.IsEditMode = false;
     }
     
-    private void OnAbout(object? sender, RoutedEventArgs e)
+    private async void OnAbout(object? sender, RoutedEventArgs e)
     {
-        StatusBar.UpdateStatus("LabelAva 1.0");
+        var aboutWindow = new Views.AboutWindow();
+        await aboutWindow.ShowDialog(this);
     }
     
     // ==================== ImageContainer 事件处理 ====================

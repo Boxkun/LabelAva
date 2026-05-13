@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="200"
+        x:Class="LabelAva.Views.AboutWindow"
+        Title="关于"
+        Width="400" Height="200"
+        Background="{DynamicResource SystemChromeMediumLowBrush}"
+        TransparencyLevelHint="None"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Right">
+            <Button Content="关闭" Width="80" Padding="6,6" Click="OnClose" FontSize="13"/>
+        </StackPanel>
+        <!-- 占位信息 -->
+        <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="LabelAva" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+            <TextBlock Text="Indev 20d8f06" FontSize="14" Foreground="#888" HorizontalAlignment="Center"/>
+            <TextBlock Text="开发中版本，请注意备份数据。" FontWeight="Bold" FontSize="13" Foreground="#AF323D" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock Text="构建日期 2026/5/13 22:10:50" FontSize="14" Foreground="#888" HorizontalAlignment="Center"/>
+            <StackPanel Margin="0,8,0,0">
+                <TextBlock Text="LabelAva 是由 Avalonia 驱动的现代跨平台 LabelPlus 实现" FontSize="13" Foreground="#555" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="AGPL v3 / Boxkun 2026" FontSize="13" Foreground="#555" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+        </StackPanel>
+    </DockPanel>
+</Window>

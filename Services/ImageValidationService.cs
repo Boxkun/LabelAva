@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using LabelAva.Models;
@@ -90,5 +92,92 @@ public class ImageValidationService
         }
 
         return result;
+    }
+
+    public static (bool isConsistent, string? actualExtension) CheckFormatConsistency(string filePath)
+    {
+        var actualExt = DetectFormatFromHeader(filePath);
+        var fileExt = Path.GetExtension(filePath).ToLowerInvariant();
+        Debug.WriteLine($"[CheckFormatConsistency] file={Path.GetFileName(filePath)} fileExt={fileExt} magicResult={actualExt ?? "(null)"}");
+
+        if (actualExt == null)
+            return (true, null);
+
+        if (IsJpegExt(fileExt) && IsJpegExt(actualExt))
+            return (true, actualExt);
+
+        var isConsistent = fileExt == actualExt;
+        Debug.WriteLine($"[CheckFormatConsistency] => isConsistent={isConsistent} fileExt={fileExt} actualExt={actualExt}");
+        return (isConsistent, actualExt);
+    }
+
+    private static string? DetectFormatFromHeader(string filePath)
+    {
+        try
+        {
+            var buffer = new byte[12];
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var bytesRead = fs.Read(buffer, 0, buffer.Length);
+
+            Debug.WriteLine($"[DetectFormat] file={Path.GetFileName(filePath)} bytesRead={bytesRead} hex[0..{Math.Min(bytesRead,12)}]={BitConverter.ToString(buffer, 0, Math.Min(bytesRead, 12))}");
+
+            if (bytesRead < 3)
+            {
+                Debug.WriteLine("[DetectFormat] => bytesRead<3, return null");
+                return null;
+            }
+
+            if (buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF)
+                return ".jpg";
+
+            if (bytesRead >= 4 && buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E && buffer[3] == 0x47)
+                return ".png";
+
+            if (bytesRead >= 4 && buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46 && buffer[3] == 0x38)
+                return ".gif";
+
+            if (buffer[0] == 0x42 && buffer[1] == 0x4D)
+                return ".bmp";
+
+            if (bytesRead >= 12 && buffer[0] == 0x52 && buffer[1] == 0x49 && buffer[2] == 0x46 && buffer[3] == 0x46
+                && buffer[8] == 0x57 && buffer[9] == 0x45 && buffer[10] == 0x42 && buffer[11] == 0x50)
+                return ".webp";
+
+            if (bytesRead >= 4 && buffer[0] == 0x49 && buffer[1] == 0x49 && buffer[2] == 0x2A && buffer[3] == 0x00)
+                return ".tiff";
+
+            if (bytesRead >= 4 && buffer[0] == 0x4D && buffer[1] == 0x4D && buffer[2] == 0x00 && buffer[3] == 0x2A)
+                return ".tiff";
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsJpegExt(string ext)
+    {
+        return ext == ".jpg" || ext == ".jpeg";
+    }
+
+    public static bool HasAnyFormatIssue(string imageFolderPath, IEnumerable<ImageAssociationItem> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.Status != ImageValidationStatus.OK || !string.IsNullOrEmpty(item.NewPath))
+                continue;
+
+            var filePath = Path.Combine(imageFolderPath, item.ImageName);
+            if (!File.Exists(filePath))
+                continue;
+
+            var (isConsistent, _) = CheckFormatConsistency(filePath);
+            if (!isConsistent)
+                return true;
+        }
+
+        return false;
     }
 }

@@ -1,10 +1,17 @@
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Layout;
+using Avalonia.Threading;
 using LabelAva.Models;
 using LabelAva.Services;
 using System;
+using System.Diagnostics;
+using System.Text;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -16,11 +23,32 @@ public partial class ImageAssociationWindow : Window
 {
     private static readonly Avalonia.Media.IBrush ErrorBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xF4, 0x43, 0x36));
     private static readonly Avalonia.Media.IBrush OkBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x00, 0x00, 0x00));
+    private static readonly Avalonia.Media.IBrush BannerInfoFlash = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x21, 0x96, 0xF3));
+    private static readonly Avalonia.Media.IBrush BannerErrorFlash = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xF4, 0x43, 0x36));
+    private static readonly Avalonia.Media.IBrush BannerSoftBg = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xE3, 0xF2, 0xFD));
+    private static readonly Avalonia.Media.IBrush BannerSoftBorder = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x19, 0x76, 0xD2));
+    private static readonly Avalonia.Media.IBrush BannerErrorSoftBg = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xFF, 0xEB, 0xEE));
+    private static readonly Avalonia.Media.IBrush BannerErrorSoftBorder = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xC6, 0x28, 0x28));
 
     private readonly ImageValidationService _validationService = new();
     private ObservableCollection<ImageAssociationItem> _items = new();
     private string _imageFolderPath = string.Empty;
-    private Dictionary<string, string>? _autoMatches;
+    private List<MatchEntry>? _matchEntries;
+
+    private sealed record MatchEntry(
+        string ImageName,
+        string FilePath,
+        bool HasExtensionMismatch,
+        bool HasFormatError,
+        string? ActualExtension
+    );
+
+    private sealed record DetailItem(
+        string ImageName,
+        string FileName,
+        string Status,
+        Avalonia.Media.IBrush StatusForeground
+    );
 
     public ImageAssociationResult? Result { get; private set; }
 
@@ -111,7 +139,8 @@ public partial class ImageAssociationWindow : Window
 
     private void OnFolderPathTextChanged(object? sender, TextChangedEventArgs e)
     {
-        _autoMatches = null;
+        AutoMatchBanner.Opacity = 0;
+        _matchEntries = null;
         AutoMatchBanner.IsVisible = false;
         RevalidateAllItems();
         CheckAutoMatch();
@@ -286,65 +315,457 @@ public partial class ImageAssociationWindow : Window
         Close(false);
     }
 
+    private async void FlashBanner(Avalonia.Media.IBrush flashColor, Avalonia.Media.IBrush softBg, Avalonia.Media.IBrush softBorder)
+    {
+        AutoMatchBanner.Transitions = new Transitions
+        {
+            new BrushTransition { Property = Border.BackgroundProperty, Duration = TimeSpan.Zero },
+            new BrushTransition { Property = Border.BorderBrushProperty, Duration = TimeSpan.Zero },
+            new DoubleTransition { Property = Visual.OpacityProperty, Duration = TimeSpan.FromSeconds(0.3) }
+        };
+        AutoMatchBanner.Background = flashColor;
+        AutoMatchBanner.BorderBrush = flashColor;
+        AutoMatchBanner.Opacity = 1;
+        AutoMatchBanner.IsVisible = true;
+
+        await Task.Delay(80);
+
+        AutoMatchBanner.Transitions = new Transitions
+        {
+            new BrushTransition { Property = Border.BackgroundProperty, Duration = TimeSpan.FromSeconds(0.8) },
+            new BrushTransition { Property = Border.BorderBrushProperty, Duration = TimeSpan.FromSeconds(0.8) },
+            new DoubleTransition { Property = Visual.OpacityProperty, Duration = TimeSpan.FromSeconds(0.3) }
+        };
+        AutoMatchBanner.Background = softBg;
+        AutoMatchBanner.BorderBrush = softBorder;
+    }
+
     private void CheckAutoMatch()
     {
         if (string.IsNullOrEmpty(_imageFolderPath))
             return;
 
-        var missingImageNames = _items
+        _matchEntries = new List<MatchEntry>();
+
+        var missingItems = _items
             .Where(i => i.Status == ImageValidationStatus.Missing && string.IsNullOrEmpty(i.NewPath))
-            .Select(i => i.ImageName)
             .ToList();
 
-        if (missingImageNames.Count == 0)
+        var altMatches = _validationService.FindAlternateExtensionMatches(
+            _imageFolderPath, missingItems.Select(i => i.ImageName));
+
+        foreach (var kvp in altMatches)
+        {
+            Debug.WriteLine($"[CheckAutoMatch Phase1] ImageName={kvp.Key} FilePath={Path.GetFileName(kvp.Value)}");
+            _matchEntries.Add(new MatchEntry(
+                kvp.Key,
+                kvp.Value,
+                HasExtensionMismatch: true,
+                HasFormatError: false,
+                ActualExtension: null));
+        }
+
+        if (_matchEntries.Count > 0)
+        {
+            var srcExts = _matchEntries
+                .Select(e => Path.GetExtension(e.ImageName).ToLowerInvariant())
+                .Distinct()
+                .ToArray();
+            var dstExts = _matchEntries
+                .Select(e => Path.GetExtension(e.FilePath).ToLowerInvariant())
+                .Distinct()
+                .ToArray();
+            var extText = $"{string.Join(" / ", srcExts)} → {string.Join(" / ", dstExts)}";
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"找不到翻译文件内指定的图片。在当前文件夹下发现 {_matchEntries.Count} 张同名的其他格式图片（{extText}）。");
+
+            if (_matchEntries.Count <= 3)
+            {
+                sb.AppendLine();
+                foreach (var entry in _matchEntries)
+                {
+                    var fileName = Path.GetFileName(entry.FilePath);
+                    sb.AppendLine($"  {entry.ImageName} → {fileName}  ✓");
+                }
+            }
+
+            sb.Append("要使用找到的图片替代吗？");
+
+            AutoMatchBannerText.Text = sb.ToString();
+            ActionButton.Content = "填入";
+            ViewDetailsButton.IsVisible = false;
+
+            AutoMatchBannerText.Foreground = Avalonia.Media.Brush.Parse("#1565C0");
+            ActionButton.Background = Avalonia.Media.Brush.Parse("#1976D2");
+            ActionButton.Foreground = Avalonia.Media.Brushes.White;
+
+            if (IsLoaded)
+            {
+                FlashBanner(BannerInfoFlash, BannerSoftBg, BannerSoftBorder);
+            }
+            else
+            {
+                // 构造函数调用时窗口尚未加载，先显示淡色背景，等 Opened 后再闪动
+                AutoMatchBanner.Background = BannerSoftBg;
+                AutoMatchBanner.BorderBrush = BannerSoftBorder;
+                AutoMatchBanner.Opacity = 1;
+                AutoMatchBanner.IsVisible = true;
+                EventHandler handler = null!;
+                handler = (_, _) =>
+                {
+                    Opened -= handler;
+                    Dispatcher.UIThread.InvokeAsync(() => FlashBanner(BannerInfoFlash, BannerSoftBg, BannerSoftBorder),
+                        Avalonia.Threading.DispatcherPriority.Loaded);
+                };
+                Opened += handler;
+            }
+            Debug.WriteLine($"[CheckAutoMatch] Case1: {_matchEntries.Count} entries, banner shown");
+            return;
+        }
+
+        foreach (var item in _items)
+        {
+            var resolvedPath = !string.IsNullOrEmpty(item.NewPath)
+                ? item.NewPath
+                : Path.Combine(_imageFolderPath, item.ImageName);
+
+            if (!File.Exists(resolvedPath))
+                continue;
+
+            var (isConsistent, actualExt) = ImageValidationService.CheckFormatConsistency(resolvedPath);
+            if (!isConsistent)
+            {
+                Debug.WriteLine($"[CheckAutoMatch Phase2] ImageName={item.ImageName} resolvedPath={Path.GetFileName(resolvedPath)} actualExt={actualExt}");
+                _matchEntries.Add(new MatchEntry(
+                    item.ImageName,
+                    resolvedPath,
+                    HasExtensionMismatch: false,
+                    HasFormatError: true,
+                    actualExt));
+            }
+        }
+
+        if (_matchEntries.Count == 0)
             return;
 
-        _autoMatches = _validationService.FindAlternateExtensionMatches(
-            _imageFolderPath, missingImageNames);
+        var sb2 = new StringBuilder();
+        sb2.AppendLine($"发现 {_matchEntries.Count} 张图片的实际格式与扩展名不符，可能导致Photoshop加载错误。");
 
-        if (_autoMatches.Count == 0)
-            return;
+        if (_matchEntries.Count <= 3)
+        {
+            sb2.AppendLine();
+            foreach (var entry in _matchEntries)
+            {
+                var fileName = Path.GetFileName(entry.FilePath);
+                sb2.AppendLine($"  {entry.ImageName} → {fileName} ⚠ {entry.ActualExtension}");
+            }
+        }
 
-        var srcExtensions = _autoMatches.Keys
-            .Select(n => Path.GetExtension(n).ToLowerInvariant())
-            .Distinct()
-            .ToArray();
-        var dstExtensions = _autoMatches.Values
-            .Select(p => Path.GetExtension(p).ToLowerInvariant())
-            .Distinct()
-            .ToArray();
-        var extText = $"{string.Join(" / ", srcExtensions)} → {string.Join(" / ", dstExtensions)}";
+        sb2.Append("要修正扩展名错误，并且更新翻译文件吗？");
 
-        AutoMatchBannerText.Text = _autoMatches.Count == missingImageNames.Count
-            ? $"检测到全部 {missingImageNames.Count} 个缺失文件均可通过同名文件（{extText}）匹配，要自动填入吗？"
-            : $"检测到 {_autoMatches.Count}/{missingImageNames.Count} 个缺失文件可通过同名文件（{extText}）匹配，要自动填入吗？";
+        AutoMatchBannerText.Text = sb2.ToString();
+        ActionButton.Content = "修正";
+        ViewDetailsButton.IsVisible = _matchEntries.Count >= 4;
 
-        AutoMatchBanner.IsVisible = true;
+        AutoMatchBannerText.Foreground = Avalonia.Media.Brush.Parse("#C62828");
+        ActionButton.Background = Avalonia.Media.Brush.Parse("#C62828");
+        ActionButton.Foreground = Avalonia.Media.Brushes.White;
+
+        if (IsLoaded)
+        {
+            FlashBanner(BannerErrorFlash, BannerErrorSoftBg, BannerErrorSoftBorder);
+        }
+        else
+        {
+            AutoMatchBanner.Background = BannerErrorSoftBg;
+            AutoMatchBanner.BorderBrush = BannerErrorSoftBorder;
+            AutoMatchBanner.Opacity = 1;
+            AutoMatchBanner.IsVisible = true;
+            EventHandler handler = null!;
+            handler = (_, _) =>
+            {
+                Opened -= handler;
+                Dispatcher.UIThread.InvokeAsync(
+                    () => FlashBanner(BannerErrorFlash, BannerErrorSoftBg, BannerErrorSoftBorder),
+                    Avalonia.Threading.DispatcherPriority.Loaded);
+            };
+            Opened += handler;
+        }
+        Debug.WriteLine($"[CheckAutoMatch] Case2: {_matchEntries.Count} entries, banner shown");
     }
 
     private void OnAutoFill(object? sender, RoutedEventArgs e)
     {
-        if (_autoMatches == null)
+        if (_matchEntries == null)
             return;
 
-        foreach (var kvp in _autoMatches)
+        var isPhase1 = _matchEntries.Any(en => en.HasExtensionMismatch);
+
+        foreach (var entry in _matchEntries)
         {
-            var item = _items.FirstOrDefault(i => i.ImageName == kvp.Key);
-            if (item != null && string.IsNullOrEmpty(item.NewPath))
+            var item = _items.FirstOrDefault(i => i.ImageName == entry.ImageName);
+            if (item == null)
+                continue;
+
+            Debug.WriteLine($"[OnAutoFill] ImageName={entry.ImageName} FilePath={Path.GetFileName(entry.FilePath)} HasFormatError={entry.HasFormatError} HasExtMismatch={entry.HasExtensionMismatch} ActualExt={entry.ActualExtension} item.NewPath={item.NewPath}");
+
+            if (entry.HasFormatError && entry.ActualExtension != null)
             {
-                item.NewPath = kvp.Value;
-                RevalidateItem(item);
+                var correctPath = Path.ChangeExtension(
+                    entry.FilePath,
+                    entry.ActualExtension.TrimStart('.'));
+
+                Debug.WriteLine($"[OnAutoFill] HasFormatError branch: correctPath={Path.GetFileName(correctPath)} exists={File.Exists(correctPath)}");
+
+                if (!File.Exists(correctPath))
+                {
+                    try
+                    {
+                        File.Move(entry.FilePath, correctPath);
+                        Debug.WriteLine($"[OnAutoFill] File.Move OK: {Path.GetFileName(entry.FilePath)} -> {Path.GetFileName(correctPath)}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[OnAutoFill] File.Move FAILED: {ex.Message}");
+                        continue;
+                    }
+                }
+
+                item.NewPath = correctPath;
             }
+            else if (entry.HasExtensionMismatch)
+            {
+                if (!string.IsNullOrEmpty(item.NewPath))
+                    continue;
+                Debug.WriteLine($"[OnAutoFill] ExtMismatch branch: set NewPath={entry.FilePath}");
+                item.NewPath = entry.FilePath;
+            }
+
+            RevalidateItem(item);
+            Debug.WriteLine($"[OnAutoFill] After Revalidate: item.NewPath={item.NewPath} Status={item.Status} StatusText={item.StatusText}");
         }
 
-        _autoMatches = null;
+        AutoMatchBanner.Opacity = 0;
+        _matchEntries = null;
         AutoMatchBanner.IsVisible = false;
-        UpdateStatusSummary();
+
+        if (isPhase1)
+        {
+            CheckAutoMatch();
+            if (AutoMatchBanner.IsVisible)
+                WriteToFileCheckBox.IsChecked = true;
+            UpdateStatusSummary();
+        }
+        else
+        {
+            WriteToFileCheckBox.IsChecked = true;
+            UpdateStatusSummary();
+            OnConfirm(null, null!);
+            return;
+        }
     }
 
     private void OnDismissBanner(object? sender, RoutedEventArgs e)
     {
-        _autoMatches = null;
+        AutoMatchBanner.Opacity = 0;
+        _matchEntries = null;
         AutoMatchBanner.IsVisible = false;
+    }
+
+    private async void OnViewDetails(object? sender, RoutedEventArgs e)
+    {
+        if (_matchEntries == null || _matchEntries.Count == 0)
+            return;
+
+        var dialog = new Window
+        {
+            Title = "扩展名匹配详情",
+            Width = 520,
+            Height = 400,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = true,
+            ShowInTaskbar = false,
+            Background = Avalonia.Media.Brushes.White
+        };
+
+        var items = _matchEntries.Select(entry =>
+        {
+            var fileName = Path.GetFileName(entry.FilePath);
+            string status;
+            Avalonia.Media.IBrush fg;
+            if (entry.HasFormatError)
+            {
+                status = $"{entry.ActualExtension}";
+                fg = ErrorBrush;
+            }
+            else if (entry.HasExtensionMismatch)
+            {
+                status = $"{entry.ActualExtension}";
+                fg = OkBrush;
+            }
+            else
+            {
+                status = "-";
+                fg = OkBrush;
+            }
+            return new DetailItem(entry.ImageName, fileName, status, fg);
+        }).ToList();
+
+        // 行模板（与主列表样式一致）
+        var itemTemplate = new FuncDataTemplate<object>((_, _) =>
+        {
+            var border = new Border
+            {
+                BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
+                BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
+                Padding = new Avalonia.Thickness(6, 8)
+            };
+
+            var grid = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(new GridLength(1, GridUnitType.Star)),
+                    new ColumnDefinition(new GridLength(1.2, GridUnitType.Star)),
+                    new ColumnDefinition(new GridLength(1.2, GridUnitType.Star))
+                },
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var imageNameText = new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 13,
+                FontFamily = Avalonia.Media.FontFamily.Parse("Sarasa Mono SC"),
+                Margin = new Avalonia.Thickness(8, 0, 0, 0)
+            };
+            imageNameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("ImageName"));
+            Grid.SetColumn(imageNameText, 0);
+            grid.Children.Add(imageNameText);
+
+            var fileNameText = new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 13,
+                FontFamily = Avalonia.Media.FontFamily.Parse("Sarasa Mono SC"),
+            };
+            fileNameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("FileName"));
+            Grid.SetColumn(fileNameText, 1);
+            grid.Children.Add(fileNameText);
+
+            var statusText = new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 13,
+                FontFamily = Avalonia.Media.FontFamily.Parse("Sarasa Mono SC")
+            };
+            statusText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Status"));
+            statusText.Bind(TextBlock.ForegroundProperty, new Avalonia.Data.Binding("StatusForeground"));
+            Grid.SetColumn(statusText, 2);
+            grid.Children.Add(statusText);
+
+            border.Child = grid;
+            return border;
+        });
+
+        // 表头行
+        var headerBorder = new Border
+        {
+            BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
+            BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
+            Padding = new Avalonia.Thickness(6, 8),
+            Background = Avalonia.Media.Brush.Parse("#F5F5F5")
+        };
+
+        var headerGrid = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(new GridLength(1, GridUnitType.Star)),
+                new ColumnDefinition(new GridLength(1.2, GridUnitType.Star)),
+                new ColumnDefinition(new GridLength(1.2, GridUnitType.Star))
+            },
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var headerImageName = new TextBlock
+        {
+            Text = "目标图片",
+            FontSize = 13,
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Avalonia.Thickness(16, 0, 0, 0)
+        };
+        Grid.SetColumn(headerImageName, 0);
+        headerGrid.Children.Add(headerImageName);
+
+        var headerFileName = new TextBlock
+        {
+            Text = "找到的图片",
+            FontSize = 13,
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(headerFileName, 1);
+        headerGrid.Children.Add(headerFileName);
+
+        var headerStatus = new TextBlock
+        {
+            Text = "推测格式",
+            FontSize = 13,
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(headerStatus, 2);
+        headerGrid.Children.Add(headerStatus);
+
+        headerBorder.Child = headerGrid;
+
+        // 列表
+        var itemsControl = new ItemsControl
+        {
+            ItemsSource = items,
+            ItemTemplate = itemTemplate,
+            Margin = new Avalonia.Thickness(12, 4, 12, 4)
+        };
+
+        // 组合
+        var listPanel = new DockPanel();
+        listPanel.Children.Add(headerBorder);
+        DockPanel.SetDock(headerBorder, Dock.Top);
+        listPanel.Children.Add(itemsControl);
+
+        var scrollViewer = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            Content = listPanel
+        };
+
+        var outerBorder = new Border
+        {
+            BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
+            BorderThickness = new Avalonia.Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(4),
+            Child = scrollViewer
+        };
+
+        var closeButton = new Button
+        {
+            Content = "关闭",
+            Width = 80,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            Margin = new Avalonia.Thickness(0, 12, 0, 0)
+        };
+        closeButton.Click += (s, args) => dialog.Close();
+
+        var rootPanel = new DockPanel { Margin = new Avalonia.Thickness(16) };
+        rootPanel.Children.Add(closeButton);
+        DockPanel.SetDock(closeButton, Dock.Bottom);
+        rootPanel.Children.Add(outerBorder);
+
+        dialog.Content = rootPanel;
+
+        await dialog.ShowDialog(this);
     }
 }
