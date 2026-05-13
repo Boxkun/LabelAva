@@ -12,6 +12,8 @@
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
     <IlcDisableReflection>true</IlcDisableReflection>
 
+    <UseAppHost>true</UseAppHost>
+
     <TrimMode>full</TrimMode>
     <!-- <PublishAot>true</PublishAot> -->
     <!-- AOT 需要的额外设置 -->

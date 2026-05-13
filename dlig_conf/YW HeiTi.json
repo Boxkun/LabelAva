@@ -1,0 +1,58 @@
+{
+  "fontFamily": "YW HeiTi Regular",
+  "fontFeatures": "+dlig",
+  "quickInputs": [
+    {
+      "label": "~~",
+      "character": "~~"
+    },
+    {
+      "label": "#02",
+      "character": "#02"
+    },
+    {
+      "label": "#03",
+      "character": "#03"
+    },
+    {
+      "label": "#04",
+      "character": "#04"
+    },
+    {
+      "label": "#05",
+      "character": "#05"
+    },
+    {
+      "label": "#06",
+      "character": "#06"
+    },
+    {
+      "label": "#07",
+      "character": "#07"
+    },
+    {
+      "label": "@01",
+      "character": "@01"
+    },
+    {
+      "label": "@02",
+      "character": "@02"
+    },
+    {
+      "label": "@03",
+      "character": "@03"
+    },
+    {
+      "label": "@04",
+      "character": "@04"
+    },
+    {
+      "label": "@05",
+      "character": "@05"
+    },
+    {
+      "label": "@06",
+      "character": "@06"
+    }
+  ]
+}
