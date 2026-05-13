@@ -90,6 +90,13 @@ jobs:
           find "$PUBLISH_DIR" -maxdepth 1 -type f -exec mv {} "$MACOS_DIR/" \;
           chmod +x "$MACOS_DIR/LabelAva"
 
+      - name: Archive macOS .app
+        if: startsWith(matrix.rid, 'osx')
+        run: |
+          PUBLISH_DIR="bin/Release/net10.0/${{ matrix.rid }}/publish"
+          cd "$PUBLISH_DIR"
+          zip -r "$OLDPWD/LabelAva-${{ matrix.rid }}.zip" "LabelAva.app"
+
       - uses: actions/upload-artifact@v4
         if: "!startsWith(matrix.rid, 'osx')"
         with:
@@ -100,7 +107,7 @@ jobs:
         if: startsWith(matrix.rid, 'osx')
         with:
           name: LabelAva-${{ matrix.rid }}
-          path: bin/Release/net10.0/${{ matrix.rid }}/publish/LabelAva.app
+          path: LabelAva-${{ matrix.rid }}.zip
 
   release:
     needs: build
@@ -117,11 +124,17 @@ jobs:
       - name: Zip each platform
         run: |
           VERSION="${{ github.ref_name }}"
-          cd artifacts
-          for dir in */; do
-            zip -r "../${dir%/}-${VERSION}.zip" "$dir"
+          for dir in artifacts/*/; do
+            NAME="${dir%/}"
+            NAME="${NAME#artifacts/}"
+            if [[ "$NAME" == *osx* ]]; then
+              mv "${dir}${NAME}.zip" "${NAME}-${VERSION}.zip"
+            else
+              cd "$dir"
+              zip -r "../../${NAME}-${VERSION}.zip" .
+              cd ../..
+            fi
           done
-          cd ..
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
