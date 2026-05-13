@@ -26,6 +26,9 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
 
+    env:
+      DOTNET_INSTALL_DIR: ${{ contains(join(matrix.runner, ','), 'self-hosted') && '/home/github-runner/dotnet' || '' }}
+
     steps:
       - uses: actions/checkout@v4
 
