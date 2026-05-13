@@ -295,7 +295,7 @@ public class TranslationParser
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new InvalidOperationException($"保存翻译文件失败: {ex.Message}", ex);
+            throw new InvalidOperationException($"{ex.Message}", ex);
         }
     }
 
@@ -312,10 +312,9 @@ public class TranslationParser
         sb.AppendLine(data.UnknownParam ?? string.Empty);
 
         // 2. 写入分组区域 (如果有分组)
-        // 【修复点】：必须在分组名称的上方和下方各写一个 "-"，作为分组块的起始和结束标记。
         if (data.Groups.Any())
         {
-            sb.AppendLine("-"); // <--- 分组区域开始标记
+            sb.AppendLine("-"); // 分组区域开始标记
             
             foreach (var group in data.Groups.OrderBy(g => g.Index))
             {
@@ -326,11 +325,9 @@ public class TranslationParser
         }
         else
         {
-            // 即使没有分组名称，为了保持格式兼容性，某些标准可能也需要空的分组块。
-            // 如果原标准允许完全省略，则保留空白；
-            // 但如果必须保留格式骨架，请确保至少输出：
-            // sb.AppendLine("-");
-            // sb.AppendLine("-");
+            // 没有分组名称
+            sb.AppendLine("-");
+            sb.AppendLine("-");
         }
 
         // 3. 写入注释区域
@@ -340,7 +337,6 @@ public class TranslationParser
             {
                 sb.AppendLine(comment);
             }
-            // 不添加额外空行，由数据区域前空行统一处理
         }
 
         // 4. 写入数据区域
