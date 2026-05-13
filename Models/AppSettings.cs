@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Avalonia.Input;
+using LabelAva.Services;
 
 namespace LabelAva.Models;
 
@@ -63,15 +64,16 @@ public class ShortcutBindings
         var key = gesture.Key;
 
         var normalizedModifiers = NormalizeModifiers(key, modifiers);
+        bool isMac = PlatformHelper.IsMacOS;
 
         if (normalizedModifiers.HasFlag(KeyModifiers.Control))
-            parts.Add("Ctrl");
+            parts.Add(isMac ? "⌘" : "Ctrl");
         if (normalizedModifiers.HasFlag(KeyModifiers.Shift))
-            parts.Add("Shift");
+            parts.Add(isMac ? "⇧" : "Shift");
         if (normalizedModifiers.HasFlag(KeyModifiers.Alt))
-            parts.Add("Alt");
+            parts.Add(isMac ? "⌥" : "Alt");
         if (normalizedModifiers.HasFlag(KeyModifiers.Meta))
-            parts.Add("Win");
+            parts.Add(isMac ? "⌃" : "Win");
 
         if (!IsModifierKey(key) && key != Key.None)
         {
@@ -148,8 +150,8 @@ public class ShortcutBindings
             Key.RightShift => "Shift",
             Key.LeftAlt => "Alt",
             Key.RightAlt => "Alt",
-            Key.LWin => "Win",
-            Key.RWin => "Win",
+            Key.LWin => PlatformHelper.IsMacOS ? "⌘" : "Win",
+            Key.RWin => PlatformHelper.IsMacOS ? "⌘" : "Win",
             Key.Up => "上箭头",
             Key.Down => "下箭头",
             Key.Left => "左箭头",
