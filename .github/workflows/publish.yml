@@ -50,7 +50,56 @@ jobs:
           --self-contained
           -p:PublishAot=true
 
+      - name: Create macOS .app bundle
+        if: startsWith(matrix.rid, 'osx')
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          PUBLISH_DIR="bin/Release/net10.0/${{ matrix.rid }}/publish"
+          APP_NAME="LabelAva.app"
+          APP_DIR="$PUBLISH_DIR/$APP_NAME"
+          MACOS_DIR="$APP_DIR/Contents/MacOS"
+          RESOURCES_DIR="$APP_DIR/Contents/Resources"
+
+          mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+
+          cat > "$APP_DIR/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>LabelAva</string>
+              <key>CFBundleDisplayName</key>
+              <string>LabelAva</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.yourcompany.labelava</string>
+              <key>CFBundleVersion</key>
+              <string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${VERSION}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleExecutable</key>
+              <string>LabelAva</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+          find "$PUBLISH_DIR" -maxdepth 1 -type f -exec mv {} "$MACOS_DIR/" \;
+          chmod +x "$MACOS_DIR/LabelAva"
+
       - uses: actions/upload-artifact@v4
+        if: "!startsWith(matrix.rid, 'osx')"
         with:
           name: LabelAva-${{ matrix.rid }}
           path: bin/Release/net10.0/${{ matrix.rid }}/publish/
+
+      - uses: actions/upload-artifact@v4
+        if: startsWith(matrix.rid, 'osx')
+        with:
+          name: LabelAva-${{ matrix.rid }}
+          path: bin/Release/net10.0/${{ matrix.rid }}/publish/LabelAva.app
