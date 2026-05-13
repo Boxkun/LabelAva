@@ -7,6 +7,8 @@ public enum ShortcutAction
 {
     NavigateUp,
     NavigateDown,
+    NavigatePageUp,
+    NavigatePageDown,
     CopyText,
     DeleteLabel,
     OpenFile,
@@ -41,14 +43,19 @@ public class ShortcutRouter
         if (MatchesNavigateDown(gesture))
             return ShortcutAction.NavigateDown;
 
+        if (_bindings.PageUp != null && gesture.Equals(_bindings.PageUp))
+            return ShortcutAction.NavigatePageUp;
+        if (_bindings.PageDown != null && gesture.Equals(_bindings.PageDown))
+            return ShortcutAction.NavigatePageDown;
+
         if (!isTextBoxFocused)
         {
             if (_bindings.DeleteLabel != null && gesture.Equals(_bindings.DeleteLabel))
                 return ShortcutAction.DeleteLabel;
-        }
 
-        if (_bindings.CopyText != null && gesture.Equals(_bindings.CopyText))
-            return ShortcutAction.CopyText;
+            if (_bindings.CopyText != null && gesture.Equals(_bindings.CopyText))
+                return ShortcutAction.CopyText;
+        }
 
         if (_bindings.OpenFile != null && gesture.Equals(_bindings.OpenFile))
             return ShortcutAction.OpenFile;

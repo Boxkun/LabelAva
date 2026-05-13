@@ -112,6 +112,39 @@ public partial class NavigationViewModel : ObservableObject
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanNavigate))]
+    private void NavigatePageUp()
+    {
+        if (TreeItems.Count == 0) return;
+        int currentIndex = GetCurrentRootIndex();
+        if (currentIndex < 0) return;
+        int targetIndex = (currentIndex - 1 + TreeItems.Count) % TreeItems.Count;
+        SelectedItem = TreeItems[targetIndex];
+    }
+
+    [RelayCommand(CanExecute = nameof(CanNavigate))]
+    private void NavigatePageDown()
+    {
+        if (TreeItems.Count == 0) return;
+        int currentIndex = GetCurrentRootIndex();
+        if (currentIndex < 0) return;
+        int targetIndex = (currentIndex + 1) % TreeItems.Count;
+        SelectedItem = TreeItems[targetIndex];
+    }
+
+    private int GetCurrentRootIndex()
+    {
+        if (SelectedItem is ImageTreeItem rootItem)
+            return TreeItems.IndexOf(rootItem);
+        if (SelectedItem is TranslationTreeItem childItem)
+        {
+            var parent = GetParentImageItem(childItem);
+            if (parent != null) return TreeItems.IndexOf(parent);
+        }
+        return CurrentImageIndex >= 0 && CurrentImageIndex < TreeItems.Count
+            ? CurrentImageIndex : -1;
+    }
+
     // ========================
     // 公开方法
     // ========================
@@ -343,6 +376,8 @@ public partial class NavigationViewModel : ObservableObject
     {
         NavigateUpCommand.NotifyCanExecuteChanged();
         NavigateDownCommand.NotifyCanExecuteChanged();
+        NavigatePageUpCommand.NotifyCanExecuteChanged();
+        NavigatePageDownCommand.NotifyCanExecuteChanged();
     }
 
     // ========================

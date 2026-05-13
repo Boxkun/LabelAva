@@ -1205,6 +1205,12 @@ public partial class MainWindow : Window
             case ShortcutAction.NavigateDown:
                 Navigation.NavigateDownCommand.Execute(null);
                 break;
+            case ShortcutAction.NavigatePageUp:
+                Navigation.NavigatePageUpCommand.Execute(null);
+                break;
+            case ShortcutAction.NavigatePageDown:
+                Navigation.NavigatePageDownCommand.Execute(null);
+                break;
             case ShortcutAction.CopyText:
                 if (Navigation.SelectedItem is TranslationTreeItem item)
                 {

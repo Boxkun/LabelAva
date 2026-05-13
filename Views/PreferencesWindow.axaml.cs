@@ -56,6 +56,8 @@ public partial class PreferencesWindow : Window
             UpdateButtonDisplay(SaveFileButton, SaveFileText, s.SaveFile);
             UpdateButtonDisplay(ToggleGroup0Button, ToggleGroup0Text, s.ToggleGroup0);
             UpdateButtonDisplay(ToggleGroup1Button, ToggleGroup1Text, s.ToggleGroup1);
+            UpdateButtonDisplay(PageUpButton, PageUpText, s.PageUp);
+            UpdateButtonDisplay(PageDownButton, PageDownText, s.PageDown);
 
             UpdateColorUI();
 
@@ -162,6 +164,10 @@ public partial class PreferencesWindow : Window
         => CaptureShortcut(ToggleGroup0Button, g => _settings.Shortcuts.ToggleGroup0 = g);
     private void OnToggleGroup1Click(object? sender, RoutedEventArgs e)
         => CaptureShortcut(ToggleGroup1Button, g => _settings.Shortcuts.ToggleGroup1 = g);
+    private void OnPageUpClick(object? sender, RoutedEventArgs e)
+        => CaptureShortcut(PageUpButton, g => _settings.Shortcuts.PageUp = g);
+    private void OnPageDownClick(object? sender, RoutedEventArgs e)
+        => CaptureShortcut(PageDownButton, g => _settings.Shortcuts.PageDown = g);
 
     private void OnAutoFocusChanged(object? sender, RoutedEventArgs e)
     {

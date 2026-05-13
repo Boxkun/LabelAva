@@ -110,6 +110,8 @@ public class ShortcutBindingsDto
     public List<string>? ResetZoom { get; set; }
     public List<string>? ToggleGroup0 { get; set; }
     public List<string>? ToggleGroup1 { get; set; }
+    public List<string>? PageUp { get; set; }
+    public List<string>? PageDown { get; set; }
 
     public ShortcutBindingsDto() { }
 
@@ -128,6 +130,8 @@ public class ShortcutBindingsDto
         ResetZoom = GestureToList(bindings.ResetZoom);
         ToggleGroup0 = GestureToList(bindings.ToggleGroup0);
         ToggleGroup1 = GestureToList(bindings.ToggleGroup1);
+        PageUp = GestureToList(bindings.PageUp);
+        PageDown = GestureToList(bindings.PageDown);
     }
 
     public Models.ShortcutBindings ToBindings()
@@ -147,6 +151,8 @@ public class ShortcutBindingsDto
             ResetZoom = ListToGesture(ResetZoom),
             ToggleGroup0 = ListToGesture(ToggleGroup0),
             ToggleGroup1 = ListToGesture(ToggleGroup1),
+            PageUp = ListToGesture(PageUp),
+            PageDown = ListToGesture(PageDown),
         };
     }
 

@@ -30,6 +30,8 @@ public class ShortcutBindings
     public KeyGesture? ResetZoom { get; set; }
     public KeyGesture? ToggleGroup0 { get; set; }
     public KeyGesture? ToggleGroup1 { get; set; }
+    public KeyGesture? PageUp { get; set; }
+    public KeyGesture? PageDown { get; set; }
 
     public static ShortcutBindings CreateDefaults()
     {
@@ -46,6 +48,8 @@ public class ShortcutBindings
             ResetZoom = new KeyGesture(Key.D0, KeyModifiers.Control),
             ToggleGroup0 = new KeyGesture(Key.D1, KeyModifiers.Control),
             ToggleGroup1 = new KeyGesture(Key.D2, KeyModifiers.Control),
+            PageUp = new KeyGesture(Key.PageUp),
+            PageDown = new KeyGesture(Key.PageDown),
         };
     }
 

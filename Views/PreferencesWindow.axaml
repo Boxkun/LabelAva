@@ -52,7 +52,7 @@
                                         <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="向上移动" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="上一个标记" VerticalAlignment="Center"/>
                                     <Button x:Name="NavigateUpButton" Grid.Row="0" Grid.Column="2"
                                             IsEnabled="False"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
@@ -75,7 +75,7 @@
                                         <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="向下移动" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="下一个标记" VerticalAlignment="Center"/>
                                     <Button x:Name="NavigateDownButton" Grid.Row="0" Grid.Column="2"
                                             IsEnabled="False"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
@@ -86,6 +86,34 @@
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateDownSecondaryClick">
                                         <TextBlock x:Name="NavigateDownSecondaryText" Text="未设置" Foreground="#999"/>
+                                    </Button>
+                                </Grid>
+
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="上一张图片" VerticalAlignment="Center"/>
+                                    <Button x:Name="PageUpButton" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnPageUpClick">
+                                        <TextBlock x:Name="PageUpText" Text="PageUp" Foreground="#333"/>
+                                    </Button>
+                                </Grid>
+
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="下一张图片" VerticalAlignment="Center"/>
+                                    <Button x:Name="PageDownButton" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnPageDownClick">
+                                        <TextBlock x:Name="PageDownText" Text="PageDown" Foreground="#333"/>
                                     </Button>
                                 </Grid>
                             </StackPanel>
@@ -100,8 +128,6 @@
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="80"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
