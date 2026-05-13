@@ -73,6 +73,9 @@ public partial class AnnotationCanvas : UserControl
     // 公开回调属性（由 MainWindow 注入）
     // ========================
     
+    /// <summary>是否允许拖拽标注（编辑模式为 true，查看模式为 false）</summary>
+    public bool IsEditMode { get; set; }
+
     /// <summary>提交当前文本编辑（需要访问 _translationTextBox）</summary>
     public Action? CommitCurrentEdit { get; set; }
     
@@ -499,15 +502,21 @@ public partial class AnnotationCanvas : UserControl
         if (point.Properties.IsLeftButtonPressed)
         {
             e.Handled = true;
-            
-            // 提交编辑并发送选择事件
+
+            // 发送标签被点击事件（查看/编辑模式均可）
+            LabelClicked?.Invoke(this, labelIndex.Value);
+
+            if (!IsEditMode)
+                return;
+
+            // 编辑模式下：提交编辑、启动拖拽
             CommitCurrentEdit?.Invoke();
 
             _isDraggingLabel = true;
             _draggedLabel = border;
             _labelDragLastPoint = point.Position;
             e.Pointer.Capture(border);
-            
+
             // 从 Tag 中读取归一化坐标作为拖拽起始位置
             if (border.Tag is ValueTuple<int, int, double, double> tag)
             {
@@ -515,9 +524,6 @@ public partial class AnnotationCanvas : UserControl
                 _dragStartNormY = tag.Item4;
                 _draggingLabelIndex = labelIndex.Value;
             }
-
-            // 发送标签被点击事件
-            LabelClicked?.Invoke(this, labelIndex.Value);
         }
     }
 

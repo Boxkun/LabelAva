@@ -246,6 +246,7 @@ public partial class MainWindow : Window
             GroupIndexToBrushConverter.Initialize(_settingsProvider);
             CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
             CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
+            CanvasControl.IsEditMode = Edit.IsEditMode;
             CanvasControl.LabelClicked += (_, labelIndex) =>
             {
                 _isSelectionFromCanvas = true;
@@ -946,6 +947,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnEditModeChanged(object? sender, EventArgs e)
     {
+        CanvasControl.IsEditMode = Edit.IsEditMode;
         if (Edit.IsEditMode)
         {
             UpdateGroupButtonColors();
