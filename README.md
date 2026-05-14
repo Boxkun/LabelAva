@@ -38,6 +38,14 @@ dotnet run
   
 > [!NOTE]
 > 在首选项中可以调整在画布中新建 / 选中标记时是否自动聚焦到文本框，以获得与 [LabelPlus](https://github.com/LabelPlus/LabelPlus) / [LabelPlusFX](https://github.com/Meodinger/LabelPlusFX) 相似的体验
-## 许可
 
-本项目遵循 [GNU Affero General Public License v3.0](LICENSE) 协议开源。
+### 自由连字渲染与快速输入
+LabelAva支持对标记列表与输入文本框应用支持自由连字特性的字体，并自定义连字快捷输入规则。`/dlig_conf` 文件夹中存放了一些示例文件。
+
+在首选项字体标签页点击打开配置目录，在其中放置配置文件之后，重新开启首选项窗口即可启用功能。
+
+#### 目前已有配置文件的字体
+ - 攸望字体
+
+## 许可
+LabelAva 是自由软件。本项目遵循 [GNU Affero General Public License v3.0](LICENSE) 协议开源。
