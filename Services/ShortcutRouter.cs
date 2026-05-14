@@ -30,18 +30,20 @@ public class ShortcutRouter
 
     public ShortcutAction? MatchKeyGesture(KeyGesture gesture, bool isTextBoxFocused = false)
     {
-        if (!isTextBoxFocused)
-        {
-            if (_bindings.ToggleGroup0 != null && gesture.Equals(_bindings.ToggleGroup0))
-                return ShortcutAction.SwitchToGroup0;
-            if (_bindings.ToggleGroup1 != null && gesture.Equals(_bindings.ToggleGroup1))
-                return ShortcutAction.SwitchToGroup1;
-        }
+        if (_bindings.ToggleGroup0 != null && gesture.Equals(_bindings.ToggleGroup0))
+            return ShortcutAction.SwitchToGroup0;
+        if (_bindings.ToggleGroup1 != null && gesture.Equals(_bindings.ToggleGroup1))
+            return ShortcutAction.SwitchToGroup1;
 
-        if (MatchesNavigateUp(gesture))
-            return ShortcutAction.NavigateUp;
-        if (MatchesNavigateDown(gesture))
-            return ShortcutAction.NavigateDown;
+        bool isPlainNavKey = (gesture.Key == Key.Up || gesture.Key == Key.Down)
+            && gesture.KeyModifiers == KeyModifiers.None;
+        if (!isTextBoxFocused || !isPlainNavKey)
+        {
+            if (MatchesNavigateUp(gesture))
+                return ShortcutAction.NavigateUp;
+            if (MatchesNavigateDown(gesture))
+                return ShortcutAction.NavigateDown;
+        }
 
         if (_bindings.PageUp != null && gesture.Equals(_bindings.PageUp))
             return ShortcutAction.NavigatePageUp;

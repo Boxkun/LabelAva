@@ -367,7 +367,7 @@ public class TranslationParser
                 continue;
             }
 
-            // 重新生成标注序号（从1开始）
+            // 重新生成标注序号（从1开始）/*  */
             int textIndex = 1;
             foreach (var label in labels)
             {

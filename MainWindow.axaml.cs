@@ -55,6 +55,9 @@ public partial class MainWindow : Window
     
     // 选中项来源标志：true 表示选中变更由画布交互触发，需跳过视野居中
     private bool _isSelectionFromCanvas = false;
+    
+    // 键盘导航标志：true 表示选中变更由快捷键（Up/Down/PageUp/PageDown）触发，强制自动聚焦
+    private bool _isKeyboardNavigation = false;
 
     // 异步初始化标志：防止初始化完成前的空引用
     private bool _isInitialized = false;
@@ -1144,9 +1147,11 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(() =>
         {
             TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
-            _isIntentionalBlur = false;
             // StatusBar.UpdateStatus("已提交编辑", StatusBarViewModel.StatusType.Success);
         }, DispatcherPriority.Loaded);
+        
+        // 5. 兜底复位（若 RebuildCurrentView 未触发自动聚焦，由 Background 复位标志）
+        Dispatcher.UIThread.Post(() => _isIntentionalBlur = false, DispatcherPriority.Background);
     }
 
     /// <summary>
@@ -1246,9 +1251,17 @@ public partial class MainWindow : Window
             e.Handled = true;
         }
         
+        // ↑↓ 方向键：仅拦截纯方向键（无修饰键），文本框聚焦时放行，其他情况吞噬
+        bool isTextBoxFocused = _translationTextBox != null && _translationTextBox.IsFocused;
+        bool isPlainArrow = (e.Key == Key.Up || e.Key == Key.Down) && e.KeyModifiers == KeyModifiers.None;
+        if (isPlainArrow && !isTextBoxFocused)
+        {
+            e.Handled = true;
+            return;
+        }
+        
         // 通过 ShortcutRouter 匹配可配置快捷键
         var currentGesture = new KeyGesture(e.Key, e.KeyModifiers);
-        bool isTextBoxFocused = _translationTextBox != null && _translationTextBox.IsFocused;
         var action = _shortcutRouter.MatchKeyGesture(currentGesture, isTextBoxFocused);
         if (action.HasValue)
         {
@@ -1265,15 +1278,19 @@ public partial class MainWindow : Window
         switch (action)
         {
             case ShortcutAction.NavigateUp:
+                _isKeyboardNavigation = true;
                 Navigation.NavigateUpCommand.Execute(null);
                 break;
             case ShortcutAction.NavigateDown:
+                _isKeyboardNavigation = true;
                 Navigation.NavigateDownCommand.Execute(null);
                 break;
             case ShortcutAction.NavigatePageUp:
+                _isKeyboardNavigation = true;
                 Navigation.NavigatePageUpCommand.Execute(null);
                 break;
             case ShortcutAction.NavigatePageDown:
+                _isKeyboardNavigation = true;
                 Navigation.NavigatePageDownCommand.Execute(null);
                 break;
             case ShortcutAction.CopyText:
@@ -1701,9 +1718,15 @@ public partial class MainWindow : Window
             double fitScale = targetRootItem?.FitScale ?? 1.0;
             if (currentScale > fitScale && !_isSelectionFromCanvas)
                 CenterOnLabel(targetChildItem.Index);
+            bool fromCanvas = _isSelectionFromCanvas;
             _isSelectionFromCanvas = false;
 
-            if (Edit.IsEditMode && _settingsProvider.Current.AutoFocusTextBox)
+            bool autoFocus = _isKeyboardNavigation
+                || !fromCanvas
+                || _settingsProvider.Current.AutoFocusTextBox;
+            _isKeyboardNavigation = false;
+
+            if (Edit.IsEditMode && autoFocus)
             {
                 Dispatcher.UIThread.Post(
                     () => _translationTextBox?.Focus(),

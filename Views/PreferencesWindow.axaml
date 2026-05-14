@@ -54,7 +54,6 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="上一个标记" VerticalAlignment="Center"/>
                                     <Button x:Name="NavigateUpButton" Grid.Row="0" Grid.Column="2"
-                                            IsEnabled="False"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateUpClick">
                                         <TextBlock x:Name="NavigateUpText" Text="方向键上" Foreground="#999"/>
@@ -77,7 +76,6 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="下一个标记" VerticalAlignment="Center"/>
                                     <Button x:Name="NavigateDownButton" Grid.Row="0" Grid.Column="2"
-                                            IsEnabled="False"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Padding="8,6" Click="OnNavigateDownClick">
                                         <TextBlock x:Name="NavigateDownText" Text="方向键下" Foreground="#999"/>
@@ -167,7 +165,7 @@
                                         <TextBlock Text="选中标签后自动聚焦到文本框" FontSize="12" Foreground="#666"/>
                                     </CheckBox>
                                 </Grid>
-                                <TextBlock Text="按 Ctrl+Enter 提交更改" FontSize="11" Foreground="#999" Margin="92,0,0,0"/>
+                                <TextBlock Text="按 Ctrl+Enter 取消聚焦" FontSize="11" Foreground="#999" Margin="92,0,0,0"/>
                             </StackPanel>
                         </Border>
 

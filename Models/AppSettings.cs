@@ -38,8 +38,10 @@ public class ShortcutBindings
     {
         return new ShortcutBindings
         {
-            NavigateUp = new KeyGesture(Key.Up),
-            NavigateDown = new KeyGesture(Key.Down),
+            NavigateUp = new KeyGesture(Key.Up, KeyModifiers.Control),
+            NavigateDown = new KeyGesture(Key.Down, KeyModifiers.Control),
+            NavigateUpSecondary = null,
+            NavigateDownSecondary = null,
             CopyText = new KeyGesture(Key.C, KeyModifiers.Control),
             DeleteLabel = new KeyGesture(Key.Delete),
             OpenFile = new KeyGesture(Key.O, KeyModifiers.Control),
@@ -49,8 +51,8 @@ public class ShortcutBindings
             ResetZoom = new KeyGesture(Key.D0, KeyModifiers.Control),
             ToggleGroup0 = new KeyGesture(Key.D1, KeyModifiers.Control),
             ToggleGroup1 = new KeyGesture(Key.D2, KeyModifiers.Control),
-            PageUp = new KeyGesture(Key.PageUp),
-            PageDown = new KeyGesture(Key.PageDown),
+            PageUp = new KeyGesture(Key.Left, KeyModifiers.Control),
+            PageDown = new KeyGesture(Key.Right, KeyModifiers.Control),
         };
     }
 
