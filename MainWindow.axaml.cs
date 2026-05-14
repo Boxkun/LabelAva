@@ -39,6 +39,9 @@ public partial class MainWindow : Window
     // UI 锁：防止命令执行时触发 UI 事件污染历史栈
     private bool _isUpdatingUI = false;
     
+    // 主动失焦标志：Ctrl+Enter 提交时置 true，GotFocus 拦截器据此踢走焦点
+    private bool _isIntentionalBlur = false;
+    
     // 树视图拖拽交互状态
     private Point _treeDragStartPoint;
     private bool _isTreeItemDragging = false;   // PENDING 状态：按下但未超过阈值
@@ -212,7 +215,13 @@ public partial class MainWindow : Window
             _translationTextBox = this.FindControl<TextBox>("TranslationTextBox");
             _editPanel = this.FindControl<Border>("EditPanel");
             if (_translationTextBox != null)
+            {
                 _translationTextBox.LostFocus += OnTranslationTextBoxLostFocus;
+                _translationTextBox.GotFocus += OnTranslationTextBoxGotFocus;
+                // Ctrl+Enter 提交：气泡阶段处理（handledEventsToo:true 确保即使事件已处理也触发）
+                _translationTextBox.AddHandler(InputElement.KeyDownEvent, OnTranslationTextBoxKeyDown,
+                    handledEventsToo: true);
+            }
 
             _imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
 
@@ -738,8 +747,8 @@ public partial class MainWindow : Window
             }
             else
             {
-                // 如果容器未准备好，退回到 TreeView 聚焦
-                ImageTreeView.Focus();
+                // 如果容器未准备好，退回到清除焦点
+                TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
             }
         }, DispatcherPriority.Background);
     }
@@ -1100,6 +1109,62 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 文本框按键处理：Ctrl+Enter 提交当前编辑并取消文本框聚焦。
+    /// 设置 _isIntentionalBlur 标志，若后续任何代码试图重新聚焦文本框，
+    /// GotFocus 拦截器会立即踢走焦点。不依赖时序/优先级猜测。
+    /// </summary>
+    private void OnTranslationTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        var modifiers = e.KeyModifiers;
+        bool isCtrlPressed = (modifiers & KeyModifiers.Control) != 0 || (modifiers & KeyModifiers.Meta) != 0;
+        
+        if (!isCtrlPressed || (e.Key != Key.Return && e.Key != Key.Enter))
+            return;
+        
+        // 1. 清除 TextBox 因 AcceptsReturn 自动插入的尾随换行符
+        if (_translationTextBox != null)
+        {
+            var text = _translationTextBox.Text ?? "";
+            if (text.Length > 0 && text[^1] == '\n')
+            {
+                _translationTextBox.Text = text[..^1]; // 移除 LF
+                if (_translationTextBox.Text.Length > 0 && _translationTextBox.Text[^1] == '\r')
+                    _translationTextBox.Text = _translationTextBox.Text[..^1]; // 移除 CR
+            }
+        }
+        
+        // 2. 设置主动离焦标志（在提交前，确保标志先于任何 Post 入队）
+        _isIntentionalBlur = true;
+        
+        // 3. 提交当前编辑
+        CommitCurrentEdit();
+        e.Handled = true;
+        
+        // 4. 主动清除焦点（正常路径；若焦点被抢走，GotFocus 拦截器处理）
+        Dispatcher.UIThread.Post(() =>
+        {
+            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+            _isIntentionalBlur = false;
+            // StatusBar.UpdateStatus("已提交编辑", StatusBarViewModel.StatusType.Success);
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// 文本框获得焦点时的拦截器。
+    /// 若处于"主动离焦"状态（_isIntentionalBlur），立即清除焦点并复位标志。
+    /// 正常情况下（用户点击文本框、AutoFocusTextBox 触发）不受影响。
+    /// </summary>
+    private void OnTranslationTextBoxGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        if (!_isIntentionalBlur) return;
+
+        _isIntentionalBlur = false;
+        Dispatcher.UIThread.Post(
+            () => TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus(),
+            DispatcherPriority.Input);
+    }
+
+    /// <summary>
     /// 文本框失去焦点时，直接结算当前文本
     /// </summary>
     private void OnTranslationTextBoxLostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -1247,7 +1312,7 @@ public partial class MainWindow : Window
         // UI 层补充操作
         if (Navigation.SelectedItem != null)
         {
-            ImageTreeView.Focus();
+            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
             StatusBar.UpdateStatus($"已选中标注 #{labelIndex}", StatusBarViewModel.StatusType.Info);
         }
     }
