@@ -537,7 +537,7 @@ public partial class DocumentViewModel : ObservableObject
         lines.Add("框内");
         lines.Add("框外");
         lines.Add("-");
-        lines.Add("LabelAva 1.0");
+        lines.Add("Created by LabelAva");
         lines.Add("");
 
         foreach (var imagePath in imagePaths)
