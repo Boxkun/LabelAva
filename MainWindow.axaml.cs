@@ -943,7 +943,17 @@ public partial class MainWindow : Window
             // 延迟聚焦到文本框，确保 UI 已完成重建
             Dispatcher.UIThread.Post(() =>
             {
-                _translationTextBox?.Focus();
+                if (_translationTextBox is not { IsEnabled: true }) return;
+
+                var len = _translationTextBox.Text?.Length ?? 0;
+                if (len > 0)
+                {
+                    _translationTextBox.CaretIndex = 0;
+                    _translationTextBox.CaretIndex = len;
+                    _translationTextBox.SelectionStart = len;
+                    _translationTextBox.SelectionEnd = len;
+                }
+                _translationTextBox.Focus();
             }, DispatcherPriority.Loaded);
         }
         else if (CanvasWorkspace.PendingNewLabelIndex.HasValue)
@@ -1095,21 +1105,6 @@ public partial class MainWindow : Window
         return Avalonia.Media.Color.FromArgb(color.A, r, g, b);
     }
 
-
-    /// <summary>
-    /// Text 变更时主动重置 CaretIndex 到末尾
-    /// </summary>
-    private void OnTranslationTextBoxTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        var tb = _translationTextBox;
-        if (tb == null) return;
-
-        var len = tb.Text?.Length ?? 0;
-        tb.CaretIndex = 0; // Avalonia 对 CaretIndex 有短路优化，先重置到开头触发 invalidation
-        tb.CaretIndex = len;
-        tb.SelectionStart = len;
-        tb.SelectionEnd = len;
-    }
 
     /// <summary>
     /// 文本框按键处理：Ctrl+Enter 提交当前编辑并取消文本框聚焦。
@@ -1729,7 +1724,20 @@ public partial class MainWindow : Window
             if (Edit.IsEditMode && autoFocus)
             {
                 Dispatcher.UIThread.Post(
-                    () => _translationTextBox?.Focus(),
+                    () =>
+                    {
+                        if (_translationTextBox is not { IsEnabled: true }) return;
+
+                        var len = _translationTextBox.Text?.Length ?? 0;
+                        if (len > 0)
+                        {
+                            _translationTextBox.CaretIndex = 0;
+                            _translationTextBox.CaretIndex = len;
+                            _translationTextBox.SelectionStart = len;
+                            _translationTextBox.SelectionEnd = len;
+                        }
+                        _translationTextBox.Focus();
+                    },
                     DispatcherPriority.Loaded);
             }
         }

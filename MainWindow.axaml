@@ -217,7 +217,6 @@
                                          Text="{Binding Navigation.SelectedTranslationItem.Text,
                                                         Mode=TwoWay,
                                                         UpdateSourceTrigger=PropertyChanged}"
-                                         TextChanged="OnTranslationTextBoxTextChanged"
                                          />
                             </DockPanel>
                         </Border>
