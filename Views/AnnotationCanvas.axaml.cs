@@ -158,7 +158,7 @@ public partial class AnnotationCanvas : UserControl
         {
             _currentImage = null;
             _currentImagePath = null;
-            throw new InvalidOperationException($"加载图片失败: {ex.Message}", ex);
+            throw new InvalidOperationException($" {ex.Message}", ex);
         }
     }
     
