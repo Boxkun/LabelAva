@@ -17,7 +17,7 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
             <TextBlock Text="文件名:" VerticalAlignment="Center" FontSize="14"/>
             <TextBox x:Name="FileNameTextBox" Width="250" FontSize="14" Watermark="输入文件名" TextChanged="OnFileNameTextChanged"/>
-            <TextBlock Text=".txt" VerticalAlignment="Center" FontSize="14" Foreground="#666"/>
+            <TextBlock Text=".txt" VerticalAlignment="Center" FontSize="14" Foreground="{DynamicResource SystemControlForegroundChromeHighBrush}"/>
         </StackPanel>
         
         <!-- 底部按钮区域 -->
@@ -31,7 +31,7 @@
         <!-- 主内容区：左栏列表 + 右栏图片预览 -->
         <Grid ColumnDefinitions="250,*">
             <!-- 左栏：图片列表 -->
-            <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
+            <Border Grid.Column="0" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
                 <ListBox x:Name="ImageListControl" Margin="4" Background="Transparent" FontFamily="Sarasa Mono SC" FontSize="14" SelectionMode="Toggle" SelectionChanged="OnImageSelectionChanged">
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
@@ -58,9 +58,9 @@
             </Border>
             
             <!-- 右栏：图片预览 -->
-            <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Background="Transparent">
+            <Border Grid.Column="1" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="4" Background="Transparent">
                 <Panel>
-                    <TextBlock Text="选择图片以预览" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AAA" FontSize="16"/>
+                    <TextBlock Text="选择图片以预览" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseLowBrush}" FontSize="16"/>
                     <Image x:Name="PreviewImage" Stretch="Uniform" Margin="8"/>
                 </Panel>
             </Border>

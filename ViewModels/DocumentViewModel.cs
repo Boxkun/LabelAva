@@ -519,8 +519,9 @@ public partial class DocumentViewModel : ObservableObject
             if (ImagePathMapping.TryGetValue(item.ImageName, out var mappedPath))
             {
                 item.NewPath = mappedPath;
-                item.Status = File.Exists(mappedPath) ? ImageValidationStatus.OK : ImageValidationStatus.Missing;
-                item.StatusText = File.Exists(mappedPath) ? "\u2713 正常" : "\u2717 缺失";
+                var (status, statusText) = ImageValidationService.ValidateFullPath(mappedPath);
+                item.Status = status;
+                item.StatusText = statusText;
             }
         }
 

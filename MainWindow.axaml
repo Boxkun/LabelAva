@@ -29,7 +29,7 @@
 
     <DockPanel>
         <!-- 菜单栏 -->
-        <Menu DockPanel.Dock="Top">
+        <Menu DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundChromeMediumBrush}" BorderThickness="0,0,0,1">
             <MenuItem Header="文件(_F)">
                 <MenuItem Header="新建翻译" Command="{Binding Document.NewCommand}"/>
                 <MenuItem Header="打开翻译" Command="{Binding Document.OpenCommand}"/>
@@ -92,12 +92,12 @@
             <!-- 主界面：左右两个 Panel（默认隐藏） -->
             <Grid x:Name="MainContentPanel" ColumnDefinitions="2*,*" IsVisible="False">
                 <!-- 左侧 Panel：画布区域 -->
-                <Border Grid.Column="0" Background="#F5F5F5">
+                <Border Grid.Column="0" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
                     <views:AnnotationCanvas x:Name="AnnotationCanvasControl" DataContext="{Binding CanvasWorkspace}" />
                 </Border>
                 
                 <!-- 右侧 Panel：属性面板 -->
-                <Border Grid.Column="1" Background="#FAFAFA">
+                <Border Grid.Column="1" Background="{DynamicResource SystemControlPageBackgroundMediumAltMediumBrush}">
                     <Grid RowDefinitions="*,Auto">
                         <!-- 上半部分：树状视图 -->
                         <DockPanel Grid.Row="0">
@@ -183,7 +183,7 @@
                         </DockPanel>
 
                         <!-- 下半部分：文本编辑区域 (默认隐藏) -->
-                        <Border x:Name="EditPanel" Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10" IsVisible="{Binding Edit.IsEditPanelVisible}">
+                        <Border x:Name="EditPanel" Grid.Row="1" Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" BorderBrush="{DynamicResource SystemControlForegroundChromeMediumBrush}" BorderThickness="0,1,0,0" Padding="10" IsVisible="{Binding Edit.IsEditPanelVisible}">
                             <DockPanel>
                                 <!-- 工具栏：快捷输入按钮 -->
                                 <Border x:Name="QuickInputToolbar" DockPanel.Dock="Top" Margin="0,0,0,8">
@@ -245,24 +245,23 @@
         
         <!-- 模式切换按钮样式 -->
         <Style Selector="Button.mode-toggle">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlPageBackgroundAltHighBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="MinHeight" Value="30"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#CCC"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightChromeHighBrush}"/>
         </Style>
         <Style Selector="Button.mode-toggle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#FFF"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlPageBackgroundAltHighBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}"/>
         </Style>
         <Style Selector="Button.mode-toggle.active">
-            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
         </Style>
         <Style Selector="Button.mode-toggle.active:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#FFF"/>
             <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}"/>
         </Style>
         
@@ -289,22 +288,19 @@
 
         <!-- 工具栏按钮样式 -->
         <Style Selector="Button.toolbar-button">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlPageBackgroundAltHighBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="CornerRadius" Value="3"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#CCC"/>
-            <!-- <Setter Property="MinWidth" Value="36"/>
-            <Setter Property="MinHeight" Value="32"/> -->
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundChromeMediumBrush}"/>
         </Style>
         <Style Selector="Button.toolbar-button:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#F0F0F0"/>
             <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlPageBackgroundAltHighBrush}"/>
         </Style>
         <Style Selector="Button.toolbar-button:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E0E0E0"/>
         </Style>
     </Window.Styles>
 </Window>

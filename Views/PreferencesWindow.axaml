@@ -22,7 +22,7 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="8">
                         <!-- 列标题 -->
-                        <Border Background="#FCFCFC" CornerRadius="8" Padding="12" Margin="0,0,0,0">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="80"/>
@@ -31,17 +31,17 @@
                                     <ColumnDefinition Width="12"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="设置项" FontWeight="SemiBold" Foreground="#AAA"/>
-                                <TextBlock Grid.Column="2" Text="主要" HorizontalAlignment="Center" Foreground="#AAA"/>
-                                <TextBlock Grid.Column="4" Text="次要" HorizontalAlignment="Center" Foreground="#AAA"/>
+                                <TextBlock Grid.Column="0" Text="设置项" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="2" Text="主要" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="次要" HorizontalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <!-- 导航设置组 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="导航" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="在树状视图中上下移动" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                <TextBlock Text="在树状视图中上下移动" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                                 <!-- 上导航 -->
                                 <Grid RowDefinitions="Auto">
@@ -55,13 +55,13 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="上一个标记" VerticalAlignment="Center"/>
                                     <Button x:Name="NavigateUpButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnNavigateUpClick">
-                                        <TextBlock x:Name="NavigateUpText" Text="方向键上" Foreground="#999"/>
+                                            Padding="8,6" Click="OnNavigateUpClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="NavigateUpText" Text="方向键上" />
                                     </Button>
                                     <Button x:Name="NavigateUpSecondaryButton" Grid.Row="0" Grid.Column="4"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnNavigateUpSecondaryClick">
-                                        <TextBlock x:Name="NavigateUpSecondaryText" Text="未设置" Foreground="#999"/>
+                                            Padding="8,6" Click="OnNavigateUpSecondaryClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="NavigateUpSecondaryText" Text="未设置" />
                                     </Button>
                                 </Grid>
 
@@ -77,13 +77,13 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="下一个标记" VerticalAlignment="Center"/>
                                     <Button x:Name="NavigateDownButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnNavigateDownClick">
-                                        <TextBlock x:Name="NavigateDownText" Text="方向键下" Foreground="#999"/>
+                                            Padding="8,6" Click="OnNavigateDownClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="NavigateDownText" Text="方向键下" />
                                     </Button>
                                     <Button x:Name="NavigateDownSecondaryButton" Grid.Row="0" Grid.Column="4"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnNavigateDownSecondaryClick">
-                                        <TextBlock x:Name="NavigateDownSecondaryText" Text="未设置" Foreground="#999"/>
+                                            Padding="8,6" Click="OnNavigateDownSecondaryClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="NavigateDownSecondaryText" Text="未设置" />
                                     </Button>
                                 </Grid>
 
@@ -96,8 +96,8 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="上一张图片" VerticalAlignment="Center"/>
                                     <Button x:Name="PageUpButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnPageUpClick">
-                                        <TextBlock x:Name="PageUpText" Text="PageUp" Foreground="#333"/>
+                                            Padding="8,6" Click="OnPageUpClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="PageUpText" Text="PageUp" />
                                     </Button>
                                 </Grid>
 
@@ -110,18 +110,18 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="下一张图片" VerticalAlignment="Center"/>
                                     <Button x:Name="PageDownButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnPageDownClick">
-                                        <TextBlock x:Name="PageDownText" Text="PageDown" Foreground="#333"/>
+                                            Padding="8,6" Click="OnPageDownClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="PageDownText" Text="PageDown" />
                                     </Button>
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <!-- 复制设置组 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="编辑" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="对翻译文本进行操作" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                <TextBlock Text="对翻译文本进行操作" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
@@ -132,8 +132,8 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="复制文本" VerticalAlignment="Center"/>
                                     <Button x:Name="CopyTextButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnCopyTextClick">
-                                        <TextBlock x:Name="CopyTextText" Text="Ctrl + C" Foreground="#333"/>
+                                            Padding="8,6" Click="OnCopyTextClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="CopyTextText" Text="Ctrl + C" />
                                     </Button>
                                 </Grid>
 
@@ -146,8 +146,8 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="删除标签" VerticalAlignment="Center"/>
                                     <Button x:Name="DeleteLabelButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnDeleteLabelClick">
-                                        <TextBlock x:Name="DeleteLabelText" Text="Delete" Foreground="#333"/>
+                                            Padding="8,6" Click="OnDeleteLabelClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="DeleteLabelText" Text="Delete" />
                                     </Button>
                                 </Grid>
 
@@ -162,18 +162,18 @@
                                     <CheckBox x:Name="AutoFocusCheckBox" Grid.Row="0" Grid.Column="2"
                                               IsChecked="True" VerticalAlignment="Center"
                                               Checked="OnAutoFocusChanged" Unchecked="OnAutoFocusChanged">
-                                        <TextBlock Text="选中标签后自动聚焦到文本框" FontSize="12" Foreground="#666"/>
+                                        <TextBlock Text="选中标签后自动聚焦到文本框" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                     </CheckBox>
                                 </Grid>
-                                <TextBlock Text="按 Ctrl+Enter 取消聚焦" FontSize="11" Foreground="#999" Margin="92,0,0,0"/>
+                                <TextBlock Text="按 Ctrl+Enter 取消聚焦" FontSize="11"  Margin="92,0,0,0"/>
                             </StackPanel>
                         </Border>
 
                         <!-- 文件设置组 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="打开和保存翻译文件" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                <TextBlock Text="打开和保存翻译文件" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
@@ -184,8 +184,8 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="打开文件" VerticalAlignment="Center"/>
                                     <Button x:Name="OpenFileButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnOpenFileClick">
-                                        <TextBlock x:Name="OpenFileText" Text="Ctrl + O" Foreground="#333"/>
+                                            Padding="8,6" Click="OnOpenFileClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="OpenFileText" Text="Ctrl + O" />
                                     </Button>
                                 </Grid>
 
@@ -198,18 +198,18 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="保存文件" VerticalAlignment="Center"/>
                                     <Button x:Name="SaveFileButton" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnSaveFileClick">
-                                        <TextBlock x:Name="SaveFileText" Text="Ctrl + S" Foreground="#333"/>
+                                            Padding="8,6" Click="OnSaveFileClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="SaveFileText" Text="Ctrl + S" />
                                     </Button>
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <!-- 分组切换设置组 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="分组切换" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="切换当前激活的分组（框内/框外）" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                <TextBlock Text="切换当前激活的分组（框内/框外）" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
@@ -220,8 +220,8 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="切换框内" VerticalAlignment="Center"/>
                                     <Button x:Name="ToggleGroup0Button" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnToggleGroup0Click">
-                                        <TextBlock x:Name="ToggleGroup0Text" Text="Ctrl + 1" Foreground="#333"/>
+                                            Padding="8,6" Click="OnToggleGroup0Click" Classes="shortcut-btn">
+                                        <TextBlock x:Name="ToggleGroup0Text" Text="Ctrl + 1" />
                                     </Button>
                                 </Grid>
 
@@ -234,8 +234,8 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="切换框外" VerticalAlignment="Center"/>
                                     <Button x:Name="ToggleGroup1Button" Grid.Row="0" Grid.Column="2"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Padding="8,6" Click="OnToggleGroup1Click">
-                                        <TextBlock x:Name="ToggleGroup1Text" Text="Ctrl + 2" Foreground="#333"/>
+                                            Padding="8,6" Click="OnToggleGroup1Click" Classes="shortcut-btn">
+                                        <TextBlock x:Name="ToggleGroup1Text" Text="Ctrl + 2" />
                                     </Button>
                                 </Grid>
                             </StackPanel>
@@ -254,7 +254,7 @@
                         <!-- 标号大小设置 -->
                         <TextBlock Text="标号显示设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <Grid RowDefinitions="Auto">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="80"/>
@@ -267,15 +267,16 @@
                                                FormatString="0"
                                                Increment="1"
                                                VerticalAlignment="Center"
-                                               ValueChanged="OnLabelSizeChanged"/>
+                                               ValueChanged="OnLabelSizeChanged"
+                                               BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
                             </Grid>
                         </Border>
                         
                         <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,8"/>
-                        <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,8"/>
+                        <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,8"/>
 
                         <!-- 框内颜色设置 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <Grid RowDefinitions="Auto">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="80"/>
@@ -290,12 +291,12 @@
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="Group0ColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
-                                        Background="#E74856" BorderBrush="#CCC" BorderThickness="1"/>
+                                        Background="#E74856" BorderBrush="{DynamicResource SystemControlForegroundChromeDisabledBrush}" BorderThickness="1"/>
                             </Grid>
                         </Border>
 
                         <!-- 框外颜色设置 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <Grid RowDefinitions="Auto">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="80"/>
@@ -310,12 +311,12 @@
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="Group1ColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
-                                        Background="#1E90FF" BorderBrush="#CCC" BorderThickness="1"/>
+                                        Background="#1E90FF" BorderBrush="{DynamicResource SystemControlForegroundChromeDisabledBrush}" BorderThickness="1"/>
                             </Grid>
                         </Border>
 
                         <!-- 选中高亮颜色设置 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <Grid RowDefinitions="Auto">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="80"/>
@@ -330,12 +331,12 @@
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="SelectedColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
-                                        Background="#33BA90" BorderBrush="#CCC" BorderThickness="1"/>
+                                        Background="#33BA90" BorderBrush="{DynamicResource SystemControlForegroundChromeDisabledBrush}" BorderThickness="1"/>
                             </Grid>
                         </Border>
 
                         <!-- 颜色格式提示 -->
-                        <TextBlock Text="提示：使用十六进制颜色代码" FontSize="11" Foreground="#999" Margin="0,4,0,0"/>
+                        <TextBlock Text="提示：使用十六进制颜色代码" FontSize="11"  Margin="0,4,0,0"/>
 
                         <!-- 重置按钮 -->
                         <Button Content="恢复默认颜色" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetColorDefaults"/>
@@ -348,15 +349,16 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
                         <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="选择连字配置以启用编辑器专用字体和 OpenType 连字特性" FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                        <TextBlock Text="选择连字配置以启用编辑器专用字体和 OpenType 连字特性" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                         <!-- 配置选择 -->
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="80,12,*">
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="当前配置" VerticalAlignment="Center"/>
                                 <ComboBox x:Name="DligConfigComboBox" Grid.Row="0" Grid.Column="2"
                                           SelectionChanged="OnDligConfigSelectionChanged"
-                                          VerticalAlignment="Center"/>
+                                          VerticalAlignment="Center"
+                                          BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="字体家族" VerticalAlignment="Center" Margin="0,8,0,0"/>
                                 <TextBox x:Name="DligFontFamilyTextBox" Grid.Row="1" Grid.Column="2"
@@ -372,7 +374,7 @@
 
                         <!-- 快捷输入按钮 -->
                         <TextBlock Text="快捷输入按钮" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                        <Border Background="#F9F9F9" CornerRadius="8" Padding="12">
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="4">
                                 <ItemsControl x:Name="QuickInputSlotsItemsControl">
                                     <ItemsControl.ItemTemplate>
@@ -398,4 +400,16 @@
             </TabItem>
         </TabControl>
     </DockPanel>
+
+    <Window.Styles>
+        <Style Selector="Button.shortcut-btn TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        </Style>
+        <Style Selector="Button.shortcut-btn.unset TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        </Style>
+        <Style Selector="Button.shortcut-btn.capturing TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SystemAccentColor}"/>
+        </Style>
+    </Window.Styles>
 </Window>

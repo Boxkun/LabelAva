@@ -533,7 +533,7 @@ public partial class MainWindow : Window
             CanResize = false,
             ShowInTaskbar = false,
             TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
-            Background = Brushes.White
+            Background = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Brushes.White
         };
 
         // 根布局：上方内容区（*）+ 下方按钮栏（Auto）

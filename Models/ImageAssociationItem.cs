@@ -32,7 +32,7 @@ public class ImageAssociationItem : INotifyPropertyChanged
         }
     }
 
-    public string StatusForeground => _status == ImageValidationStatus.Missing ? "#F44336" : "#000000";
+    public string StatusForeground => _status == ImageValidationStatus.Missing ? "#F44336" : Services.ThemeHelper.GetBrush("SystemControlForegroundChromeDisabledBrush")?.ToString() ?? "#888";
 
     public string StatusText
     {

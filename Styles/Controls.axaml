@@ -2,8 +2,8 @@
     
     <!-- 状态栏样式 -->
     <Style Selector="Border.statusbar">
-        <Setter Property="Background" Value="#F0F0F0"/>
-        <Setter Property="BorderBrush" Value="#CCCCCC"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundChromeHighBrush}"/>
         <Setter Property="BorderThickness" Value="0,1,0,0"/>
         <Setter Property="Padding" Value="8,6"/>
     </Style>
@@ -51,7 +51,7 @@
     <!-- 状态栏文字基础样式 -->
     <Style Selector="TextBlock.status-text">
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#555555"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     
@@ -89,14 +89,14 @@
     
     <Style Selector="TextBlock.zoom-text">
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#555555"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     
     <!-- 按键样式 -->
     <Style Selector="Border.keycap">
         <Setter Property="Padding" Value="6,2"/>
-        <Setter Property="Background" Value="#F3F3F3"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlPageBackgroundChromeLowBrush}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
@@ -117,46 +117,46 @@
     </Style>
 
     <Style Selector="Border.keycap TextBlock">
-        <Setter Property="Foreground" Value="#AAA"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
 
     <Style Selector="Border.descbox TextBlock">
-        <Setter Property="Foreground" Value="#AAA"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
     
     <!-- 快捷键按钮样式 -->
     <Style Selector="Button">
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#DDD"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlPageBackgroundAltHighBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightChromeHighBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
-    
-    <Style Selector="Button:pointerover">
+
+    <!-- <Style Selector="Button:pointerover">
         <Setter Property="Background" Value="#F0F0F0"/>
         <Setter Property="BorderBrush" Value="#0078D4"/>
     </Style>
     
     <Style Selector="Button:pressed">
         <Setter Property="Background" Value="#E0E0E0"/>
-    </Style>
+    </Style> -->
 
     <!-- 文本框样式 -->
     <Style Selector="TextBox">
-        <Setter Property="BorderBrush" Value="#DDD"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundChromeHighBrush}"/>
     </Style>
-    <!-- 基础模板（去掉圆点） -->
+    <!-- 分组按钮基础模板（去掉圆点） -->
     <Style Selector="RadioButton.no-dot">
         <Setter Property="Template">
             <ControlTemplate TargetType="RadioButton">
                 <Border Name="border"
                         Background="Transparent"
-                        BorderBrush="#ccc"
+                        BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="12,6"

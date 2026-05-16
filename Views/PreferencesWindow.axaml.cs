@@ -3,8 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using LabelAva.Models;
 using LabelAva.Services;
+using LabelAva.Models;
 
 namespace LabelAva.Views;
 
@@ -108,12 +108,14 @@ public partial class PreferencesWindow : Window
             }
             else
             {
-                border.Background = new SolidColorBrush(Colors.LightGray);
+                border.Background = Services.ThemeHelper.GetBrush("SystemControlForegroundChromeDisabledBrush")
+                    ?? new SolidColorBrush(Colors.LightGray);
             }
         }
         catch
         {
-            border.Background = new SolidColorBrush(Colors.LightGray);
+            border.Background = Services.ThemeHelper.GetBrush("SystemControlForegroundChromeDisabledBrush")
+                ?? new SolidColorBrush(Colors.LightGray);
         }
     }
 
@@ -126,11 +128,11 @@ public partial class PreferencesWindow : Window
 
         if (text == "未设置")
         {
-            textBlock.Foreground = new SolidColorBrush(Color.Parse("#999999"));
+            button.Classes.Add("unset");
         }
         else
         {
-            textBlock.Foreground = new SolidColorBrush(Color.Parse("#333333"));
+            button.Classes.Remove("unset");
         }
     }
 
@@ -411,7 +413,6 @@ public partial class PreferencesWindow : Window
         if (textBlock != null)
         {
             textBlock.Text = "请按键或鼠标...";
-            textBlock.Foreground = new SolidColorBrush(Color.Parse("#0078D4"));
         }
 
         button.Classes.Add("capturing");

@@ -5,12 +5,12 @@
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="LabelAva.Views.WelcomeView">
     
-    <Border Background="#FFFFFF">
+    <Border Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}">
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
             <!-- Logo/标题区域 -->
             <StackPanel Spacing="10" HorizontalAlignment="Center" Margin="0,0,0,40">
-                <TextBlock Text="LabelAva" FontSize="56" FontWeight="Bold" Foreground="#444" HorizontalAlignment="Center"/>
-                <TextBlock Text="LabelPlus with Avalonia" FontSize="20" Foreground="#AAA" HorizontalAlignment="Center"/>
+                <TextBlock Text="LabelAva" FontSize="56" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
+                <TextBlock Text="LabelPlus with Avalonia" FontSize="20" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
             </StackPanel>
             
             <!-- 功能按钮区域 -->

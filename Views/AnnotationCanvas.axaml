@@ -23,10 +23,10 @@
                            RenderOptions.BitmapInterpolationMode="HighQuality" />
                 </Canvas>
             </Canvas>
-            <Border x:Name="ErrorOverlay" IsVisible="False" Background="#E0E0E0">
+            <Border x:Name="ErrorOverlay" IsVisible="False" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-                    <TextBlock x:Name="ErrorOverlayIcon" FontSize="48" HorizontalAlignment="Center" Foreground="#999999"/>
-                    <TextBlock x:Name="ErrorOverlayText" FontSize="14" HorizontalAlignment="Center" Foreground="#666666" TextWrapping="Wrap" TextAlignment="Center"/>
+                    <TextBlock x:Name="ErrorOverlayIcon" FontSize="48" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    <TextBlock x:Name="ErrorOverlayText" FontSize="14" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" TextAlignment="Center"/>
                 </StackPanel>
             </Border>
         </Grid>

@@ -13,17 +13,17 @@
 
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Right">
-            <Button Content="关闭" Width="80" Padding="6,6" Click="OnClose" FontSize="13"/>
+            <Button Content="关闭" Width="80" Padding="6,6" Click="OnClose" FontSize="13" Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}"/>
         </StackPanel>
         <!-- 占位信息 -->
         <StackPanel VerticalAlignment="Center">
             <TextBlock Text="LabelAva" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-            <TextBlock x:Name="VersionText" Text="Indev (unknown)" FontSize="14" Foreground="#888" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="VersionText" Text="Indev (unknown)" FontSize="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
             <TextBlock Text="开发中版本，请注意备份数据。" FontWeight="Bold" FontSize="13" Foreground="#AF323D" HorizontalAlignment="Center" TextWrapping="Wrap"/>
-            <TextBlock x:Name="BuildTimeText" Text="构建日期 (unknown)" FontSize="14" Foreground="#888" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="BuildTimeText" Text="构建日期 (unknown)" FontSize="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
             <StackPanel Margin="0,8,0,0">
-                <TextBlock Text="LabelAva 是由 Avalonia 驱动的现代跨平台 LabelPlus 实现" FontSize="13" Foreground="#555" HorizontalAlignment="Center" TextWrapping="Wrap"/>
-                <TextBlock Text="AGPL v3 / Boxkun 2026" FontSize="13" Foreground="#555" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="LabelAva 是由 Avalonia 驱动的现代跨平台 LabelPlus 实现" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="AGPL v3 / Boxkun 2026" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
             </StackPanel>
         </StackPanel>
     </DockPanel>

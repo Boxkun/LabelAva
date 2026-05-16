@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Animation;
+using Avalonia.Styling;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Interactivity;
@@ -22,13 +23,24 @@ namespace LabelAva.Views;
 public partial class ImageAssociationWindow : Window
 {
     private static readonly Avalonia.Media.IBrush ErrorBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xF4, 0x43, 0x36));
-    private static readonly Avalonia.Media.IBrush OkBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x00, 0x00, 0x00));
     private static readonly Avalonia.Media.IBrush BannerInfoFlash = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x21, 0x96, 0xF3));
     private static readonly Avalonia.Media.IBrush BannerErrorFlash = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xF4, 0x43, 0x36));
-    private static readonly Avalonia.Media.IBrush BannerSoftBg = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xE3, 0xF2, 0xFD));
-    private static readonly Avalonia.Media.IBrush BannerSoftBorder = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x19, 0x76, 0xD2));
-    private static readonly Avalonia.Media.IBrush BannerErrorSoftBg = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xFF, 0xEB, 0xEE));
-    private static readonly Avalonia.Media.IBrush BannerErrorSoftBorder = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xC6, 0x28, 0x28));
+
+    // 横幅浅色模式颜色
+    private static readonly Avalonia.Media.IBrush BannerInfoTextLight = Avalonia.Media.Brush.Parse("#1976D2");
+    private static readonly Avalonia.Media.IBrush BannerInfoBtnLight = Avalonia.Media.Brush.Parse("#1976D2");
+    private static readonly Avalonia.Media.IBrush BannerInfoBorderLight = Avalonia.Media.Brush.Parse("#1976D2");
+    private static readonly Avalonia.Media.IBrush BannerErrorTextLight = Avalonia.Media.Brush.Parse("#C62828");
+    private static readonly Avalonia.Media.IBrush BannerErrorBorderLight = Avalonia.Media.Brush.Parse("#C62828");
+    private static readonly Avalonia.Media.IBrush BannerErrorBtnLight = Avalonia.Media.Brush.Parse("#C62828");
+
+    // 横幅暗色模式颜色
+    private static readonly Avalonia.Media.IBrush BannerInfoTextDark = Avalonia.Media.Brush.Parse("#4ea0f3");  
+    private static readonly Avalonia.Media.IBrush BannerInfoBtnDark = Avalonia.Media.Brush.Parse("#1976D2");
+    private static readonly Avalonia.Media.IBrush BannerInfoBorderDark = Avalonia.Media.Brush.Parse("#4ea0f3");
+    private static readonly Avalonia.Media.IBrush BannerErrorTextDark = Avalonia.Media.Brush.Parse("#eb4d4d");
+    private static readonly Avalonia.Media.IBrush BannerErrorBorderDark = Avalonia.Media.Brush.Parse("#eb4d4d");
+    private static readonly Avalonia.Media.IBrush BannerErrorBtnDark = Avalonia.Media.Brush.Parse("#C62828");
 
     private readonly ImageValidationService _validationService = new();
     private ObservableCollection<ImageAssociationItem> _items = new();
@@ -96,7 +108,6 @@ public partial class ImageAssociationWindow : Window
         else
         {
             StatusSummary.Text = "";
-            StatusSummary.Foreground = OkBrush;
         }
     }
 
@@ -184,9 +195,9 @@ public partial class ImageAssociationWindow : Window
     {
         if (!string.IsNullOrEmpty(item.NewPath))
         {
-            var exists = File.Exists(item.NewPath);
-            item.Status = exists ? ImageValidationStatus.OK : ImageValidationStatus.Missing;
-            item.StatusText = exists ? "\u2713 正常" : "\u2717 缺失";
+            var (status, statusText) = ImageValidationService.ValidateFullPath(item.NewPath);
+            item.Status = status;
+            item.StatusText = statusText;
         }
         else
         {
@@ -221,7 +232,8 @@ public partial class ImageAssociationWindow : Window
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
             ShowInTaskbar = false,
-            Background = Avalonia.Media.Brushes.White
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
+            Background = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush")
         };
 
         var result = false;
@@ -378,7 +390,7 @@ public partial class ImageAssociationWindow : Window
             var extText = $"{string.Join(" / ", srcExts)} → {string.Join(" / ", dstExts)}";
 
             var sb = new StringBuilder();
-            sb.AppendLine($"找不到翻译文件内指定的图片。在当前文件夹下发现 {_matchEntries.Count} 张同名的其他格式图片（{extText}）。");
+            sb.AppendLine($"找不到翻译文件内指定的图片（{string.Join(" / ", srcExts)}）。在当前文件夹下发现 {_matchEntries.Count} 张同名的其他格式图片（{string.Join(" / ", dstExts)}）。");
 
             // if (_matchEntries.Count <= 3)
             // {
@@ -395,26 +407,30 @@ public partial class ImageAssociationWindow : Window
             ActionButton.Content = "填入";
             ViewDetailsButton.IsVisible = false;
 
-            AutoMatchBannerText.Foreground = Avalonia.Media.Brush.Parse("#1565C0");
-            ActionButton.Background = Avalonia.Media.Brush.Parse("#1976D2");
+            var softBg = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Avalonia.Media.Brushes.White;
+
+            var isDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+            var softBorder = isDark ? BannerInfoBorderDark : BannerInfoBorderLight;
+
+            AutoMatchBannerText.Foreground = isDark ? BannerInfoTextDark : BannerInfoTextLight;
+            ActionButton.Background = isDark ? BannerInfoBtnDark : BannerInfoBtnLight;
             ActionButton.Foreground = Avalonia.Media.Brushes.White;
 
             if (IsLoaded)
             {
-                FlashBanner(BannerInfoFlash, BannerSoftBg, BannerSoftBorder);
+                FlashBanner(BannerInfoFlash, softBg, softBorder);
             }
             else
             {
-                // 构造函数调用时窗口尚未加载，先显示淡色背景，等 Opened 后再闪动
-                AutoMatchBanner.Background = BannerSoftBg;
-                AutoMatchBanner.BorderBrush = BannerSoftBorder;
+                AutoMatchBanner.Background = softBg;
+                AutoMatchBanner.BorderBrush = softBorder;
                 AutoMatchBanner.Opacity = 1;
                 AutoMatchBanner.IsVisible = true;
                 EventHandler handler = null!;
                 handler = (_, _) =>
                 {
                     Opened -= handler;
-                    Dispatcher.UIThread.InvokeAsync(() => FlashBanner(BannerInfoFlash, BannerSoftBg, BannerSoftBorder),
+                    Dispatcher.UIThread.InvokeAsync(() => FlashBanner(BannerInfoFlash, softBg, softBorder),
                         Avalonia.Threading.DispatcherPriority.Loaded);
                 };
                 Opened += handler;
@@ -449,7 +465,7 @@ public partial class ImageAssociationWindow : Window
             return;
 
         var sb2 = new StringBuilder();
-        sb2.AppendLine($"发现 {_matchEntries.Count} 张图片的实际格式与扩展名不符，可能导致 Photoshop 加载错误。");
+        sb2.AppendLine($"发现 {_matchEntries.Count} 张图片的实际格式与扩展名不符，可能导致 Photoshop 加载异常。");
 
         // if (_matchEntries.Count <= 3)
         // {
@@ -466,18 +482,23 @@ public partial class ImageAssociationWindow : Window
         ActionButton.Content = "修正";
         ViewDetailsButton.IsVisible = true;
 
-        AutoMatchBannerText.Foreground = Avalonia.Media.Brush.Parse("#C62828");
-        ActionButton.Background = Avalonia.Media.Brush.Parse("#C62828");
+        var errorBg = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Avalonia.Media.Brushes.White;
+
+        var isDarkErr = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+        var errorBorder = isDarkErr ? BannerErrorBorderDark : BannerErrorBorderLight;
+
+        AutoMatchBannerText.Foreground = isDarkErr ? BannerErrorTextDark : BannerErrorTextLight;
+        ActionButton.Background = isDarkErr ? BannerErrorBtnDark : BannerErrorBtnLight;
         ActionButton.Foreground = Avalonia.Media.Brushes.White;
 
         if (IsLoaded)
         {
-            FlashBanner(BannerErrorFlash, BannerErrorSoftBg, BannerErrorSoftBorder);
+            FlashBanner(BannerErrorFlash, errorBg, errorBorder);
         }
         else
         {
-            AutoMatchBanner.Background = BannerErrorSoftBg;
-            AutoMatchBanner.BorderBrush = BannerErrorSoftBorder;
+            AutoMatchBanner.Background = errorBg;
+            AutoMatchBanner.BorderBrush = errorBorder;
             AutoMatchBanner.Opacity = 1;
             AutoMatchBanner.IsVisible = true;
             EventHandler handler = null!;
@@ -485,7 +506,7 @@ public partial class ImageAssociationWindow : Window
             {
                 Opened -= handler;
                 Dispatcher.UIThread.InvokeAsync(
-                    () => FlashBanner(BannerErrorFlash, BannerErrorSoftBg, BannerErrorSoftBorder),
+                    () => FlashBanner(BannerErrorFlash, errorBg, errorBorder),
                     Avalonia.Threading.DispatcherPriority.Loaded);
             };
             Opened += handler;
@@ -584,8 +605,13 @@ public partial class ImageAssociationWindow : Window
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = true,
             ShowInTaskbar = false,
-            Background = Avalonia.Media.Brushes.White
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
+            Background = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush")
         };
+
+        var detailNormalFg = Services.ThemeHelper.GetBrush("SystemControlForegroundBaseHighBrush") ?? Avalonia.Media.Brushes.Black;
+        var detailBorderBrush = Services.ThemeHelper.GetBrush("SystemControlForegroundChromeMediumBrush") ?? Avalonia.Media.Brush.Parse("#DDD");
+        var detailHeaderBg = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundChromeLowBrush") ?? Avalonia.Media.Brush.Parse("#F5F5F5");
 
         var items = _matchEntries.Select(entry =>
         {
@@ -597,15 +623,10 @@ public partial class ImageAssociationWindow : Window
                 status = $"{entry.ActualExtension}";
                 fg = ErrorBrush;
             }
-            else if (entry.HasExtensionMismatch)
-            {
-                status = $"{entry.ActualExtension}";
-                fg = OkBrush;
-            }
             else
             {
-                status = "-";
-                fg = OkBrush;
+                status = entry.HasExtensionMismatch ? $"{entry.ActualExtension}" : "-";
+                fg = detailNormalFg;
             }
             return new DetailItem(entry.ImageName, fileName, status, fg);
         }).ToList();
@@ -617,7 +638,7 @@ public partial class ImageAssociationWindow : Window
 
             var border = new Border
             {
-                BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
+                BorderBrush = detailBorderBrush,
                 BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
                 Padding = new Avalonia.Thickness(6, 8)
             };
@@ -672,10 +693,10 @@ public partial class ImageAssociationWindow : Window
         // 表头行
         var headerBorder = new Border
         {
-            BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
+            BorderBrush = detailBorderBrush,
             BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
             Padding = new Avalonia.Thickness(6, 8),
-            Background = Avalonia.Media.Brush.Parse("#F5F5F5")
+            Background = detailHeaderBg
         };
 
         var headerGrid = new Grid
@@ -712,7 +733,7 @@ public partial class ImageAssociationWindow : Window
 
         var headerStatus = new TextBlock
         {
-            Text = "推测格式",
+            Text = "推测实际格式",
             FontSize = 13,
             FontWeight = Avalonia.Media.FontWeight.Bold,
             VerticalAlignment = VerticalAlignment.Center
@@ -744,7 +765,7 @@ public partial class ImageAssociationWindow : Window
 
         var outerBorder = new Border
         {
-            BorderBrush = Avalonia.Media.Brush.Parse("#DDD"),
+            BorderBrush = detailBorderBrush,
             BorderThickness = new Avalonia.Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(4),
             Child = scrollViewer

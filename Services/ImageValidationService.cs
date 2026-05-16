@@ -22,7 +22,7 @@ public class ImageValidationService
             {
                 ImageName = name,
                 Status = exists ? ImageValidationStatus.OK : ImageValidationStatus.Missing,
-                StatusText = exists ? "✓ 正常" : "✗ 缺失",
+                StatusText = exists ? "\u2713 \u6b63\u5e38" : "\u2717 \u7f3a\u5931",
                 NewPath = null
             };
         }).ToList();
@@ -38,6 +38,13 @@ public class ImageValidationService
     {
         var status = ValidateSingle(imageFolderPath, imageName);
         return (status, status == ImageValidationStatus.OK ? "\u2713 \u6b63\u5e38" : "\u2717 \u7f3a\u5931");
+    }
+
+    public static (ImageValidationStatus status, string statusText) ValidateFullPath(string? fullPath)
+    {
+        var exists = !string.IsNullOrEmpty(fullPath) && File.Exists(fullPath);
+        return (exists ? ImageValidationStatus.OK : ImageValidationStatus.Missing,
+                exists ? "\u2713 \u6b63\u5e38" : "\u2717 \u7f3a\u5931");
     }
 
     /// <summary>
