@@ -14,6 +14,8 @@ jobs:
         include:
           - rid: win-x64
             runner: windows-latest
+          - rid: win-arm64
+            runner: windows-11-arm
           - rid: osx-x64
             runner: macos-latest
             target: x86_64-apple-darwin
@@ -23,12 +25,10 @@ jobs:
           - rid: linux-x64
             runner: ubuntu-latest
           - rid: linux-arm64
-            runner: [self-hosted, linux, arm64]
+            runner: ubuntu-24.04-arm
 
     runs-on: ${{ matrix.runner }}
 
-    env:
-      DOTNET_INSTALL_DIR: ${{ contains(join(matrix.runner, ','), 'self-hosted') && '/home/github-runner/dotnet' || '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
           --self-contained
           -p:PublishAot=true
 
-      - name: Create macOS .app bundle
+      - name: Create macOS .app bundle and Sign
         if: startsWith(matrix.rid, 'osx')
         env:
           VERSION: ${{ github.ref_name }}
@@ -89,13 +89,20 @@ jobs:
 
           find "$PUBLISH_DIR" -maxdepth 1 -type f -exec mv {} "$MACOS_DIR/" \;
           chmod +x "$MACOS_DIR/LabelAva"
+          
+          codesign --force --deep --sign - "$APP_DIR"
 
-      - name: Archive macOS .app
+      - name: Create macOS DMG
         if: startsWith(matrix.rid, 'osx')
         run: |
           PUBLISH_DIR="bin/Release/net10.0/${{ matrix.rid }}/publish"
           cd "$PUBLISH_DIR"
-          zip -r "$OLDPWD/LabelAva-${{ matrix.rid }}.zip" "LabelAva.app"
+          
+          mkdir -p dmg_staging
+          mv "LabelAva.app" dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+          
+          hdiutil create -volname "LabelAva" -srcfolder dmg_staging -ov -format UDZO "LabelAva-${{ matrix.rid }}.dmg"
 
       - uses: actions/upload-artifact@v4
         if: "!startsWith(matrix.rid, 'osx')"
@@ -107,7 +114,7 @@ jobs:
         if: startsWith(matrix.rid, 'osx')
         with:
           name: LabelAva-${{ matrix.rid }}
-          path: LabelAva-${{ matrix.rid }}.zip
+          path: bin/Release/net10.0/${{ matrix.rid }}/publish/LabelAva-${{ matrix.rid }}.dmg
 
   release:
     needs: build
@@ -121,14 +128,14 @@ jobs:
         with:
           path: artifacts/
 
-      - name: Zip each platform
+      - name: Zip / Prepare each platform
         run: |
           VERSION="${{ github.ref_name }}"
           for dir in artifacts/*/; do
             NAME="${dir%/}"
             NAME="${NAME#artifacts/}"
             if [[ "$NAME" == *osx* ]]; then
-              mv "${dir}${NAME}.zip" "${NAME}-${VERSION}.zip"
+              mv "${dir}LabelAva-${NAME}.dmg" "${NAME}-${VERSION}.dmg"
             else
               cd "$dir"
               zip -r "../../${NAME}-${VERSION}.zip" .
@@ -144,5 +151,6 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
-
-          files: "*.zip"
+          files: |
+            *.zip
+            *.dmg
