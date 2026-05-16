@@ -4,12 +4,17 @@ LabelAva 是由 [Avalonia UI](https://avaloniaui.net/) 驱动的现代跨平台 
 
 [![AGPL License](https://img.shields.io/badge/License-AGPLv3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0)
 [![Publish](https://github.com/Boxkun/LabelAva/actions/workflows/publish.yml/badge.svg)](https://github.com/Boxkun/LabelAva/actions/workflows/publish.yml)
+
+![demo](docs/pictures/Snipaste_2026-05-17_00-45-32.png)
+![demo](docs/pictures/Snipaste_2026-05-17_00-45-46.png)
+![demo](docs/pictures/Snipaste_2026-05-17_00-53-12.png)
 ## 特性
 
 - **跨平台** — 支持 x64 / arm64 架构，支持 Windows / Linux / macOS
 - **图片扩展名校验** — 校验文件头是否与扩展名匹配（JPG/PNG/GIF/BMP/WebP/TIFF）
 - **DLIG 连字** — 可使用支持 OpenType 自由连字特性的字体渲染文本
 - **快捷键管理** — 高自由度的快捷键自定义
+- **深色模式** — 跟随系统设置与强调色的的全局深色模式
 
 ## 快速上手
 

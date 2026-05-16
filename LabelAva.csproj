@@ -49,13 +49,24 @@
     <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="GitHash"/>
     </Exec>
+
+    <Exec Command="git describe --tags --exact-match --abbrev=0" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitTagRaw"/>
+    </Exec>
+
+    <PropertyGroup>
+      <GitVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(GitTagRaw.Trim())', '^v', ''))</GitVersion>
+      <GitVersion Condition="'$(GitVersion)' == ''">dev</GitVersion>
+    </PropertyGroup>
+
     <WriteLinesToFile
       File="$(IntermediateOutputPath)BuildInfo.g.cs"
       Lines="namespace LabelAva%3B
 public static class BuildInfo
 {
+    public const string Version = &quot;$(GitVersion)&quot;%3B
     public const string CommitHash = &quot;$(GitHash.Trim())&quot;%3B
-    public const string BuildTime = &quot;$([System.DateTime]::Now.ToString(&quot;yyyy/M/d HH:mm:ss&quot;))&quot;%3B
+    public const string BuildTime = &quot;$([System.DateTimeOffset]::Now.ToString(&quot;yyyy/M/d HH:mm:ss zzz&quot;))&quot;%3B
 }"
       Overwrite="true"/>
   </Target>
