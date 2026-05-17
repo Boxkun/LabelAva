@@ -36,23 +36,25 @@ public class ShortcutBindings
 
     public static ShortcutBindings CreateDefaults()
     {
+        var mod = PlatformHelper.IsMacOS ? KeyModifiers.Meta : KeyModifiers.Control;
+
         return new ShortcutBindings
         {
-            NavigateUp = new KeyGesture(Key.Up, KeyModifiers.Control),
-            NavigateDown = new KeyGesture(Key.Down, KeyModifiers.Control),
-            NavigateUpSecondary = null,
-            NavigateDownSecondary = null,
-            CopyText = new KeyGesture(Key.C, KeyModifiers.Control),
-            DeleteLabel = new KeyGesture(Key.Delete),
-            OpenFile = new KeyGesture(Key.O, KeyModifiers.Control),
-            SaveFile = new KeyGesture(Key.S, KeyModifiers.Control),
-            ZoomIn = new KeyGesture(Key.OemPlus, KeyModifiers.Control),
-            ZoomOut = new KeyGesture(Key.OemMinus, KeyModifiers.Control),
-            ResetZoom = new KeyGesture(Key.D0, KeyModifiers.Control),
-            ToggleGroup0 = new KeyGesture(Key.D1, KeyModifiers.Control),
-            ToggleGroup1 = new KeyGesture(Key.D2, KeyModifiers.Control),
-            PageUp = new KeyGesture(Key.Left, KeyModifiers.Control),
-            PageDown = new KeyGesture(Key.Right, KeyModifiers.Control),
+            NavigateUp             = new KeyGesture(Key.Up,       mod),
+            NavigateDown           = new KeyGesture(Key.Down,     mod),
+            NavigateUpSecondary    = null,
+            NavigateDownSecondary  = null,
+            CopyText               = new KeyGesture(Key.C,        mod),
+            DeleteLabel            = new KeyGesture(Key.Delete),
+            OpenFile               = new KeyGesture(Key.O,        mod),
+            SaveFile               = new KeyGesture(Key.S,        mod),
+            ZoomIn                 = new KeyGesture(Key.OemPlus,  mod),
+            ZoomOut                = new KeyGesture(Key.OemMinus, mod),
+            ResetZoom              = new KeyGesture(Key.D0,       mod),
+            ToggleGroup0           = new KeyGesture(Key.D1,       mod),
+            ToggleGroup1           = new KeyGesture(Key.D2,       mod),
+            PageUp                 = new KeyGesture(Key.Left,     mod),
+            PageDown               = new KeyGesture(Key.Right,    mod),
         };
     }
 
@@ -69,13 +71,13 @@ public class ShortcutBindings
         bool isMac = PlatformHelper.IsMacOS;
 
         if (normalizedModifiers.HasFlag(KeyModifiers.Control))
-            parts.Add(isMac ? "⌘" : "Ctrl");
+            parts.Add(isMac ? "⌃" : "Ctrl");
         if (normalizedModifiers.HasFlag(KeyModifiers.Shift))
             parts.Add(isMac ? "⇧" : "Shift");
         if (normalizedModifiers.HasFlag(KeyModifiers.Alt))
             parts.Add(isMac ? "⌥" : "Alt");
         if (normalizedModifiers.HasFlag(KeyModifiers.Meta))
-            parts.Add(isMac ? "⌃" : "Win");
+            parts.Add(isMac ? "⌘" : "Win");
 
         if (!IsModifierKey(key) && key != Key.None)
         {
