@@ -263,7 +263,7 @@ public partial class DocumentViewModel : ObservableObject
         try
         {
             // 2. 扫描图片
-            var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+            var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp" };
             var imageFiles = Directory.GetFiles(folderPath)
                 .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
                 .ToList();

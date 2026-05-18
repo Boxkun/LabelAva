@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using LabelAva.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -226,29 +227,8 @@ public partial class ImageSelectionWindow : Window
     /// <summary>
     /// 加载图片并进行重采样（缩放到最大尺寸限制）
     /// </summary>
-    private Bitmap? LoadScaledBitmap(string filePath, int maxWidth, int maxHeight)
+    private static Bitmap? LoadScaledBitmap(string filePath, int maxWidth, int maxHeight)
     {
-        using var stream = File.OpenRead(filePath);
-        var bitmap = new Bitmap(stream);
-        
-        // 如果图片小于限制尺寸，直接返回原图
-        if (bitmap.Size.Width <= maxWidth && bitmap.Size.Height <= maxHeight)
-        {
-            return bitmap;
-        }
-        
-        // 计算缩放比例
-        double scaleX = (double)maxWidth / bitmap.Size.Width;
-        double scaleY = (double)maxHeight / bitmap.Size.Height;
-        double scale = Math.Min(scaleX, scaleY);
-        
-        int newWidth = (int)(bitmap.Size.Width * scale);
-        int newHeight = (int)(bitmap.Size.Height * scale);
-        
-        // 创建缩放后的位图
-        var scaledBitmap = bitmap.CreateScaledBitmap(new PixelSize(newWidth, newHeight), BitmapInterpolationMode.HighQuality);
-        bitmap.Dispose();
-        
-        return scaledBitmap;
+        return ImageLoader.LoadScaled(filePath, maxWidth, maxHeight);
     }
 }

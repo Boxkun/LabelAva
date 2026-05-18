@@ -142,7 +142,7 @@ public partial class AnnotationCanvas : UserControl
                 _currentImage.Dispose();
             }
             
-            _currentImage = new Bitmap(imagePath);
+            _currentImage = ImageLoader.Load(imagePath);
             _currentImagePath = imagePath;
             
             // 首次加载时隐藏 ImageWrapper，避免在 Fit 变换计算完成前以 Identity 矩阵渲染导致缩放跳变

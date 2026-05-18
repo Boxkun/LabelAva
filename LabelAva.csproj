@@ -18,6 +18,7 @@
 
     <UseAppHost>true</UseAppHost>
 
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TrimMode>full</TrimMode>
     <!-- <PublishAot>true</PublishAot> -->
     <!-- AOT 需要的额外设置 -->
@@ -37,6 +38,7 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="FluentIcons.Avalonia" Version="2.0.321" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,27 +49,19 @@
 
   <Target Name="GenerateBuildInfo" BeforeTargets="BeforeBuild">
     <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="GitHash"/>
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitHash" />
     </Exec>
 
     <Exec Command="git describe --tags --exact-match --abbrev=0" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardErrorImportance="low">
-      <Output TaskParameter="ConsoleOutput" PropertyName="GitTagRaw"/>
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitTagRaw" />
     </Exec>
 
     <PropertyGroup>
       <GitVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(GitTagRaw.Trim())', '^v', ''))</GitVersion>
-      <GitVersion Condition="'$(GitVersion)' == ''">dev</GitVersion>
+      <GitVersion Condition="$(GitVersion.Contains('fatal:'))">$(GitHash.Trim())</GitVersion>
+      <GitVersion Condition="'$(GitVersion)' == ''">$(GitHash.Trim())</GitVersion>
     </PropertyGroup>
 
-    <WriteLinesToFile
-      File="$(IntermediateOutputPath)BuildInfo.g.cs"
-      Lines="namespace LabelAva%3B
-public static class BuildInfo
-{
-    public const string Version = &quot;$(GitVersion)&quot;%3B
-    public const string CommitHash = &quot;$(GitHash.Trim())&quot;%3B
-    public const string BuildTime = &quot;$([System.DateTimeOffset]::Now.ToString(&quot;yyyy/M/d HH:mm:ss zzz&quot;))&quot;%3B
-}"
-      Overwrite="true"/>
+    <WriteLinesToFile File="$(IntermediateOutputPath)BuildInfo.g.cs" Lines="namespace LabelAva%3B&#xD;&#xA;public static class BuildInfo&#xD;&#xA;{&#xD;&#xA;    public const string Version = &quot;$(GitVersion)&quot;%3B&#xD;&#xA;    public const string CommitHash = &quot;$(GitHash.Trim())&quot;%3B&#xD;&#xA;    public const string BuildTime = &quot;$([System.DateTimeOffset]::Now.ToString(&quot;yyyy/M/d HH:mm:ss zzz&quot;))&quot;%3B&#xD;&#xA;}" Overwrite="true" />
   </Target>
 </Project>

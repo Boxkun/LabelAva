@@ -167,7 +167,7 @@ public partial class ImageAssociationWindow : Window
 
         var imageFilter = new[]
         {
-            new FilePickerFileType("图片文件") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.tiff", "*.webp"} },
+            new FilePickerFileType("图片文件") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.webp"} },
             new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
         };
 

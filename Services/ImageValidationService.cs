@@ -10,7 +10,7 @@ namespace LabelAva.Services;
 public class ImageValidationService
 {
     private static readonly string[] SupportedExtensions =
-        { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+        { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp" };
 
     public List<ImageAssociationItem> Validate(string imageFolderPath, IEnumerable<string> imageNames)
     {
@@ -113,6 +113,9 @@ public class ImageValidationService
         if (IsJpegExt(fileExt) && IsJpegExt(actualExt))
             return (true, actualExt);
 
+        if (IsTiffExt(fileExt) && IsTiffExt(actualExt))
+            return (true, actualExt);
+
         var isConsistent = fileExt == actualExt;
         Debug.WriteLine($"[CheckFormatConsistency] => isConsistent={isConsistent} fileExt={fileExt} actualExt={actualExt}");
         return (isConsistent, actualExt);
@@ -167,6 +170,11 @@ public class ImageValidationService
     private static bool IsJpegExt(string ext)
     {
         return ext == ".jpg" || ext == ".jpeg";
+    }
+
+    private static bool IsTiffExt(string ext)
+    {
+        return ext == ".tif" || ext == ".tiff";
     }
 
     public static bool HasAnyFormatIssue(string imageFolderPath, IEnumerable<ImageAssociationItem> items)

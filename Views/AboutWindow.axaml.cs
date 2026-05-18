@@ -11,7 +11,9 @@ public partial class AboutWindow : Window
     public AboutWindow()
     {
         InitializeComponent();
-        VersionText.Text = $"v{BuildInfo.Version} ({BuildInfo.CommitHash})";
+        VersionText.Text = BuildInfo.Version == BuildInfo.CommitHash
+            ? BuildInfo.CommitHash
+            : $"v{BuildInfo.Version} ({BuildInfo.CommitHash})";
         BuildTimeText.Text = $"构建日期 {BuildInfo.BuildTime}";
     }
 
