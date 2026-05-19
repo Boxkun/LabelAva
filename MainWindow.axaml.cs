@@ -256,6 +256,7 @@ public partial class MainWindow : Window
 
             // ---- Phase 4: Canvas 初始化 ----
             CanvasControl.SettingsProvider = _settingsProvider;
+            CanvasControl.UpdateSettings(_settingsProvider.Current); // 初始化鼠标配置
             GroupIndexToBrushConverter.Initialize(_settingsProvider);
             CanvasControl.CommitCurrentEdit = () => CommitCurrentEdit();
             CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
@@ -267,6 +268,8 @@ public partial class MainWindow : Window
             };
             CanvasControl.AddLabelRequested += OnCanvasAddLabelRequested;
             CanvasControl.LabelMoved += OnCanvasLabelMoved;
+            CanvasControl.LabelDeleteRequested += OnCanvasLabelDeleteRequested;
+            CanvasControl.LabelContextMenuRequested += OnCanvasLabelContextMenuRequested;
 
             // 初始化完成
             _isInitialized = true;
@@ -315,6 +318,11 @@ public partial class MainWindow : Window
         if (changes.HasFlag(SettingsChangeKind.DligConfig))
         {
             ApplyDligConfig();
+        }
+
+        if (changes.HasFlag(SettingsChangeKind.CanvasMouse))
+        {
+            CanvasControl.UpdateSettings(settings);
         }
 
         if (changes != SettingsChangeKind.None)
@@ -1478,7 +1486,65 @@ public partial class MainWindow : Window
             CanvasWorkspace.MoveLabel(label, args.oldNormX, args.oldNormY, args.newNormX, args.newNormY);
         }
     }
-    
+
+    /// <summary>
+    /// 画布标注按下删除（由 AnnotationCanvas 的 EditMode+Delete 动作触发）
+    /// </summary>
+    private void OnCanvasLabelDeleteRequested(object? sender, int labelIndex)
+    {
+        // 不经过选中，避免触发 SelectionChanged → 聚焦 → 视口闪烁
+        if (!RequireEditMode()) return;
+        if (TryGetCurrentLabels() is not { } labels) return;
+
+        var labelToRemove = labels.FirstOrDefault(l => l.TextIndex == labelIndex);
+        if (labelToRemove == null) return;
+
+        CommitCurrentEdit();
+        var command = new DeleteLabelCommand(labels, labelToRemove);
+        ViewModel.History.ExecuteCommand(command);
+    }
+
+    /// <summary>
+    /// 画布标注按下弹出右键菜单（由 AnnotationCanvas 的 ContextMenu 动作触发）
+    /// </summary>
+    private ContextMenu? _canvasContextMenu;
+
+    private void OnCanvasLabelContextMenuRequested(object? sender, (int labelIndex, PixelPoint screenPos) args)
+    {
+        _isSelectionFromCanvas = true;
+        SelectLabelByIndex(args.labelIndex);
+
+        if (Navigation.SelectedItem is not TranslationTreeItem)
+            return;
+
+        // 关闭前一个菜单，防止复数菜单并存
+        _canvasContextMenu?.Close();
+        _canvasContextMenu = null;
+
+        var copyItem = new MenuItem { Header = "复制文本" };
+        copyItem.Click += (s, e) =>
+        {
+            if (Navigation.SelectedItem is TranslationTreeItem item)
+            {
+                CopyToClipboard(item.Text);
+                StatusBar.UpdateStatus($"已复制: {item.Text}", StatusBarViewModel.StatusType.Info);
+            }
+        };
+
+        var deleteItem = new MenuItem { Header = "删除此标记" };
+        deleteItem.Click += (s, e) => DeleteSelectedLabel();
+
+        var toggleItem = new MenuItem { Header = "切换分组" };
+        toggleItem.Click += (s, e) => OnToggleGroup(s, e);
+
+        _canvasContextMenu = new ContextMenu();
+        _canvasContextMenu.Items.Add(copyItem);
+        _canvasContextMenu.Items.Add(deleteItem);
+        _canvasContextMenu.Items.Add(new Separator());
+        _canvasContextMenu.Items.Add(toggleItem);
+        _canvasContextMenu.Open(CanvasControl);
+    }
+
     /// <summary>
     /// 计算适应容器的初始变换（Fit模式）—— 委托给 CanvasWorkspaceViewModel
     /// </summary>

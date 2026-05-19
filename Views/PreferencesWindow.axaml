@@ -37,11 +37,61 @@
                             </Grid>
                         </Border>
 
+                        <!-- 画布设置组 -->
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="画布" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="控制鼠标按键在画布上的行为" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="左键单击" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="MouseLeftButtonComboBox" Grid.Row="0" Grid.Column="2"
+                                              SelectionChanged="OnMouseButtonSelectionChanged"
+                                              VerticalAlignment="Center"
+                                              BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
+                                </Grid>
+
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="中键单击" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="MouseMiddleButtonComboBox" Grid.Row="0" Grid.Column="2"
+                                              SelectionChanged="OnMouseButtonSelectionChanged"
+                                              VerticalAlignment="Center"
+                                              BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
+                                </Grid>
+
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="右键单击" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="MouseRightButtonComboBox" Grid.Row="0" Grid.Column="2"
+                                              SelectionChanged="OnMouseButtonSelectionChanged"
+                                              VerticalAlignment="Center"
+                                              BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
+                                </Grid>
+
+                                <TextBlock x:Name="MouseConflictHint" Text="⚠ 存在冲突，请为每个按键分配不同的操作"
+                                           FontSize="12" Foreground="#E74856" IsVisible="False" Margin="92,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- 导航设置组 -->
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="导航" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="在树状视图中上下移动" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                <TextBlock Text="切换标记选择与图片翻页" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                                 <!-- 上导航 -->
                                 <Grid RowDefinitions="Auto">

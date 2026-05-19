@@ -254,6 +254,9 @@ public class AppSettingsDto
     public int WindowY { get; set; } = -1;
     public bool WindowMaximized { get; set; }
     public string? ActiveDligConfig { get; set; }
+    public string? MouseLeftButton { get; set; }
+    public string? MouseMiddleButton { get; set; }
+    public string? MouseRightButton { get; set; }
 
     public AppSettingsDto() { }
 
@@ -269,6 +272,9 @@ public class AppSettingsDto
         WindowY = settings.WindowY;
         WindowMaximized = settings.WindowMaximized;
         ActiveDligConfig = settings.ActiveDligConfig;
+        MouseLeftButton = settings.MouseConfig.LeftButton.ToString();
+        MouseMiddleButton = settings.MouseConfig.MiddleButton.ToString();
+        MouseRightButton = settings.MouseConfig.RightButton.ToString();
     }
 
     public Models.AppSettings ToSettings()
@@ -288,6 +294,15 @@ public class AppSettingsDto
             WindowY = WindowY,
             WindowMaximized = WindowMaximized,
             ActiveDligConfig = ActiveDligConfig,
+            MouseConfig = new Models.CanvasMouseConfig
+            {
+                LeftButton   = ParseMouseAction(MouseLeftButton,   Models.CanvasMouseAction.AddSelect),
+                MiddleButton = ParseMouseAction(MouseMiddleButton, Models.CanvasMouseAction.Pan),
+                RightButton  = ParseMouseAction(MouseRightButton,  Models.CanvasMouseAction.Pan),
+            },
         };
     }
+
+    private static Models.CanvasMouseAction ParseMouseAction(string? s, Models.CanvasMouseAction fallback)
+        => Enum.TryParse<Models.CanvasMouseAction>(s, out var action) ? action : fallback;
 }

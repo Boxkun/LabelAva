@@ -37,6 +37,7 @@ public partial class PreferencesWindow : Window
             LabelSize = source.LabelSize,
             AutoFocusTextBox = source.AutoFocusTextBox,
             ActiveDligConfig = source.ActiveDligConfig,
+            MouseConfig = source.MouseConfig,
         };
     }
 
@@ -69,6 +70,8 @@ public partial class PreferencesWindow : Window
 
             if (LabelSizeUpDown != null)
                 LabelSizeUpDown.Value = _settings.LabelSize;
+
+            InitMouseConfigUI();
         }
         finally
         {
@@ -233,6 +236,93 @@ public partial class PreferencesWindow : Window
         _settings = AppSettings.CreateDefaults();
         UpdateUI();
         _changeKind |= SettingsChangeKind.All;
+    }
+
+    private static readonly string[] MouseActionLabels = { "添加/选中", "平移", "删除", "右键菜单", "无" };
+
+    private void InitMouseConfigUI()
+    {
+        // 保存当前模式，避免缓存 SelectedIndex 期间触发回写覆盖
+        var savedCfg = _settings.MouseConfig;
+
+        // 先填充所有选项再统一设置选中，避免 Clear→Add 期间的 -1 事件风暴
+        foreach (var cb in new[] { MouseLeftButtonComboBox, MouseMiddleButtonComboBox, MouseRightButtonComboBox })
+        {
+            if (cb == null) continue;
+            cb.Items.Clear();
+            foreach (var label in MouseActionLabels)
+                cb.Items.Add(label);
+        }
+
+        if (MouseLeftButtonComboBox != null)
+            MouseLeftButtonComboBox.SelectedIndex = (int)savedCfg.LeftButton;
+        if (MouseMiddleButtonComboBox != null)
+            MouseMiddleButtonComboBox.SelectedIndex = (int)savedCfg.MiddleButton;
+        if (MouseRightButtonComboBox != null)
+            MouseRightButtonComboBox.SelectedIndex = (int)savedCfg.RightButton;
+
+        RefreshConflictHighlights();
+    }
+
+    private void OnMouseButtonSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingUI) return;
+
+        // 仅从当前引发事件的 ComboBox 读取值，其他两个从 _settings 中取旧值
+        var cfg = _settings.MouseConfig;
+        if (sender == MouseLeftButtonComboBox)
+            cfg.LeftButton = SafeIndex(MouseLeftButtonComboBox);
+        if (sender == MouseMiddleButtonComboBox)
+            cfg.MiddleButton = SafeIndex(MouseMiddleButtonComboBox);
+        if (sender == MouseRightButtonComboBox)
+            cfg.RightButton = SafeIndex(MouseRightButtonComboBox);
+        _settings.MouseConfig = cfg;
+
+        _changeKind |= SettingsChangeKind.CanvasMouse;
+        RefreshConflictHighlights();
+    }
+
+    private static CanvasMouseAction SafeIndex(ComboBox? cb)
+        => cb?.SelectedIndex is >= 0 and < 5
+            ? (CanvasMouseAction)cb.SelectedIndex
+            : CanvasMouseAction.None;
+
+    private void RefreshConflictHighlights()
+    {
+        var cfg = _settings.MouseConfig;
+        bool conflict = cfg.HasConflict();
+
+        if (MouseConflictHint != null)
+            MouseConflictHint.IsVisible = conflict;
+
+        var actions = new[] { cfg.LeftButton, cfg.MiddleButton, cfg.RightButton };
+        var dupes = actions
+            .Where(a => a != CanvasMouseAction.None)
+            .GroupBy(a => a)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet();
+
+        var redBrush = new SolidColorBrush(Color.Parse("#E74856"));
+        SetConflictBorder(MouseLeftButtonComboBox,   dupes.Contains(cfg.LeftButton)   ? redBrush : null);
+        SetConflictBorder(MouseMiddleButtonComboBox, dupes.Contains(cfg.MiddleButton) ? redBrush : null);
+        SetConflictBorder(MouseRightButtonComboBox,  dupes.Contains(cfg.RightButton)  ? redBrush : null);
+    }
+
+    private void SetConflictBorder(ComboBox? cb, IBrush? conflictBrush)
+    {
+        if (cb == null) return;
+        if (conflictBrush != null)
+        {
+            cb.BorderBrush = conflictBrush;
+            cb.BorderThickness = new Thickness(2);
+        }
+        else
+        {
+            cb.BorderBrush = Avalonia.Application.Current?.Resources["SystemControlHighlightChromeHighBrush"] as IBrush
+                ?? new SolidColorBrush(Color.Parse("#7FFFFFFF"));
+            cb.BorderThickness = new Thickness(1);
+        }
     }
 
     // ========================
@@ -515,6 +605,11 @@ public partial class PreferencesWindow : Window
         this.Closed -= OnPreferencesWindowClosed;
 
         CommitCurrentDligConfig();
+
+        // 自动解决冲突：将所有重复按键的操作置为 None
+        _settings.MouseConfig = _settings.MouseConfig.ResolveConflicts();
+        if (_settings.MouseConfig.HasConflict())
+            _changeKind |= SettingsChangeKind.CanvasMouse;
 
         if (_changeKind != SettingsChangeKind.None)
         {

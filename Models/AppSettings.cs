@@ -4,6 +4,46 @@ using LabelAva.Services;
 
 namespace LabelAva.Models;
 
+public enum CanvasMouseAction
+{
+    AddSelect,
+    Pan,
+    Delete,
+    ContextMenu,
+    None
+}
+
+public struct CanvasMouseConfig
+{
+    public CanvasMouseAction LeftButton;
+    public CanvasMouseAction MiddleButton;
+    public CanvasMouseAction RightButton;
+
+    public static CanvasMouseConfig CreateDefaults() => new()
+    {
+        LeftButton   = CanvasMouseAction.AddSelect,
+        MiddleButton = CanvasMouseAction.Delete,
+        RightButton  = CanvasMouseAction.Pan,
+    };
+
+    public readonly bool HasConflict()
+    {
+        if (LeftButton != CanvasMouseAction.None && (LeftButton == MiddleButton || LeftButton == RightButton)) return true;
+        if (MiddleButton != CanvasMouseAction.None && MiddleButton == RightButton) return true;
+        return false;
+    }
+
+    public readonly CanvasMouseConfig ResolveConflicts()
+    {
+        var result = this;
+        if (LeftButton != CanvasMouseAction.None && (LeftButton == MiddleButton || LeftButton == RightButton))
+            result.LeftButton = CanvasMouseAction.None;
+        if (MiddleButton != CanvasMouseAction.None && MiddleButton == RightButton)
+            result.MiddleButton = CanvasMouseAction.None;
+        return result;
+    }
+}
+
 [Flags]
 public enum SettingsChangeKind
 {
@@ -13,7 +53,8 @@ public enum SettingsChangeKind
     LabelSize  = 1 << 2,
     AutoFocus  = 1 << 3,
     DligConfig = 1 << 4,
-    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig,
+    CanvasMouse = 1 << 5,
+    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig | CanvasMouse,
 }
 
 public class ShortcutBindings
@@ -287,6 +328,7 @@ public class AppSettings
     public int WindowY { get; set; } = -1;
     public bool WindowMaximized { get; set; }
     public string? ActiveDligConfig { get; set; }
+    public CanvasMouseConfig MouseConfig { get; set; } = CanvasMouseConfig.CreateDefaults();
 
     public static AppSettings CreateDefaults()
     {

@@ -68,6 +68,20 @@ public partial class AnnotationCanvas : UserControl
     // ========================
     
     private bool _isFirstImageLoaded = false;
+
+    // ========================
+    // 私有字段 - 鼠标模式
+    // ========================
+
+    private CanvasMouseConfig _mouseConfig = CanvasMouseConfig.CreateDefaults();
+
+    private CanvasMouseAction GetButtonAction(PointerPointProperties props)
+    {
+        if (props.IsLeftButtonPressed)   return _mouseConfig.LeftButton;
+        if (props.IsMiddleButtonPressed) return _mouseConfig.MiddleButton;
+        if (props.IsRightButtonPressed)  return _mouseConfig.RightButton;
+        return CanvasMouseAction.None;
+    }
     
     // ========================
     // 公开回调属性（由 MainWindow 注入）
@@ -96,6 +110,12 @@ public partial class AnnotationCanvas : UserControl
     /// <summary>标签拖拽结束后位置变更（通知 MainWindow 保存到数据模型）</summary>
     /// <remarks>参数为 (textIndex, oldNormX, oldNormY, newNormX, newNormY)</remarks>
     public event EventHandler<(int textIndex, double oldNormX, double oldNormY, double newNormX, double newNormY)>? LabelMoved;
+
+    /// <summary>标注按下时请求删除（参数为 labelIndex）</summary>
+    public event EventHandler<int>? LabelDeleteRequested;
+
+    /// <summary>标注按下时请求弹出右键菜单（参数为 labelIndex + 屏幕坐标）</summary>
+    public event EventHandler<(int labelIndex, PixelPoint screenPos)>? LabelContextMenuRequested;
     
     // ========================
     // 公开状态属性
@@ -402,6 +422,7 @@ public partial class AnnotationCanvas : UserControl
     /// <summary>更新缓存的快捷键设置（由 MainWindow 在设置变更时调用）</summary>
     public void UpdateSettings(AppSettings settings)
     {
+        _mouseConfig = settings.MouseConfig;
         if (DataContext is CanvasWorkspaceViewModel vm)
             vm.LabelSize = settings.LabelSize;
     }
@@ -499,7 +520,25 @@ public partial class AnnotationCanvas : UserControl
             return;
 
         var point = e.GetCurrentPoint(ImageCanvas);
-        if (point.Properties.IsLeftButtonPressed)
+        var action = GetButtonAction(point.Properties);
+
+        if (action == CanvasMouseAction.ContextMenu)
+        {
+            e.Handled = true;
+            var screenPos = border.PointToScreen(new Point(0, 0));
+            LabelContextMenuRequested?.Invoke(this, (labelIndex.Value, screenPos));
+            return;
+        }
+
+        if (action == CanvasMouseAction.Delete)
+        {
+            e.Handled = true;
+            if (!IsEditMode) return;
+            LabelDeleteRequested?.Invoke(this, labelIndex.Value);
+            return;
+        }
+
+        if (action == CanvasMouseAction.AddSelect)
         {
             e.Handled = true;
 
@@ -613,8 +652,18 @@ public partial class AnnotationCanvas : UserControl
     private void OnImageContainerPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var point = e.GetCurrentPoint(ImageContainer);
-        
-        if (point.Properties.IsLeftButtonPressed)
+        var action = GetButtonAction(point.Properties);
+
+        if (action == CanvasMouseAction.Pan)
+        {
+            if (DataContext is CanvasWorkspaceViewModel CanvasWorkspace)
+            {
+                CanvasWorkspace.StartPan(e.GetPosition(ImageContainer));
+                ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
+            }
+            e.Handled = true;
+        }
+        else if (action == CanvasMouseAction.AddSelect)
         {
             var imagePoint = e.GetPosition(MainImage);
             
@@ -629,16 +678,6 @@ public partial class AnnotationCanvas : UserControl
                 AddLabelRequested?.Invoke(this, (imagePoint.X, imagePoint.Y));
             }
             
-            e.Handled = true;
-        }
-        // 允许任何模式下使用中键或右键平移
-        else if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
-        {
-            if (DataContext is CanvasWorkspaceViewModel CanvasWorkspace)
-            {
-                CanvasWorkspace.StartPan(e.GetPosition(ImageContainer));
-                ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
-            }
             e.Handled = true;
         }
     }
