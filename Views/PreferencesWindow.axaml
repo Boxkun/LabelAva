@@ -202,6 +202,20 @@
                                         <TextBlock x:Name="SaveFileText" Text="Ctrl + S" />
                                     </Button>
                                 </Grid>
+
+                                <Grid RowDefinitions="Auto" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="另存为" VerticalAlignment="Center"/>
+                                    <Button x:Name="SaveAsFileButton" Grid.Row="0" Grid.Column="2"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Padding="8,6" Click="OnSaveAsFileClick" Classes="shortcut-btn">
+                                        <TextBlock x:Name="SaveAsFileText" Text="Ctrl + Shift + S" />
+                                    </Button>
+                                </Grid>
                             </StackPanel>
                         </Border>
 

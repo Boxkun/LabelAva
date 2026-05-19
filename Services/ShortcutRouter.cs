@@ -13,6 +13,7 @@ public enum ShortcutAction
     DeleteLabel,
     OpenFile,
     SaveFile,
+    SaveAsFile,
     SwitchToGroup0,
     SwitchToGroup1,
 }
@@ -63,6 +64,8 @@ public class ShortcutRouter
             return ShortcutAction.OpenFile;
         if (_bindings.SaveFile != null && gesture.Equals(_bindings.SaveFile))
             return ShortcutAction.SaveFile;
+        if (_bindings.SaveAsFile != null && gesture.Equals(_bindings.SaveAsFile))
+            return ShortcutAction.SaveAsFile;
 
         return null;
     }

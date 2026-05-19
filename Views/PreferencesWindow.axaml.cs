@@ -32,7 +32,7 @@ public partial class PreferencesWindow : Window
     {
         return new AppSettings
         {
-            Shortcuts = source.Shortcuts,
+            Shortcuts = source.Shortcuts.Clone(),
             Colors = source.Colors.Clone(),
             LabelSize = source.LabelSize,
             AutoFocusTextBox = source.AutoFocusTextBox,
@@ -54,6 +54,7 @@ public partial class PreferencesWindow : Window
             UpdateButtonDisplay(DeleteLabelButton, DeleteLabelText, s.DeleteLabel);
             UpdateButtonDisplay(OpenFileButton, OpenFileText, s.OpenFile);
             UpdateButtonDisplay(SaveFileButton, SaveFileText, s.SaveFile);
+            UpdateButtonDisplay(SaveAsFileButton, SaveAsFileText, s.SaveAsFile);
             UpdateButtonDisplay(ToggleGroup0Button, ToggleGroup0Text, s.ToggleGroup0);
             UpdateButtonDisplay(ToggleGroup1Button, ToggleGroup1Text, s.ToggleGroup1);
             UpdateButtonDisplay(PageUpButton, PageUpText, s.PageUp);
@@ -162,6 +163,8 @@ public partial class PreferencesWindow : Window
         => CaptureShortcut(OpenFileButton, g => _settings.Shortcuts.OpenFile = g);
     private void OnSaveFileClick(object? sender, RoutedEventArgs e)
         => CaptureShortcut(SaveFileButton, g => _settings.Shortcuts.SaveFile = g);
+    private void OnSaveAsFileClick(object? sender, RoutedEventArgs e)
+        => CaptureShortcut(SaveAsFileButton, g => _settings.Shortcuts.SaveAsFile = g);
     private void OnToggleGroup0Click(object? sender, RoutedEventArgs e)
         => CaptureShortcut(ToggleGroup0Button, g => _settings.Shortcuts.ToggleGroup0 = g);
     private void OnToggleGroup1Click(object? sender, RoutedEventArgs e)

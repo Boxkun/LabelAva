@@ -1237,6 +1237,7 @@ public partial class MainWindow : Window
         // 必须在隧道阶段拦截，防止 TextBox 等原生控件触发内置撤销逻辑
         if (isCtrlPressed && e.Key == Key.Z)
         {
+            if (!RequireEditMode()) { e.Handled = true; return; }
             if (isShiftPressed)
             {
                 ViewModel.History.RedoCommand.Execute(null);
@@ -1249,6 +1250,7 @@ public partial class MainWindow : Window
         }
         else if (isCtrlPressed && e.Key == Key.Y)
         {
+            if (!RequireEditMode()) { e.Handled = true; return; }
             ViewModel.History.RedoCommand.Execute(null);
             e.Handled = true;
         }
@@ -1303,6 +1305,7 @@ public partial class MainWindow : Window
                 }
                 break;
             case ShortcutAction.DeleteLabel:
+                if (!RequireEditMode()) break;
                 DeleteSelectedLabel();
                 break;
             case ShortcutAction.OpenFile:
@@ -1311,6 +1314,9 @@ public partial class MainWindow : Window
             case ShortcutAction.SaveFile:
                 ViewModel.Document.SaveCommand.Execute(null);
                 break;
+            case ShortcutAction.SaveAsFile:
+                ViewModel.Document.SaveAsCommand.Execute(null);
+                break;
             case ShortcutAction.SwitchToGroup0:
                 Edit.SwitchGroupCommand.Execute(0);
                 break;
@@ -1318,6 +1324,17 @@ public partial class MainWindow : Window
                 Edit.SwitchGroupCommand.Execute(1);
                 break;
         }
+    }
+
+    /// <summary>
+    /// 检查当前是否在编辑模式。查看模式下禁止一切修改 TranslationData 的操作。
+    /// 所有数据变更入口应统一调用此方法，防止非编辑模式下意外修改数据。
+    /// </summary>
+    private bool RequireEditMode()
+    {
+        if (Edit.IsEditMode) return true;
+        StatusBar.UpdateStatus("请先切换到编辑模式", StatusBarViewModel.StatusType.Warn);
+        return false;
     }
 
     /// <summary>
@@ -1630,6 +1647,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnDeleteSelectedLabel(object? sender, RoutedEventArgs e)
     {
+        if (!RequireEditMode()) return;
         DeleteSelectedLabel();
     }
 
@@ -1640,7 +1658,8 @@ public partial class MainWindow : Window
     {
         // 切换分组前先提交当前正在编辑的文本
         CommitCurrentEdit();
-        
+        if (!RequireEditMode()) return;
+
         var selectedItem = Navigation.SelectedItem;
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
@@ -1878,6 +1897,8 @@ public partial class MainWindow : Window
 
     private void OnTreeViewItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (!RequireEditMode()) return;
+
         var point = e.GetCurrentPoint(sender as Control);
         if (point.Properties.IsLeftButtonPressed && sender is Control control)
         {

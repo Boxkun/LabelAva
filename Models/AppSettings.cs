@@ -26,6 +26,7 @@ public class ShortcutBindings
     public KeyGesture? DeleteLabel { get; set; }
     public KeyGesture? OpenFile { get; set; }
     public KeyGesture? SaveFile { get; set; }
+    public KeyGesture? SaveAsFile { get; set; }
     public KeyGesture? ZoomIn { get; set; }
     public KeyGesture? ZoomOut { get; set; }
     public KeyGesture? ResetZoom { get; set; }
@@ -48,6 +49,7 @@ public class ShortcutBindings
             DeleteLabel            = new KeyGesture(Key.Delete),
             OpenFile               = new KeyGesture(Key.O,        mod),
             SaveFile               = new KeyGesture(Key.S,        mod),
+            SaveAsFile             = new KeyGesture(Key.S,        mod | KeyModifiers.Shift),
             ZoomIn                 = new KeyGesture(Key.OemPlus,  mod),
             ZoomOut                = new KeyGesture(Key.OemMinus, mod),
             ResetZoom              = new KeyGesture(Key.D0,       mod),
@@ -55,6 +57,29 @@ public class ShortcutBindings
             ToggleGroup1           = new KeyGesture(Key.D2,       mod),
             PageUp                 = new KeyGesture(Key.Left,     mod),
             PageDown               = new KeyGesture(Key.Right,    mod),
+    };
+    }
+
+    public ShortcutBindings Clone()
+    {
+        return new ShortcutBindings
+        {
+            NavigateUp             = NavigateUp,
+            NavigateDown           = NavigateDown,
+            NavigateUpSecondary    = NavigateUpSecondary,
+            NavigateDownSecondary  = NavigateDownSecondary,
+            CopyText               = CopyText,
+            DeleteLabel            = DeleteLabel,
+            OpenFile               = OpenFile,
+            SaveFile               = SaveFile,
+            SaveAsFile             = SaveAsFile,
+            ZoomIn                 = ZoomIn,
+            ZoomOut                = ZoomOut,
+            ResetZoom              = ResetZoom,
+            ToggleGroup0           = ToggleGroup0,
+            ToggleGroup1           = ToggleGroup1,
+            PageUp                 = PageUp,
+            PageDown               = PageDown,
         };
     }
 

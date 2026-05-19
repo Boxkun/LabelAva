@@ -105,6 +105,7 @@ public class ShortcutBindingsDto
     public List<string>? DeleteLabel { get; set; }
     public List<string>? OpenFile { get; set; }
     public List<string>? SaveFile { get; set; }
+    public List<string>? SaveAsFile { get; set; }
     public List<string>? ZoomIn { get; set; }
     public List<string>? ZoomOut { get; set; }
     public List<string>? ResetZoom { get; set; }
@@ -125,6 +126,7 @@ public class ShortcutBindingsDto
         DeleteLabel = GestureToList(bindings.DeleteLabel);
         OpenFile = GestureToList(bindings.OpenFile);
         SaveFile = GestureToList(bindings.SaveFile);
+        SaveAsFile = GestureToList(bindings.SaveAsFile);
         ZoomIn = GestureToList(bindings.ZoomIn);
         ZoomOut = GestureToList(bindings.ZoomOut);
         ResetZoom = GestureToList(bindings.ResetZoom);
@@ -146,6 +148,7 @@ public class ShortcutBindingsDto
             DeleteLabel = ListToGesture(DeleteLabel),
             OpenFile = ListToGesture(OpenFile),
             SaveFile = ListToGesture(SaveFile),
+            SaveAsFile = ListToGesture(SaveAsFile),
             ZoomIn = ListToGesture(ZoomIn),
             ZoomOut = ListToGesture(ZoomOut),
             ResetZoom = ListToGesture(ResetZoom),
