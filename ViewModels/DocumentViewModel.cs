@@ -108,6 +108,15 @@ public partial class DocumentViewModel : ObservableObject
     /// <summary>关闭翻译命令是否可用</summary>
     public bool CanCloseTranslation => HasDocument;
 
+    /// <summary>
+    /// 保存前回调，由 MainWindow 注入。
+    /// 用于在 _parser.Save 之前调用 CommitCurrentEdit(forceCommit: true)，
+    /// 将 UI 模型 (TranslationTreeItem.Text) 同步到数据模型 (LabelItem.Text)。
+    /// 必须在 UI 线程调用，不可下沉到 DocumentViewModel，因为其实现依赖
+    /// Navigation.SelectedTranslationItem、Edit.IsEditMode 等 UI 层状态。
+    /// </summary>
+    public Action? BeforeSave { get; set; }
+
     // ========================
     // 命令
     // ========================
@@ -214,6 +223,7 @@ public partial class DocumentViewModel : ObservableObject
 
         try
         {
+            BeforeSave?.Invoke();
             _parser.Save(FilePath, TranslationData);
             IsDirty = false;
             _statusBar.UpdateStatus($"已保存至: {FileName}", StatusBarViewModel.StatusType.Success);
@@ -241,8 +251,9 @@ public partial class DocumentViewModel : ObservableObject
 
         try
         {
+            FilePath = newPath;           // 先更新路径，让 BeforeSave 副作用基于新路径
+            BeforeSave?.Invoke();         // 对话框返回后才提交，取消操作无副作用
             _parser.Save(newPath, TranslationData);
-            FilePath = newPath;
             IsDirty = false;
             _statusBar.UpdateStatus($"已保存至: {Path.GetFileName(newPath)}", StatusBarViewModel.StatusType.Success);
             return true;
@@ -579,18 +590,20 @@ public partial class DocumentViewModel : ObservableObject
 
     private void OnAutoSaveTimerTick(object? sender, EventArgs e)
     {
-        if (IsDirty && !string.IsNullOrEmpty(FilePath) && TranslationData != null)
+        // 先提交再判断：CommitCurrentEdit 可能将 IsDirty 从 false 翻为 true
+        BeforeSave?.Invoke();
+        if (!IsDirty || string.IsNullOrEmpty(FilePath) || TranslationData == null)
+            return;
+
+        try
         {
-            try
-            {
-                _parser.Save(FilePath, TranslationData);
-                IsDirty = false;
-                _statusBar.UpdateStatus("自动保存成功", StatusBarViewModel.StatusType.Success);
-            }
-            catch (Exception ex)
-            {
-                _statusBar.UpdateStatus($"自动保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-            }
+            _parser.Save(FilePath, TranslationData);
+            IsDirty = false;
+            _statusBar.UpdateStatus("自动保存成功", StatusBarViewModel.StatusType.Success);
+        }
+        catch (Exception ex)
+        {
+            _statusBar.UpdateStatus($"自动保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
         }
     }
 

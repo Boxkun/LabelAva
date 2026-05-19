@@ -230,10 +230,10 @@ public partial class MainWindow : Window
 
             // ---- Phase 3: VM 创建（有依赖顺序） ----
             var historyManager = new HistoryManager();
-            ViewModel.History = new HistoryViewModel(historyManager, CommitCurrentEdit, StatusBar);
+            ViewModel.History = new HistoryViewModel(historyManager, () => CommitCurrentEdit(), StatusBar);
             ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
 
-            ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar, CommitCurrentEdit);
+            ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar, () => CommitCurrentEdit());
             ViewModel.CanvasWorkspace.TransformChanged += OnCanvasTransformChanged;
 
             ViewModel.Edit = new EditViewModel(StatusBar);
@@ -250,13 +250,14 @@ public partial class MainWindow : Window
                 ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync,
                 ShowImageAssociationDialogAsync
             );
+            ViewModel.Document.BeforeSave = () => CommitCurrentEdit(forceCommit: true);
             ViewModel.Document.DocumentOpened += OnDocumentOpened;
             ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
             // ---- Phase 4: Canvas 初始化 ----
             CanvasControl.SettingsProvider = _settingsProvider;
             GroupIndexToBrushConverter.Initialize(_settingsProvider);
-            CanvasControl.CommitCurrentEdit = CommitCurrentEdit;
+            CanvasControl.CommitCurrentEdit = () => CommitCurrentEdit();
             CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
             CanvasControl.IsEditMode = Edit.IsEditMode;
             CanvasControl.LabelClicked += (_, labelIndex) =>
@@ -1179,11 +1180,17 @@ public partial class MainWindow : Window
     /// 提交当前编辑的文本到撤销/重做历史栈中
     /// 核心理念：直接对比 UI 最新文本与底层模型数据的差异，彻底抛弃状态变量缓存
     /// </summary>
-    private void CommitCurrentEdit()
+    /// <param name="forceCommit">
+    /// true 时绕过 IsEditMode 守卫，确保持久化路径在编辑模式被意外退出后
+    /// 仍能同步 UI 模型。仅用于保存/自动保存/另存为路径。
+    /// </param>
+    private void CommitCurrentEdit(bool forceCommit = false)
     {
-        if (!_isInitialized || !Edit.IsEditMode) return;
+        if (!_isInitialized) return;
         if (TryGetCurrentLabels() is not { } labels) return;
         if (Navigation.SelectedTranslationItem is not { } currentTreeItem) return;
+
+        if (!forceCommit && !Edit.IsEditMode) return;
 
         var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
         if (labelItem == null) return;
