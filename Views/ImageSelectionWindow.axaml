@@ -31,31 +31,46 @@
         <!-- 主内容区：左栏列表 + 右栏图片预览 -->
         <Grid ColumnDefinitions="250,*">
             <!-- 左栏：图片列表 -->
-            <Border Grid.Column="0" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
-                <ListBox x:Name="ImageListControl" Margin="4" Background="Transparent" FontFamily="Sarasa Mono SC" FontSize="14" SelectionMode="Toggle" SelectionChanged="OnImageSelectionChanged">
-                    <ListBox.Styles>
-                        <Style Selector="ListBoxItem">
-                            <Setter Property="Padding" Value="4,0"/>
-                            <Setter Property="Margin" Value="0"/>
-                        </Style>
-                    </ListBox.Styles>
+            <Panel Grid.Column="0" Margin="0,0,8,0">
+                <Border BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="4">
+                    <ListBox x:Name="ImageListControl" Margin="4" Background="Transparent" FontFamily="Sarasa Mono SC" FontSize="14" SelectionMode="Toggle" SelectionChanged="OnImageSelectionChanged">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="4,0"/>
+                                <Setter Property="Margin" Value="0"/>
+                            </Style>
+                        </ListBox.Styles>
 
-                    <!-- <views:ImageSelectionItem FileName="1.png" IsSelected="True"/>
-                    <views:ImageSelectionItem FileName="2.png" IsSelected="False"/>
-                    <views:ImageSelectionItem FileName="3.jpg" IsSelected="True"/> -->
+                        <!-- <views:ImageSelectionItem FileName="1.png" IsSelected="True"/>
+                        <views:ImageSelectionItem FileName="2.png" IsSelected="False"/>
+                        <views:ImageSelectionItem FileName="3.jpg" IsSelected="True"/> -->
 
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="views:ImageSelectionItem">
-                            <Border Margin="0,0,0,0" Background="Transparent">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding FileName}" VerticalAlignment="Center" FontSize="14"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Border>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="views:ImageSelectionItem">
+                                <Border Margin="0,0,0,0" Background="Transparent"
+                                        PointerPressed="OnItemPointerPressed"
+                                        PointerMoved="OnItemPointerMoved"
+                                        PointerReleased="OnItemPointerReleased">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding FileName}" VerticalAlignment="Center" FontSize="14"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+                <Canvas x:Name="DropIndicatorCanvas" IsHitTestVisible="False">
+                    <Rectangle x:Name="DropLine" Height="2" Fill="DodgerBlue" IsVisible="False"/>
+                </Canvas>
+
+                <Canvas x:Name="DragPreviewCanvas" IsHitTestVisible="False">
+                    <Border x:Name="DragPreview" IsVisible="False" Opacity="0.7" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="2" Padding="4,2">
+                        <TextBlock x:Name="DragPreviewText" FontSize="14"/>
+                    </Border>
+                </Canvas>
+            </Panel>
             
             <!-- 右栏：图片预览 -->
             <Border Grid.Column="1" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="4" Background="Transparent">

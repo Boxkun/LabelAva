@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
@@ -109,6 +110,13 @@ public partial class ImageSelectionWindow : Window
     /// 用户输入的文件名（不含扩展名）
     /// </summary>
     public string FileName { get; private set; } = string.Empty;
+
+    private ObservableCollection<ImageSelectionItem>? _items;
+    private ImageSelectionItem? _dragItem;
+    private bool _isPending;
+    private bool _isDragging;
+    private Point _dragStartPos;
+    private const double DragThreshold = 4.0;
     
     public ImageSelectionWindow()
     {
@@ -120,16 +128,16 @@ public partial class ImageSelectionWindow : Window
         InitializeComponent();
         
         // 创建图片选择项列表（按文件名自然排序，避免文件系统 inode 序）
-        var items = imageFiles
+        _items = new ObservableCollection<ImageSelectionItem>(imageFiles
             .OrderBy(f => Path.GetFileName(f), Comparer<string>.Create(NaturalSort.Compare))
             .Select(f => new ImageSelectionItem
             {
                 FileName = Path.GetFileName(f),
                 FilePath = f,
                 IsSelected = true
-            }).ToList();
+            }));
         
-        ImageListControl.ItemsSource = items;
+        ImageListControl.ItemsSource = _items;
         
         // 直接赋值
         FileNameTextBox.Text = defaultFileName;
@@ -197,6 +205,8 @@ public partial class ImageSelectionWindow : Window
 
     private async void OnImageSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_isDragging) return;
+
         if (ImageListControl.SelectedItem is ImageSelectionItem selectedItem)
         {
             try
@@ -222,6 +232,163 @@ public partial class ImageSelectionWindow : Window
         {
             PreviewImage.Source = null;
         }
+    }
+
+    private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (sender is not Avalonia.Controls.Border border) return;
+        if (border.DataContext is not ImageSelectionItem item) return;
+
+        _dragItem = item;
+        _dragStartPos = e.GetPosition(ImageListControl);
+        _isPending = true;
+        _isDragging = false;
+        border.PointerCaptureLost += OnDragPointerCaptureLost;
+        e.Pointer.Capture(border);
+        e.Handled = true;
+    }
+
+    private void OnDragPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        CleanupDragState();
+        if (sender is Avalonia.Controls.Border border)
+            border.PointerCaptureLost -= OnDragPointerCaptureLost;
+    }
+
+    private void OnItemPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isPending && !_isDragging) return;
+        if (_dragItem == null) return;
+
+        var pos = e.GetPosition(ImageListControl);
+
+        if (_isPending)
+        {
+            var delta = pos - _dragStartPos;
+            if (Math.Abs(delta.Y) < DragThreshold) return;
+            _isPending = false;
+            _isDragging = true;
+            ShowPreview(_dragItem);
+        }
+
+        if (_isDragging)
+        {
+            UpdatePreviewPos(e);
+            UpdateDropLine(pos);
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_isDragging && _dragItem != null)
+        {
+            var pos = e.GetPosition(ImageListControl);
+            int targetIndex = GetDropIndex(pos);
+            PerformReorder(_dragItem, targetIndex);
+        }
+
+        CleanupDragState();
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void CleanupDragState()
+    {
+        _isPending = false;
+        _isDragging = false;
+        _dragItem = null;
+        if (DragPreview != null) DragPreview.IsVisible = false;
+        if (DropLine != null) DropLine.IsVisible = false;
+    }
+
+    private void ShowPreview(ImageSelectionItem item)
+    {
+        DragPreviewText.Text = item.FileName;
+        DragPreview.IsVisible = true;
+    }
+
+    private void UpdatePreviewPos(PointerEventArgs e)
+    {
+        var canvasPos = e.GetPosition(DragPreviewCanvas);
+        Canvas.SetLeft(DragPreview, canvasPos.X);
+        Canvas.SetTop(DragPreview, canvasPos.Y);
+    }
+
+    private int GetDropIndex(Point posInList)
+    {
+        if (_items is not { Count: > 0 } items) return 0;
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            var container = ImageListControl.ContainerFromIndex(i) as ListBoxItem;
+            if (container == null) continue;
+
+            var bounds = container.TranslatePoint(new Point(0, 0), ImageListControl);
+            if (!bounds.HasValue) continue;
+
+            double midY = bounds.Value.Y + container.Bounds.Height / 2;
+            if (posInList.Y < midY) return i;
+        }
+        return items.Count;
+    }
+
+    private void UpdateDropLine(Point posInList)
+    {
+        int targetIndex = GetDropIndex(posInList);
+
+        if (targetIndex < (_items?.Count ?? 0))
+        {
+            var container = ImageListControl.ContainerFromIndex(targetIndex) as ListBoxItem;
+            if (container != null)
+            {
+                var bounds = container.TranslatePoint(new Point(0, 0), DropIndicatorCanvas);
+                if (bounds.HasValue)
+                {
+                    Canvas.SetLeft(DropLine, bounds.Value.X);
+                    Canvas.SetTop(DropLine, bounds.Value.Y);
+                    DropLine.Width = container.Bounds.Width;
+                    DropLine.IsVisible = true;
+                    return;
+                }
+            }
+        }
+        else if (_items is { Count: > 0 } items)
+        {
+            // 末尾：放在最后一项的下方
+            var container = ImageListControl.ContainerFromIndex(items.Count - 1) as ListBoxItem;
+            if (container != null)
+            {
+                var bounds = container.TranslatePoint(new Point(0, container.Bounds.Height), DropIndicatorCanvas);
+                if (bounds.HasValue)
+                {
+                    Canvas.SetLeft(DropLine, bounds.Value.X);
+                    Canvas.SetTop(DropLine, bounds.Value.Y);
+                    DropLine.Width = container.Bounds.Width;
+                    DropLine.IsVisible = true;
+                    return;
+                }
+            }
+        }
+
+        DropLine.IsVisible = false;
+    }
+
+    private void PerformReorder(ImageSelectionItem item, int targetIndex)
+    {
+        if (_items == null) return;
+
+        int fromIndex = _items.IndexOf(item);
+        if (fromIndex < 0) return;
+
+        // 调整目标索引：如果向后拖，实际索引需要 -1
+        if (fromIndex < targetIndex) targetIndex--;
+
+        if (fromIndex == targetIndex) return;
+
+        _items.Move(fromIndex, targetIndex);
     }
 
     /// <summary>
