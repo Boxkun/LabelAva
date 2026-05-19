@@ -40,7 +40,13 @@ public class ReorderLabelsCommand : IUndoableCommand
     {
         // 1. 移动元素
         _labels.RemoveAt(_oldIndex);
-        _labels.Insert(_newIndex, _draggedItem);
+
+        // 若 oldIndex 在 newIndex 之前，移除操作使后续索引 -1
+        int insertIndex = _newIndex;
+        if (_oldIndex < insertIndex) insertIndex--;
+
+        _labels.Insert(insertIndex, _draggedItem);
+        // 恢复引用（Insert 后 _draggedItem 可能指向已被替换的对象，但 C# 按引用存储，不影响）
 
         // 2. 重新顺序分配 TextIndex (从 1 开始)
         for (int i = 0; i < _labels.Count; i++)

@@ -131,55 +131,70 @@
                                     </StackPanel>
                                 </DockPanel>
                             </Border>
-                            <TreeView x:Name="ImageTreeView"
-                                      ItemsSource="{Binding Navigation.TreeItems}"
-                                      SelectionChanged="OnTreeViewSelectionChanged"
-                                      KeyDown="OnTreeViewKeyDown"
-                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                      Classes="primary">
-                                <TreeView.Styles>
-                                    <Style Selector="TreeViewItem" x:DataType="models:ImageTreeItem">
-                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                                    </Style>
-                                </TreeView.Styles>
-                                <TreeView.DataTemplates>
-                                    <TreeDataTemplate x:DataType="models:TranslationTreeItem" ItemsSource="{x:Null}">
-                                        <Grid ColumnDefinitions="Auto,*" Margin="4,4,4,4" Background="Transparent"
-                                              PointerPressed="OnTreeViewItemPointerPressed"
-                                              PointerMoved="OnTreeViewItemPointerMoved"
-                                              PointerReleased="OnTreeViewItemPointerReleased">
-                                            <Grid.ContextMenu>
-                                                <ContextMenu>
-                                                    <MenuItem Header="复制文本" Click="OnCopySelectedText"/>
-                                                    <MenuItem Header="删除此标记" Click="OnDeleteSelectedLabel"/>
-                                                    <Separator/>
-                                                    <MenuItem Header="切换分组" Click="OnToggleGroup"/>
-                                                </ContextMenu>
-                                            </Grid.ContextMenu>
-                                            <Border Grid.Column="0" CornerRadius="4" Padding="8,4" Margin="0,0,4,0"
-                                                    Background="{Binding GroupIndex, Converter={x:Static local:GroupIndexToBrushConverter.Instance}}"
-                                                    VerticalAlignment="Center">
-                                                <TextBlock 
-                                                    Text="{Binding Index}" 
-                                                    FontFamily="Sarasa Mono SC"
-                                                    Foreground="White"
-                                                    VerticalAlignment="Center" />
-                                            </Border>
-                                            <TextBlock Grid.Column="1" 
-                                                    Text="{Binding Text}" 
-                                                    TextWrapping="Wrap" 
-                                                    LineHeight="20" 
-                                                    Margin="4,0,4,0"
-                                                    FontFamily="{DynamicResource DligFontFamily}"
-                                                    FontFeatures="{DynamicResource DligFontFeatures}"
-                                                    VerticalAlignment="Center" />
-                                        </Grid>
-                                    </TreeDataTemplate>
-                                    <TreeDataTemplate x:DataType="models:ImageTreeItem" ItemsSource="{Binding Translations}">
-                                        <TextBlock Text="{Binding ImageName}" FontWeight="Bold" FontFamily="Sarasa Mono SC" />
-                                    </TreeDataTemplate>
-                                </TreeView.DataTemplates>
-                            </TreeView>
+                            <Panel>
+                                <TreeView x:Name="ImageTreeView"
+                                          ItemsSource="{Binding Navigation.TreeItems}"
+                                          SelectionChanged="OnTreeViewSelectionChanged"
+                                          KeyDown="OnTreeViewKeyDown"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          Classes="primary">
+                                    <TreeView.Styles>
+                                        <Style Selector="TreeViewItem" x:DataType="models:ImageTreeItem">
+                                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                        </Style>
+                                    </TreeView.Styles>
+                                    <TreeView.DataTemplates>
+                                        <TreeDataTemplate x:DataType="models:TranslationTreeItem" ItemsSource="{x:Null}">
+                                            <Grid ColumnDefinitions="Auto,*" Margin="4,4,4,4" Background="Transparent"
+                                                  PointerPressed="OnTreeViewItemPointerPressed"
+                                                  PointerMoved="OnTreeViewItemPointerMoved"
+                                                  PointerReleased="OnTreeViewItemPointerReleased">
+                                                <Grid.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="复制文本" Click="OnCopySelectedText"/>
+                                                        <MenuItem Header="删除此标记" Click="OnDeleteSelectedLabel"/>
+                                                        <Separator/>
+                                                        <MenuItem Header="切换分组" Click="OnToggleGroup"/>
+                                                    </ContextMenu>
+                                                </Grid.ContextMenu>
+                                                <Border Grid.Column="0" CornerRadius="4" Padding="8,4" Margin="0,0,4,0"
+                                                        Background="{Binding GroupIndex, Converter={x:Static local:GroupIndexToBrushConverter.Instance}}"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock 
+                                                        Text="{Binding Index}" 
+                                                        FontFamily="Sarasa Mono SC"
+                                                        Foreground="White"
+                                                        VerticalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1" 
+                                                        Text="{Binding Text}" 
+                                                        TextWrapping="Wrap" 
+                                                        LineHeight="20" 
+                                                        Margin="4,0,4,0"
+                                                        FontFamily="{DynamicResource DligFontFamily}"
+                                                        FontFeatures="{DynamicResource DligFontFeatures}"
+                                                        VerticalAlignment="Center" />
+                                            </Grid>
+                                        </TreeDataTemplate>
+                                        <TreeDataTemplate x:DataType="models:ImageTreeItem" ItemsSource="{Binding Translations}">
+                                            <TextBlock Text="{Binding ImageName}" FontWeight="Bold" FontFamily="Sarasa Mono SC" />
+                                        </TreeDataTemplate>
+                                    </TreeView.DataTemplates>
+                                </TreeView>
+
+                                <Canvas x:Name="TreeDropIndicatorCanvas" IsHitTestVisible="False">
+                                    <Rectangle x:Name="TreeDropLine" Height="2" Fill="DodgerBlue" IsVisible="False"/>
+                                </Canvas>
+
+                                <Canvas x:Name="TreeDragPreviewCanvas" IsHitTestVisible="False">
+                                    <Border x:Name="TreeDragPreview" IsVisible="False" Opacity="0.7"
+                                            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                                            BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}"
+                                            BorderThickness="1" CornerRadius="2" Padding="4,2">
+                                        <TextBlock x:Name="TreeDragPreviewText" FontSize="14"/>
+                                    </Border>
+                                </Canvas>
+                            </Panel>
                         </DockPanel>
 
                         <!-- 下半部分：文本编辑区域 (默认隐藏) -->
