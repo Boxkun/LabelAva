@@ -1065,9 +1065,20 @@ public partial class MainWindow : Window
         var current = item.Text ?? "";
         item.Text = current.Insert(caretIndex, slot.Character);
 
-        _translationTextBox.CaretIndex = caretIndex + slot.Character.Length;
+        var newCaretPos = caretIndex + slot.Character.Length;
+        _translationTextBox.CaretIndex = newCaretPos;
         _translationTextBox.Focus();
         CommitCurrentEdit();
+
+        // CommitCurrentEdit 触发 RebuildCurrentView（Loaded），其光标重置于末尾；Background 优先级更低，
+        // 故在本帧最后恢复为正确的插入后光标位置
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_translationTextBox is not { IsEnabled: true }) return;
+            _translationTextBox.CaretIndex = newCaretPos;
+            _translationTextBox.SelectionStart = newCaretPos;
+            _translationTextBox.SelectionEnd = newCaretPos;
+        }, DispatcherPriority.Background);
     }
 
     private void OnPageUpButtonClick(object? sender, RoutedEventArgs e)
