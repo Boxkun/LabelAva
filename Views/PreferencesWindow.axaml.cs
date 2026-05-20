@@ -5,6 +5,8 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using LabelAva.Services;
 using LabelAva.Models;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace LabelAva.Views;
 
@@ -12,6 +14,8 @@ public partial class PreferencesWindow : Window
 {
     private readonly AppSettingsProvider _provider;
     private AppSettings _settings;
+    private ObservableCollection<QuickInputSlot> _defaultQuickInputs = null!;
+    private ObservableCollection<QuickInputSlot> _dligQuickInputs = null!;
     private Button? _capturingButton;
     private SettingsChangeKind _changeKind = SettingsChangeKind.None;
     private bool _isUpdatingUI = false;
@@ -37,6 +41,7 @@ public partial class PreferencesWindow : Window
             LabelSize = source.LabelSize,
             AutoFocusTextBox = source.AutoFocusTextBox,
             ActiveDligConfig = source.ActiveDligConfig,
+            DefaultQuickInputs = source.DefaultQuickInputs.Select(s => new QuickInputSlot { Label = s.Label, Character = s.Character }).ToList(),
             MouseConfig = source.MouseConfig,
         };
     }
@@ -64,6 +69,11 @@ public partial class PreferencesWindow : Window
             UpdateColorUI();
 
             UpdateDligUI();
+
+            // 默认快捷输入
+            _defaultQuickInputs = new ObservableCollection<QuickInputSlot>(
+                _settings.DefaultQuickInputs.Select(s => new QuickInputSlot { Label = s.Label, Character = s.Character }));
+            DefaultQuickInputItemsControl.ItemsSource = _defaultQuickInputs;
 
             if (AutoFocusCheckBox != null)
                 AutoFocusCheckBox.IsChecked = _settings.AutoFocusTextBox;
@@ -238,7 +248,7 @@ public partial class PreferencesWindow : Window
         _changeKind |= SettingsChangeKind.All;
     }
 
-    private static readonly string[] MouseActionLabels = { "添加/选中", "平移", "删除", "右键菜单", "无" };
+    private static readonly string[] MouseActionLabels = { "添加/选中", "平移", "删除", "显示菜单", "无" };
 
     private void InitMouseConfigUI()
     {
@@ -319,9 +329,9 @@ public partial class PreferencesWindow : Window
         }
         else
         {
-            cb.BorderBrush = Avalonia.Application.Current?.Resources["SystemControlHighlightChromeHighBrush"] as IBrush
-                ?? new SolidColorBrush(Color.Parse("#7FFFFFFF"));
-            cb.BorderThickness = new Thickness(1);
+            // 清除本地值，回退到 Controls.axaml 中的 ComboBox 样式
+            cb.ClearValue(ComboBox.BorderBrushProperty);
+            cb.ClearValue(ComboBox.BorderThicknessProperty);
         }
     }
 
@@ -400,7 +410,9 @@ public partial class PreferencesWindow : Window
 
         if (QuickInputSlotsItemsControl != null)
         {
-            QuickInputSlotsItemsControl.ItemsSource = _currentDligConfig?.QuickInputs;
+            _dligQuickInputs = new ObservableCollection<QuickInputSlot>(
+                _currentDligConfig?.QuickInputs?.Select(s => new QuickInputSlot { Label = s.Label, Character = s.Character }) ?? Array.Empty<QuickInputSlot>());
+            QuickInputSlotsItemsControl.ItemsSource = _dligQuickInputs;
         }
     }
 
@@ -410,6 +422,12 @@ public partial class PreferencesWindow : Window
 
         _currentDligConfig.FontFamily = DligFontFamilyTextBox?.Text ?? "";
         _currentDligConfig.FontFeatures = DligFontFeaturesTextBox?.Text ?? "dlig=1";
+
+        // 同步回 ObservableCollection 到 config，过滤空行
+        _currentDligConfig.QuickInputs = _dligQuickInputs?
+            .Where(s => !string.IsNullOrEmpty(s.Character))
+            .Select(s => new QuickInputSlot { Label = s.Label ?? "", Character = s.Character })
+            .ToList() ?? new List<QuickInputSlot>();
 
         DligConfigService.SaveConfig(_currentDligConfigName, _currentDligConfig);
     }
@@ -488,6 +506,46 @@ public partial class PreferencesWindow : Window
             });
         }
         catch { }
+    }
+
+    private void OnAddDefaultQuickInput(object? sender, RoutedEventArgs e)
+    {
+        _defaultQuickInputs.Add(new QuickInputSlot());
+        _changeKind |= SettingsChangeKind.DligConfig;
+    }
+
+    private void OnDeleteDefaultQuickInput(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is QuickInputSlot slot)
+        {
+            _defaultQuickInputs.Remove(slot);
+            _changeKind |= SettingsChangeKind.DligConfig;
+        }
+    }
+
+    private void OnAddDligQuickInput(object? sender, RoutedEventArgs e)
+    {
+        if (_currentDligConfig == null)
+        {
+            if (_currentDligConfigName == null)
+            {
+                OnNewDligConfig(sender, e);
+                // RefreshDligFields will be called by the new config flow, which re-creates _dligQuickInputs
+                return;
+            }
+            _currentDligConfig = new DligFontConfig();
+        }
+        _dligQuickInputs.Add(new QuickInputSlot());
+        _changeKind |= SettingsChangeKind.DligConfig;
+    }
+
+    private void OnDeleteDligQuickInput(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is QuickInputSlot slot)
+        {
+            _dligQuickInputs.Remove(slot);
+            _changeKind |= SettingsChangeKind.DligConfig;
+        }
     }
 
     // ========================
@@ -605,6 +663,12 @@ public partial class PreferencesWindow : Window
         this.Closed -= OnPreferencesWindowClosed;
 
         CommitCurrentDligConfig();
+
+        // 将默认快捷输入同步回 settings
+        _settings.DefaultQuickInputs = _defaultQuickInputs
+            .Where(s => !string.IsNullOrEmpty(s.Character))
+            .Select(s => new QuickInputSlot { Label = s.Label, Character = s.Character })
+            .ToList();
 
         // 自动解决冲突：将所有重复按键的操作置为 None
         _settings.MouseConfig = _settings.MouseConfig.ResolveConflicts();

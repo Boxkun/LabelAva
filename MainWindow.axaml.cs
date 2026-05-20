@@ -20,6 +20,7 @@ using LabelAva.Views;
 using LabelAva.Commands;
 using System.Linq;
 using LabelAva.ViewModels;
+using System.Diagnostics;
 
 
 namespace LabelAva;
@@ -357,13 +358,17 @@ public partial class MainWindow : Window
         if (_translationTextBox == null)
             return;
 
+        // 始终加载默认快捷输入
+        Edit.QuickInputSlots.Clear();
+        foreach (var slot in _settingsProvider.Current.DefaultQuickInputs)
+            Edit.QuickInputSlots.Add(slot);
+
         var configName = _settingsProvider.Current.ActiveDligConfig;
 
         if (string.IsNullOrWhiteSpace(configName))
         {
             _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
             _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
-            Edit.QuickInputSlots.Clear();
             Resources["DligFontFamily"] = null;
             Resources["DligFontFeatures"] = null;
             return;
@@ -374,7 +379,6 @@ public partial class MainWindow : Window
         {
             _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
             _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
-            Edit.QuickInputSlots.Clear();
             StatusBar.UpdateStatus(
                 $"连字配置 '{configName}' 加载失败，已回退到默认",
                 StatusBarViewModel.StatusType.Warn);
@@ -383,12 +387,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 应用快捷输入按钮
-        Edit.QuickInputSlots.Clear();
+        // 追加载连字配置的快捷输入按钮
         if (config.QuickInputs != null)
         {
             foreach (var slot in config.QuickInputs)
+            {
+                slot.IsFromDligConfig = true;
                 Edit.QuickInputSlots.Add(slot);
+            }
         }
 
         // 应用字体和 OpenType 特性
@@ -984,7 +990,29 @@ public partial class MainWindow : Window
         {
             UpdateGroupButtonColors();
             // ApplyDligConfig 已移入选中标记时的光标链（Loaded→Render），避免此项与光标竞态
+
+            // 为连字配置按钮添加系统强调色底色（面板刚变为可见，需延迟等布局完成）
+            ApplyDligButtonAccentBackground();
         }
+    }
+
+    private void ApplyDligButtonAccentBackground()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var accentBrush = ThemeHelper.GetBrush("SystemControlHighlightListAccentLowBrush");
+            if (accentBrush == null) return;
+            var count = 0;
+            foreach (var btn in QuickInputItemsControl.GetVisualDescendants().OfType<Button>())
+            {
+                if (btn.DataContext is QuickInputSlot slot && slot.IsFromDligConfig)
+                {
+                    btn.Background = accentBrush;
+                    count++;
+                }
+            }
+            System.Diagnostics.Debug.WriteLine($"[DligAccent] Applied to {count} buttons, total buttons: {QuickInputItemsControl.GetVisualDescendants().OfType<Button>().Count()}");
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>

@@ -22,7 +22,7 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="8">
                         <!-- 列标题 -->
-                        <Border Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,0">
+                        <!-- <Border Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="80"/>
@@ -35,13 +35,13 @@
                                 <TextBlock Grid.Column="2" Text="主要" HorizontalAlignment="Center" />
                                 <TextBlock Grid.Column="4" Text="次要" HorizontalAlignment="Center" />
                             </Grid>
-                        </Border>
+                        </Border> -->
 
                         <!-- 画布设置组 -->
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="画布" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="控制鼠标按键在画布上的行为" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                                <TextBlock Text="调整鼠标按键在画布上的行为" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
@@ -82,7 +82,7 @@
                                               BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
                                 </Grid>
 
-                                <TextBlock x:Name="MouseConflictHint" Text="⚠ 存在冲突，请为每个按键分配不同的操作"
+                                <TextBlock x:Name="MouseConflictHint" Text="⚠ 存在冲突"
                                            FontSize="12" Foreground="#E74856" IsVisible="False" Margin="92,0,0,0"/>
                             </StackPanel>
                         </Border>
@@ -412,6 +412,32 @@
             <TabItem Header="字体">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
+                        <!-- 默认快捷输入 -->
+                        <TextBlock Text="快捷输入" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                        <TextBlock Text="配置特殊字符/短语快捷输入，添加后始终显示在工具栏左侧" FontSize="12"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   TextWrapping="Wrap" Margin="0,-4,0,4"/>
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="4">
+                                <ItemsControl x:Name="DefaultQuickInputItemsControl">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:QuickInputSlot">
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                                <TextBox Grid.Column="0" Text="{Binding Character}" Watermark="输入 Unicode 字符"/>
+                                                <Button Grid.Column="1" Content="✕" Width="32" Height="32" Padding="0" FontSize="16"
+                                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnDeleteDefaultQuickInput"
+                                                        Margin="4,0,0,0"
+                                                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button x:Name="AddDefaultQuickInputButton" Content="＋ 添加" Click="OnAddDefaultQuickInput"/>
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold"/>
                         <TextBlock Text="选择连字配置以启用编辑器专用字体和 OpenType 连字特性" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
@@ -437,19 +463,30 @@
                         </Border>
 
                         <!-- 快捷输入按钮 -->
-                        <TextBlock Text="快捷输入按钮" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock Text="连字快捷输入按钮" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,4">
+                                    <TextBlock Grid.Column="0" Text="显示" FontWeight="SemiBold" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" Text="输入" FontWeight="SemiBold" Margin="4,0,0,0"/>
+                                </Grid>
                                 <ItemsControl x:Name="QuickInputSlotsItemsControl">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:QuickInputSlot">
-                                            <Grid ColumnDefinitions="*,*" Margin="0,2">
+                                            <Grid ColumnDefinitions="*,*,Auto" Margin="0,2">
                                                 <TextBox Grid.Column="0" Text="{Binding Label}" Watermark="标签" Margin="0,0,4,0"/>
                                                 <TextBox Grid.Column="1" Text="{Binding Character}" Watermark="字符" Margin="4,0,0,0"/>
+                                                <Button Grid.Column="2" Content="✕" Width="32" Height="32" Padding="0" FontSize="16"
+                                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnDeleteDligQuickInput"
+                                                        Margin="4,0,0,0"
+                                                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <Button x:Name="AddDligQuickInputButton" Content="＋ 添加" Click="OnAddDligQuickInput"/>
                             </StackPanel>
                         </Border>
 

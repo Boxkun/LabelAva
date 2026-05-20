@@ -9,6 +9,8 @@ namespace LabelAva.Services;
 [JsonSerializable(typeof(AppSettingsDto))]
 [JsonSerializable(typeof(ShortcutBindingsDto))]
 [JsonSerializable(typeof(ColorSettingsDto))]
+[JsonSerializable(typeof(Models.QuickInputSlot))]
+[JsonSerializable(typeof(List<Models.QuickInputSlot>))]
 [JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 public partial class AppSettingsContext : JsonSerializerContext { }
 
@@ -254,6 +256,7 @@ public class AppSettingsDto
     public int WindowY { get; set; } = -1;
     public bool WindowMaximized { get; set; }
     public string? ActiveDligConfig { get; set; }
+    public List<Models.QuickInputSlot>? DefaultQuickInputs { get; set; }
     public string? MouseLeftButton { get; set; }
     public string? MouseMiddleButton { get; set; }
     public string? MouseRightButton { get; set; }
@@ -272,6 +275,9 @@ public class AppSettingsDto
         WindowY = settings.WindowY;
         WindowMaximized = settings.WindowMaximized;
         ActiveDligConfig = settings.ActiveDligConfig;
+        DefaultQuickInputs = settings.DefaultQuickInputs
+            .Select(s => new Models.QuickInputSlot { Label = s.Label, Character = s.Character })
+            .ToList();
         MouseLeftButton = settings.MouseConfig.LeftButton.ToString();
         MouseMiddleButton = settings.MouseConfig.MiddleButton.ToString();
         MouseRightButton = settings.MouseConfig.RightButton.ToString();
@@ -294,6 +300,9 @@ public class AppSettingsDto
             WindowY = WindowY,
             WindowMaximized = WindowMaximized,
             ActiveDligConfig = ActiveDligConfig,
+            DefaultQuickInputs = DefaultQuickInputs?
+                .Select(s => new Models.QuickInputSlot { Label = s.Label ?? "", Character = s.Character ?? "" })
+                .ToList() ?? Models.AppSettings.CreateDefaultQuickInputs(),
             MouseConfig = new Models.CanvasMouseConfig
             {
                 LeftButton   = ParseMouseAction(MouseLeftButton,   Models.CanvasMouseAction.AddSelect),

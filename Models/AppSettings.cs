@@ -328,6 +328,7 @@ public class AppSettings
     public int WindowY { get; set; } = -1;
     public bool WindowMaximized { get; set; }
     public string? ActiveDligConfig { get; set; }
+    public List<QuickInputSlot> DefaultQuickInputs { get; set; } = CreateDefaultQuickInputs();
     public CanvasMouseConfig MouseConfig { get; set; } = CanvasMouseConfig.CreateDefaults();
 
     public static AppSettings CreateDefaults()
@@ -344,6 +345,28 @@ public class AppSettings
             WindowY = -1,
             WindowMaximized = false,
             ActiveDligConfig = null,
+            DefaultQuickInputs = CreateDefaultQuickInputs(),
         };
     }
+
+    public static List<QuickInputSlot> CreateDefaultQuickInputs() => new()
+    {
+        new() { Character = "←" },
+        new() { Character = "→" },
+        new() { Character = "↑" },
+        new() { Character = "↓" },
+        new() { Character = "〈" },
+        new() { Character = "〉" },
+        new() { Character = "《" },
+        new() { Character = "》" },
+        new() { Character = "「" },
+        new() { Character = "」" },
+        new() { Character = "〖" },
+        new() { Character = "〗" },
+        new() { Character = "●" },
+        new() { Character = "○" },
+        new() { Character = "…" },
+        new() { Character = "—" },
+        new() { Character = "～" },
+    };
 }

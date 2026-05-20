@@ -149,7 +149,20 @@
     <!-- 文本框样式 -->
     <Style Selector="TextBox">
         <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundChromeHighBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
     </Style>
+    <!-- 下拉框样式 -->
+    <Style Selector="ComboBox">
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightChromeHighBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+    </Style>
+
+        <!-- 下拉框样式 -->
+    <Style Selector="NumericUpDown">
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightChromeHighBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+    </Style>
+    
     <!-- 分组按钮基础模板（去掉圆点） -->
     <Style Selector="RadioButton.no-dot">
         <Setter Property="Template">
