@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:LabelAva.Views"
+        xmlns:flua="clr-namespace:FluentIcons.Avalonia;assembly=FluentIcons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
         x:Class="LabelAva.Views.ImageSelectionWindow"
         Title="图片选择"
@@ -21,11 +22,14 @@
         </StackPanel>
         
         <!-- 底部按钮区域 -->
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,12,0,0">
-            <Button x:Name="SelectAllButton" Content="全选" Click="OnSelectAll" MinWidth="80" Padding="12,8"/>
-            <Button x:Name="DeselectAllButton" Content="全不选" Click="OnDeselectAll" MinWidth="80" Padding="12,8"/>
-            <Button x:Name="ConfirmButton" Content="确认" Click="OnConfirm" Classes="primary" MinWidth="80" Padding="12,8"/>
-            <Button x:Name="CancelButton" Content="取消" Click="OnCancel" MinWidth="80" Padding="12,8"/>
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <TextBlock Text="拖拽以重新排列图片顺序" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Left" Margin="0,0,0,4"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                <Button x:Name="SelectAllButton" Content="全选" Click="OnSelectAll" MinWidth="80" Padding="12,8"/>
+                <Button x:Name="DeselectAllButton" Content="全不选" Click="OnDeselectAll" MinWidth="80" Padding="12,8"/>
+                <Button x:Name="ConfirmButton" Content="确认" Click="OnConfirm" Classes="primary" MinWidth="80" Padding="12,8"/>
+                <Button x:Name="CancelButton" Content="取消" Click="OnCancel" MinWidth="80" Padding="12,8"/>
+            </StackPanel>
         </StackPanel>
         
         <!-- 主内容区：左栏列表 + 右栏图片预览 -->
@@ -51,10 +55,16 @@
                                         PointerPressed="OnItemPointerPressed"
                                         PointerMoved="OnItemPointerMoved"
                                         PointerReleased="OnItemPointerReleased">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding FileName}" VerticalAlignment="Center" FontSize="14"/>
-                                    </StackPanel>
+                                    <Grid RowDefinitions="*,Auto">
+                                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                                            <flua:FluentIcon Grid.Column="0" Icon="ReOrderDotsVertical" FontSize="14" VerticalAlignment="Center"
+                                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding FileName}" VerticalAlignment="Center" FontSize="14" Margin="4,0"/>
+                                            <CheckBox Grid.Column="2" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        </Grid>
+                                        <Border Grid.Row="1" Height="1" Margin="0,0,4,0"
+                                                Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
