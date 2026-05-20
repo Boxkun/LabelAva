@@ -1994,8 +1994,6 @@ public partial class MainWindow : Window
 
     private void OnTreeViewItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!RequireEditMode()) return;
-
         var point = e.GetCurrentPoint(sender as Control);
         if (point.Properties.IsLeftButtonPressed && sender is Control control)
         {
@@ -2022,6 +2020,12 @@ public partial class MainWindow : Window
 
             if (Math.Abs(diff.X) > TreeDragThreshold || Math.Abs(diff.Y) > TreeDragThreshold)
             {
+                if (!RequireEditMode())
+                {
+                    _isTreeItemDragging = false;
+                    _draggedTreeItem = null;
+                    return;
+                }
                 // 进入 DRAGGING 状态
                 _isTreeItemDragging = false;
                 _isDragActive = true;
