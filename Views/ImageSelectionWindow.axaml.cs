@@ -244,9 +244,6 @@ public partial class ImageSelectionWindow : Window
         _dragStartPos = e.GetPosition(ImageListControl);
         _isPending = true;
         _isDragging = false;
-        border.PointerCaptureLost += OnDragPointerCaptureLost;
-        e.Pointer.Capture(border);
-        e.Handled = true;
     }
 
     private void OnDragPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
@@ -269,6 +266,11 @@ public partial class ImageSelectionWindow : Window
             if (Math.Abs(delta.Y) < DragThreshold) return;
             _isPending = false;
             _isDragging = true;
+            if (sender is Avalonia.Controls.Border border)
+            {
+                border.PointerCaptureLost += OnDragPointerCaptureLost;
+                e.Pointer.Capture(border);
+            }
             ShowPreview(_dragItem);
         }
 
