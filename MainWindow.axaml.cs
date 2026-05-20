@@ -665,6 +665,7 @@ public partial class MainWindow : Window
     private void OnDocumentOpened(object? sender, DocumentOpenedEventArgs e)
     {
         Navigation.InitializeNavigation(e.ImageFolderPath, e.ImageNames, e.ImagePathMapping);
+        PageNavGrid.IsVisible = true;
 
         if (Navigation.ImageNames.Count > 0)
         {
@@ -688,6 +689,7 @@ public partial class MainWindow : Window
 
         // 清理导航状态（TranslationData 由 DocumentViewModel 管理）
         Navigation.ClearNavigation();
+        PageNavGrid.IsVisible = false;
 
         ShowWelcomeScreen();
     }

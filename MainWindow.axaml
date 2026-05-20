@@ -78,7 +78,7 @@
                                 Classes.status-error="{Binding IsError}"
                                 FontFamily="Sarasa Mono SC"/>
                 </Border>
-                <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Center" Margin="0,0,77,0">
+                <Grid x:Name="PageNavGrid" Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Center" Margin="0,0,77,0" IsVisible="False">
                     <!-- <StackPanel Grid.Column="1" Orientation="Horizontal"> -->
                         <TextBlock Grid.Column="0" x:Name="_ZoomText" Text="{Binding ZoomText}" Classes="zoom-text" Width="72" TextAlignment="Center" Margin="0"/>
                         <Border Grid.Column="1" Width="1" HorizontalAlignment="Left"
