@@ -719,6 +719,12 @@ public partial class MainWindow : Window
             {
                 _isSyncingSelection = false;
             }
+
+            // 将选中项滚入视野（延迟到布局完成后）
+            Dispatcher.UIThread.Post(() =>
+            {
+                ImageTreeView.ScrollIntoView(Navigation.SelectedItem);
+            }, DispatcherPriority.Loaded);
         }
     }
     
