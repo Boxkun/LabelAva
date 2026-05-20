@@ -1064,6 +1064,12 @@ public partial class MainWindow : Window
         CommitCurrentEdit();
     }
 
+    private void OnPageUpButtonClick(object? sender, RoutedEventArgs e)
+        => Navigation.NavigatePageUpCommand.Execute(null);
+
+    private void OnPageDownButtonClick(object? sender, RoutedEventArgs e)
+        => Navigation.NavigatePageDownCommand.Execute(null);
+
     /// <summary>
     /// 分组选择改变
     /// </summary>

@@ -5,7 +5,7 @@
         <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundChromeHighBrush}"/>
         <Setter Property="BorderThickness" Value="0,1,0,0"/>
-        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="Padding" Value="8,8"/>
     </Style>
     
     <Style Selector="Border.status-bar">
