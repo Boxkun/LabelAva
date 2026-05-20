@@ -50,7 +50,16 @@ public static class AppSettingsService
 
             if (dto != null)
             {
-                return dto.ToSettings();
+                var settings = dto.ToSettings();
+
+                // 版本检测：缺失或低于当前版本 → 迁移
+                if (settings.Version != Models.AppSettings.CreateDefaults().Version)
+                {
+                    settings = MigrateSettings(settings);
+                    Save(settings);
+                }
+
+                return settings;
             }
         }
         catch (Exception ex)
@@ -60,6 +69,47 @@ public static class AppSettingsService
 
         return Models.AppSettings.CreateDefaults();
     }
+
+    private static Models.AppSettings MigrateSettings(Models.AppSettings oldSettings)
+    {
+        var defaults = Models.AppSettings.CreateDefaults();
+
+        // 窗口几何
+        defaults.WindowWidth  = oldSettings.WindowWidth;
+        defaults.WindowHeight = oldSettings.WindowHeight;
+        defaults.WindowX      = oldSettings.WindowX;
+        defaults.WindowY      = oldSettings.WindowY;
+        defaults.WindowMaximized = oldSettings.WindowMaximized;
+
+        // 用户偏好
+        defaults.LabelSize        = oldSettings.LabelSize;
+        defaults.AutoFocusTextBox = oldSettings.AutoFocusTextBox;
+
+        // 快捷键（非 null 则深拷贝保留）
+        if (oldSettings.Shortcuts != null)
+            defaults.Shortcuts = oldSettings.Shortcuts.Clone();
+
+        // 颜色
+        if (oldSettings.Colors != null)
+            defaults.Colors = oldSettings.Colors.Clone();
+
+        // 连字配置选择
+        defaults.ActiveDligConfig = oldSettings.ActiveDligConfig;
+
+        // 鼠标配置（值类型）
+        defaults.MouseConfig = oldSettings.MouseConfig;
+
+        // 默认快捷输入（仅旧版有此字段且非空时才拷贝）
+        if (oldSettings.DefaultQuickInputs is { Count: > 0 })
+            defaults.DefaultQuickInputs = oldSettings.DefaultQuickInputs
+                .Select(s => new Models.QuickInputSlot { Label = s.Label ?? "", Character = s.Character ?? "" })
+                .ToList();
+
+        return defaults;
+    }
+
+    private static Models.CanvasMouseAction ParseMouseAction(string? s, Models.CanvasMouseAction fallback)
+        => Enum.TryParse<Models.CanvasMouseAction>(s, out var action) ? action : fallback;
 }
 
 public class ColorSettingsDto
@@ -246,6 +296,7 @@ public class ShortcutBindingsDto
 
 public class AppSettingsDto
 {
+    public string? Version { get; set; }
     public ShortcutBindingsDto? Shortcuts { get; set; }
     public ColorSettingsDto? Colors { get; set; }
     public int LabelSize { get; set; } = 32;
@@ -265,6 +316,7 @@ public class AppSettingsDto
 
     public AppSettingsDto(Models.AppSettings settings)
     {
+        Version = settings.Version;
         Shortcuts = new ShortcutBindingsDto(settings.Shortcuts);
         Colors = new ColorSettingsDto(settings.Colors);
         LabelSize = settings.LabelSize;
@@ -290,6 +342,7 @@ public class AppSettingsDto
 
         return new Models.AppSettings
         {
+            Version = Version ?? "0.3.0",
             Shortcuts = shortcuts,
             Colors = colors,
             LabelSize = LabelSize,

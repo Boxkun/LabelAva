@@ -36,6 +36,7 @@ public partial class PreferencesWindow : Window
     {
         return new AppSettings
         {
+            Version = source.Version,
             Shortcuts = source.Shortcuts.Clone(),
             Colors = source.Colors.Clone(),
             LabelSize = source.LabelSize,

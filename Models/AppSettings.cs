@@ -318,6 +318,7 @@ public class ColorSettings
 
 public class AppSettings
 {
+    public string Version { get; set; } = "0.3.0";
     public ShortcutBindings Shortcuts { get; set; } = ShortcutBindings.CreateDefaults();
     public ColorSettings Colors { get; set; } = ColorSettings.CreateDefaults();
     public int LabelSize { get; set; } = 32;
@@ -335,6 +336,7 @@ public class AppSettings
     {
         return new AppSettings
         {
+            Version = "0.3.0",
             Shortcuts = ShortcutBindings.CreateDefaults(),
             Colors = ColorSettings.CreateDefaults(),
             LabelSize = 32,
@@ -351,22 +353,11 @@ public class AppSettings
 
     public static List<QuickInputSlot> CreateDefaultQuickInputs() => new()
     {
-        new() { Character = "←" },
-        new() { Character = "→" },
-        new() { Character = "↑" },
-        new() { Character = "↓" },
-        new() { Character = "〈" },
-        new() { Character = "〉" },
-        new() { Character = "《" },
-        new() { Character = "》" },
-        new() { Character = "「" },
-        new() { Character = "」" },
-        new() { Character = "〖" },
-        new() { Character = "〗" },
         new() { Character = "●" },
         new() { Character = "○" },
-        new() { Character = "…" },
-        new() { Character = "—" },
-        new() { Character = "～" },
+        new() { Character = "♥" },
+        new() { Character = "♡" },
+        new() { Character = "※" },
+        new() { Character = "♪" }
     };
 }
