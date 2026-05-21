@@ -61,6 +61,12 @@ public partial class MainWindow : Window
     // 键盘导航标志：true 表示选中变更由快捷键（Up/Down/PageUp/PageDown）触发，强制自动聚焦
     private bool _isKeyboardNavigation = false;
 
+    // 编辑基线：选中标记时快照 LabelItem.Text，CommitCurrentEdit 据此判断变更
+    private string? _editingBaselineText;
+
+    private static void DbgLog(string msg) =>
+        System.Diagnostics.Debug.WriteLine($"[UNDO-DBG] {DateTime.Now:HH:mm:ss.fff} {msg}");
+
     // 异步初始化标志：防止初始化完成前的空引用
     private bool _isInitialized = false;
 
@@ -868,8 +874,10 @@ public partial class MainWindow : Window
 
         // 【核心修复】将视图重建推迟到更晚执行，确保 SelectionChanged 等事件完全处理完毕
         // 使用更低的优先级，确保在 TextBox 值设置和光标定位之后执行
+        DbgLog($"HistChg: queue Rebuild baseline='{_editingBaselineText}'");
         Dispatcher.UIThread.Post(() =>
         {
+            DbgLog($"Rebuild BEGIN: baseline='{_editingBaselineText}' _isUpdatingUI={_isUpdatingUI}");
             _isUpdatingUI = true; // 上锁
             try
             {
@@ -878,6 +886,7 @@ public partial class MainWindow : Window
             finally
             {
                 _isUpdatingUI = false; // 解锁
+                DbgLog($"Rebuild END: baseline='{_editingBaselineText}' _isUpdatingUI={_isUpdatingUI}");
             }
         }, DispatcherPriority.Loaded); // 使用 Loaded 优先级，比 Input 优先级更低
     }
@@ -1234,20 +1243,15 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTranslationTextBoxLostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        DbgLog($"LostFocus: _isUpdatingUI={_isUpdatingUI} baseline='{_editingBaselineText}'");
         if (_isUpdatingUI) return;
-
-        // 失去焦点时，直接结算当前文本
         CommitCurrentEdit();
     }
 
     /// <summary>
-    /// 提交当前编辑的文本到撤销/重做历史栈中
-    /// 核心理念：直接对比 UI 最新文本与底层模型数据的差异，彻底抛弃状态变量缓存
+    /// 提交当前编辑的文本到撤销/重做历史栈中。
+    /// 比较 LabelItem.Text 与选中时的编辑基线，有变更则推入 ChangeTextCommand。
     /// </summary>
-    /// <param name="forceCommit">
-    /// true 时绕过 IsEditMode 守卫，确保持久化路径在编辑模式被意外退出后
-    /// 仍能同步 UI 模型。仅用于保存/自动保存/另存为路径。
-    /// </param>
     private void CommitCurrentEdit(bool forceCommit = false)
     {
         if (!_isInitialized) return;
@@ -1256,17 +1260,27 @@ public partial class MainWindow : Window
 
         if (!forceCommit && !Edit.IsEditMode) return;
 
-        var labelItem = labels.FirstOrDefault(l => l.TextIndex == currentTreeItem.Index);
+        var labelItem = currentTreeItem.LabelItem;
         if (labelItem == null) return;
 
-        string newText = currentTreeItem.Text ?? string.Empty;
-        string oldText = labelItem.Text ?? string.Empty;
+        string newText = labelItem.Text ?? string.Empty;
+        string oldText = _editingBaselineText ?? labelItem.Text ?? string.Empty;
+
+        DbgLog($"Commit: baseline='{oldText}' labelText='{newText}' caller={new System.Diagnostics.StackTrace().GetFrame(1)?.GetMethod()?.Name}");
 
         if (oldText != newText)
         {
+            DbgLog($"Commit: PUSH ChangeTextCommand '{oldText}'→'{newText}'");
             var command = new ChangeTextCommand(labelItem, oldText, newText);
             ViewModel.History.ExecuteCommand(command);
         }
+        else
+        {
+            DbgLog($"Commit: no-op (equal)");
+        }
+
+        _editingBaselineText = newText;
+        DbgLog($"Commit: baseline↑='{newText}'");
     }
 
 
@@ -1304,12 +1318,15 @@ public partial class MainWindow : Window
             if (!RequireEditMode()) { e.Handled = true; return; }
             if (isShiftPressed)
             {
+                DbgLog($"KeyDn: Ctrl+Shift+Z→Redo baseline='{_editingBaselineText}'");
                 ViewModel.History.RedoCommand.Execute(null);
             }
             else
             {
+                DbgLog($"KeyDn: Ctrl+Z→Undo baseline='{_editingBaselineText}'");
                 ViewModel.History.UndoCommand.Execute(null);
             }
+            DbgLog($"KeyDn: after Undo/Redo baseline='{_editingBaselineText}'");
             e.Handled = true;
         }
         else if (isCtrlPressed && e.Key == Key.Y)
@@ -1836,7 +1853,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        CommitCurrentEdit();
+        if (!_isUpdatingUI)
+            CommitCurrentEdit();
         if (_isDragActive) return;
 
         var selectedItem = ImageTreeView.SelectedItem;
@@ -1860,6 +1878,10 @@ public partial class MainWindow : Window
 
         if (selectedItem is TranslationTreeItem targetChildItem)
         {
+            // 快照编辑基线——CommitCurrentEdit 据此判断是否产生了文本变更
+            _editingBaselineText = targetChildItem.Text;
+            DbgLog($"SelChg: baseline snap='{_editingBaselineText}' _isUpdatingUI={_isUpdatingUI}");
+
             CanvasControl.HighlightLabel(targetChildItem.Index);
 
             double currentScale = CanvasWorkspace.ZoomPercent / 100;
@@ -1874,7 +1896,7 @@ public partial class MainWindow : Window
                 || _settingsProvider.Current.AutoFocusTextBox;
             _isKeyboardNavigation = false;
 
-            if (Edit.IsEditMode && autoFocus)
+            if (Edit.IsEditMode && autoFocus && !_isUpdatingUI)
             {
                 Dispatcher.UIThread.Post(
                     () =>

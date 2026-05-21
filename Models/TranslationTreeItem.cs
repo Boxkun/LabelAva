@@ -4,13 +4,17 @@ using System.Runtime.CompilerServices;
 namespace LabelAva.Models;
 
 /// <summary>
-/// 树视图项：代表一条翻译
+/// 树视图项：代表一条翻译。Text 属性透传 LabelItem.Text。
 /// </summary>
 public class TranslationTreeItem : INotifyPropertyChanged
 {
     private int _index;
-    private string _text = string.Empty;
     private int _groupIndex;
+
+    public bool IsExpanded => false;
+
+    /// <summary>对应的数据层标签对象。Text 属性透传此对象的 Text。</summary>
+    public LabelItem? LabelItem { get; set; }
 
     public int Index
     {
@@ -25,14 +29,16 @@ public class TranslationTreeItem : INotifyPropertyChanged
         }
     }
     
+    /// <summary>文本内容 — 透传 LabelItem.Text。写入即时到数据层。</summary>
     public string Text
     {
-        get => _text;
+        get => LabelItem?.Text ?? string.Empty;
         set
         {
-            if (_text != value)
+            if (LabelItem == null) return;
+            if (LabelItem.Text != value)
             {
-                _text = value;
+                LabelItem.Text = value;
                 OnPropertyChanged();
             }
         }

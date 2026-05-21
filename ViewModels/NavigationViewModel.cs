@@ -170,8 +170,8 @@ public partial class NavigationViewModel : ObservableObject
             {
                 imageItem.Translations.Add(new TranslationTreeItem
                 {
+                    LabelItem = label,
                     Index = label.TextIndex,
-                    Text = label.Text,
                     GroupIndex = label.GroupIndex
                 });
             }
