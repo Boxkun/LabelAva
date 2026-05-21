@@ -87,7 +87,7 @@ public partial class EditViewModel : ObservableObject
             EditModeChanged?.Invoke(this, EventArgs.Empty);
 
             _statusBar.UpdateStatus(
-                value ? "编辑模式：左键点击图片以新建标签，中键/右键拖动平移"
+                value ? "编辑模式"
                        : "查看模式",
                 value ? StatusBarViewModel.StatusType.Info
                        : StatusBarViewModel.StatusType.Info);

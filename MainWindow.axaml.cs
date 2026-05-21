@@ -993,6 +993,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnEditModeChanged(object? sender, EventArgs e)
     {
+        CommitCurrentEdit();
         CanvasControl.IsEditMode = Edit.IsEditMode;
         if (Edit.IsEditMode)
         {
@@ -1084,16 +1085,17 @@ public partial class MainWindow : Window
     }
 
     private void OnPageUpButtonClick(object? sender, RoutedEventArgs e)
-        => Navigation.NavigatePageUpCommand.Execute(null);
+        => ExecuteShortcutAction(ShortcutAction.NavigatePageUp);
 
     private void OnPageDownButtonClick(object? sender, RoutedEventArgs e)
-        => Navigation.NavigatePageDownCommand.Execute(null);
+        => ExecuteShortcutAction(ShortcutAction.NavigatePageDown);
 
     /// <summary>
     /// 分组选择改变
     /// </summary>
     private void OnGroupSelectionChanged(object? sender, RoutedEventArgs e)
     {
+        CommitCurrentEdit();
         if (sender is RadioButton radioButton)
         {
             if (radioButton == Group0RadioButton)
@@ -1341,6 +1343,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void ExecuteShortcutAction(ShortcutAction action)
     {
+        CommitCurrentEdit();
         switch (action)
         {
             case ShortcutAction.NavigateUp:
@@ -1404,6 +1407,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void SelectLabelByIndex(int labelIndex)
     {
+        CommitCurrentEdit();
         // 委托到 NavigationViewModel 执行核心选中逻辑
         Navigation.SelectLabelByIndex(labelIndex);
         
@@ -1832,6 +1836,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        CommitCurrentEdit();
         if (_isDragActive) return;
 
         var selectedItem = ImageTreeView.SelectedItem;
