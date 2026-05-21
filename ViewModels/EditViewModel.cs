@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LabelAva.Models;
@@ -41,6 +42,14 @@ public partial class EditViewModel : ObservableObject
 
     /// <summary>快捷输入按钮集合</summary>
     public ObservableCollection<QuickInputSlot> QuickInputSlots { get; } = new();
+
+    /// <summary>当前激活的连字字体（null 表示不设字体）</summary>
+    [ObservableProperty]
+    private FontFamily? _activeDligFontFamily;
+
+    /// <summary>当前激活的 OpenType 特性集合</summary>
+    [ObservableProperty]
+    private FontFeatureCollection? _activeDligFontFeatures;
 
     // ========================
     // 命令

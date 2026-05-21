@@ -373,23 +373,19 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrWhiteSpace(configName))
         {
-            _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
-            _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
-            Resources["DligFontFamily"] = null;
-            Resources["DligFontFeatures"] = null;
+            Edit.ActiveDligFontFamily = null;
+            Edit.ActiveDligFontFeatures = null;
             return;
         }
 
         var config = DligConfigService.LoadConfig(configName);
         if (config == null)
         {
-            _translationTextBox.ClearValue(TextBox.FontFamilyProperty);
-            _translationTextBox.ClearValue(TextBox.FontFeaturesProperty);
+            Edit.ActiveDligFontFamily = null;
+            Edit.ActiveDligFontFeatures = null;
             StatusBar.UpdateStatus(
                 $"连字配置 '{configName}' 加载失败，已回退到默认",
                 StatusBarViewModel.StatusType.Warn);
-            Resources["DligFontFamily"] = null;
-            Resources["DligFontFeatures"] = null;
             return;
         }
 
@@ -406,8 +402,8 @@ public partial class MainWindow : Window
         // 应用字体和 OpenType 特性
         if (string.IsNullOrWhiteSpace(config.FontFamily))
         {
-            Resources["DligFontFamily"] = null;
-            Resources["DligFontFeatures"] = null;
+            Edit.ActiveDligFontFamily = null;
+            Edit.ActiveDligFontFeatures = null;
             return;
         }
 
@@ -418,16 +414,13 @@ public partial class MainWindow : Window
 
         if (!fontInstalled)
         {
+            Edit.ActiveDligFontFamily = null;
+            Edit.ActiveDligFontFeatures = null;
             StatusBar.UpdateStatus(
                 $"字体 '{config.FontFamily}' 未安装，连字功能不可用",
                 StatusBarViewModel.StatusType.Warn);
-            Resources["DligFontFamily"] = null;
-            Resources["DligFontFeatures"] = null;
             return;
         }
-
-        _translationTextBox.FontFamily = fontFamily;
-        QuickInputItemsControl.FontFamily = fontFamily;
 
         FontFeatureCollection? features = null;
         if (!string.IsNullOrWhiteSpace(config.FontFeatures))
@@ -435,11 +428,10 @@ public partial class MainWindow : Window
             features = new FontFeatureCollection();
             foreach (var part in config.FontFeatures.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 features.Add(FontFeature.Parse(part));
-
-            _translationTextBox.FontFeatures = features;
-            QuickInputItemsControl.FontFeatures = features;
         }
 
+        Edit.ActiveDligFontFamily = fontFamily;
+        Edit.ActiveDligFontFeatures = features;
         Resources["DligFontFamily"] = fontFamily;
         Resources["DligFontFeatures"] = features;
     }

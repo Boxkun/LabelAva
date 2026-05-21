@@ -223,7 +223,9 @@
                                                   HorizontalScrollBarVisibility="Hidden"
                                                   PointerWheelChanged="OnToolbarScrollWheel">
                                         <ItemsControl x:Name="QuickInputItemsControl"
-                                                      ItemsSource="{Binding Edit.QuickInputSlots}">
+                                                      ItemsSource="{Binding Edit.QuickInputSlots}"
+                                                      FontFamily="{Binding Edit.ActiveDligFontFamily}"
+                                                      FontFeatures="{Binding Edit.ActiveDligFontFeatures}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <StackPanel Orientation="Horizontal" Spacing="4"/>
@@ -245,6 +247,8 @@
                                          MinHeight="120"
                                          MaxHeight="300"
                                          IsEnabled="{Binding IsTextEditable}"
+                                         FontFamily="{Binding Edit.ActiveDligFontFamily}"
+                                         FontFeatures="{Binding Edit.ActiveDligFontFeatures}"
                                          Watermark="选中文本节点以编辑"
                                          Text="{Binding Navigation.SelectedTranslationItem.Text,
                                                         Mode=TwoWay,
