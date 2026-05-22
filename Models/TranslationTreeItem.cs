@@ -16,6 +16,9 @@ public class TranslationTreeItem : INotifyPropertyChanged
     /// <summary>对应的数据层标签对象。Text 属性透传此对象的 Text。</summary>
     public LabelItem? LabelItem { get; set; }
 
+    /// <summary>文本变更事件：(oldText, newText)。由 Text setter 即时触发。</summary>
+    public event Action<string, string>? TextChanged;
+
     public int Index
     {
         get => _index;
@@ -38,8 +41,10 @@ public class TranslationTreeItem : INotifyPropertyChanged
             if (LabelItem == null) return;
             if (LabelItem.Text != value)
             {
+                var old = LabelItem.Text ?? string.Empty;
                 LabelItem.Text = value;
                 OnPropertyChanged();
+                TextChanged?.Invoke(old, value);
             }
         }
     }

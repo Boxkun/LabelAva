@@ -8,7 +8,6 @@ namespace LabelAva.ViewModels;
 public partial class HistoryViewModel : ObservableObject
 {
     private readonly HistoryManager _historyManager;
-    private readonly Action _commitCurrentEdit;
     private readonly StatusBarViewModel _statusBar;
 
     // ========================
@@ -34,7 +33,6 @@ public partial class HistoryViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
-        _commitCurrentEdit();
         _historyManager.Undo();
         _statusBar.UpdateStatus("已撤销", StatusBarViewModel.StatusType.Info);
     }
@@ -42,7 +40,6 @@ public partial class HistoryViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRedo))]
     private void Redo()
     {
-        _commitCurrentEdit();
         _historyManager.Redo();
         _statusBar.UpdateStatus("已重做", StatusBarViewModel.StatusType.Info);
     }
@@ -51,10 +48,9 @@ public partial class HistoryViewModel : ObservableObject
     // 构造函数
     // ========================
 
-    public HistoryViewModel(HistoryManager historyManager, Action commitCurrentEdit, StatusBarViewModel statusBar)
+    public HistoryViewModel(HistoryManager historyManager, StatusBarViewModel statusBar)
     {
         _historyManager = historyManager;
-        _commitCurrentEdit = commitCurrentEdit;
         _statusBar = statusBar;
         _historyManager.HistoryChanged += OnHistoryChanged;
     }

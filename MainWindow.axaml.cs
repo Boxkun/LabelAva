@@ -61,11 +61,7 @@ public partial class MainWindow : Window
     // 键盘导航标志：true 表示选中变更由快捷键（Up/Down/PageUp/PageDown）触发，强制自动聚焦
     private bool _isKeyboardNavigation = false;
 
-    // 编辑基线：选中标记时快照 LabelItem.Text，CommitCurrentEdit 据此判断变更
-    private string? _editingBaselineText;
-
-    private static void DbgLog(string msg) =>
-        System.Diagnostics.Debug.WriteLine($"[UNDO-DBG] {DateTime.Now:HH:mm:ss.fff} {msg}");
+    private TranslationTreeItem? _subscribedTranslationItem;
 
     // 异步初始化标志：防止初始化完成前的空引用
     private bool _isInitialized = false;
@@ -238,10 +234,10 @@ public partial class MainWindow : Window
 
             // ---- Phase 3: VM 创建（有依赖顺序） ----
             var historyManager = new HistoryManager();
-            ViewModel.History = new HistoryViewModel(historyManager, () => CommitCurrentEdit(), StatusBar);
+            ViewModel.History = new HistoryViewModel(historyManager, StatusBar);
             ViewModel.History.HistoryStateChanged += OnHistoryStateChanged;
 
-            ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar, () => CommitCurrentEdit());
+            ViewModel.CanvasWorkspace = new CanvasWorkspaceViewModel(ViewModel.History, StatusBar);
             ViewModel.CanvasWorkspace.TransformChanged += OnCanvasTransformChanged;
 
             ViewModel.Edit = new EditViewModel(StatusBar);
@@ -258,7 +254,7 @@ public partial class MainWindow : Window
                 ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync,
                 ShowImageAssociationDialogAsync
             );
-            ViewModel.Document.BeforeSave = () => CommitCurrentEdit(forceCommit: true);
+            ViewModel.Document.BeforeSave = null;
             ViewModel.Document.DocumentOpened += OnDocumentOpened;
             ViewModel.Document.DocumentClosed += OnDocumentClosed;
 
@@ -266,7 +262,6 @@ public partial class MainWindow : Window
             CanvasControl.SettingsProvider = _settingsProvider;
             CanvasControl.UpdateSettings(_settingsProvider.Current); // 初始化鼠标配置
             GroupIndexToBrushConverter.Initialize(_settingsProvider);
-            CanvasControl.CommitCurrentEdit = () => CommitCurrentEdit();
             CanvasControl.SelectLabelByIndex = SelectLabelByIndex;
             CanvasControl.IsEditMode = Edit.IsEditMode;
             CanvasControl.LabelClicked += (_, labelIndex) =>
@@ -866,10 +861,8 @@ public partial class MainWindow : Window
 
         // 【核心修复】将视图重建推迟到更晚执行，确保 SelectionChanged 等事件完全处理完毕
         // 使用更低的优先级，确保在 TextBox 值设置和光标定位之后执行
-        DbgLog($"HistChg: queue Rebuild baseline='{_editingBaselineText}'");
         Dispatcher.UIThread.Post(() =>
         {
-            DbgLog($"Rebuild BEGIN: baseline='{_editingBaselineText}' _isUpdatingUI={_isUpdatingUI}");
             _isUpdatingUI = true; // 上锁
             try
             {
@@ -878,7 +871,6 @@ public partial class MainWindow : Window
             finally
             {
                 _isUpdatingUI = false; // 解锁
-                DbgLog($"Rebuild END: baseline='{_editingBaselineText}' _isUpdatingUI={_isUpdatingUI}");
             }
         }, DispatcherPriority.Loaded); // 使用 Loaded 优先级，比 Input 优先级更低
     }
@@ -994,7 +986,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnEditModeChanged(object? sender, EventArgs e)
     {
-        CommitCurrentEdit();
         CanvasControl.IsEditMode = Edit.IsEditMode;
         if (Edit.IsEditMode)
         {
@@ -1072,10 +1063,7 @@ public partial class MainWindow : Window
         var newCaretPos = caretIndex + slot.Character.Length;
         _translationTextBox.CaretIndex = newCaretPos;
         _translationTextBox.Focus();
-        CommitCurrentEdit();
-
-        // CommitCurrentEdit 触发 RebuildCurrentView（Loaded），其光标重置于末尾；Background 优先级更低，
-        // 故在本帧最后恢复为正确的插入后光标位置
+        // TextChanged 事件已推入历史栈并触发 RebuildCurrentView；Background 修复光标位置
         Dispatcher.UIThread.Post(() =>
         {
             if (_translationTextBox is not { IsEnabled: true }) return;
@@ -1096,7 +1084,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnGroupSelectionChanged(object? sender, RoutedEventArgs e)
     {
-        CommitCurrentEdit();
         if (sender is RadioButton radioButton)
         {
             if (radioButton == Group0RadioButton)
@@ -1201,7 +1188,6 @@ public partial class MainWindow : Window
         _isIntentionalBlur = true;
         
         // 3. 提交当前编辑
-        CommitCurrentEdit();
         e.Handled = true;
         
         // 4. 主动清除焦点（正常路径；若焦点被抢走，GotFocus 拦截器处理）
@@ -1235,45 +1221,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTranslationTextBoxLostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        DbgLog($"LostFocus: _isUpdatingUI={_isUpdatingUI} baseline='{_editingBaselineText}'");
-        if (_isUpdatingUI) return;
-        CommitCurrentEdit();
     }
 
     /// <summary>
-    /// 提交当前编辑的文本到撤销/重做历史栈中。
-    /// 比较 LabelItem.Text 与选中时的编辑基线，有变更则推入 ChangeTextCommand。
-    /// </summary>
-    private void CommitCurrentEdit(bool forceCommit = false)
-    {
-        if (!_isInitialized) return;
-        if (TryGetCurrentLabels() is not { } labels) return;
-        if (Navigation.SelectedTranslationItem is not { } currentTreeItem) return;
-
-        if (!forceCommit && !Edit.IsEditMode) return;
-
-        var labelItem = currentTreeItem.LabelItem;
-        if (labelItem == null) return;
-
-        string newText = labelItem.Text ?? string.Empty;
-        string oldText = _editingBaselineText ?? labelItem.Text ?? string.Empty;
-
-        DbgLog($"Commit: baseline='{oldText}' labelText='{newText}' caller={new System.Diagnostics.StackTrace().GetFrame(1)?.GetMethod()?.Name}");
-
-        if (oldText != newText)
-        {
-            DbgLog($"Commit: PUSH ChangeTextCommand '{oldText}'→'{newText}'");
-            var command = new ChangeTextCommand(labelItem, oldText, newText);
-            ViewModel.History.ExecuteCommand(command);
-        }
-        else
-        {
-            DbgLog($"Commit: no-op (equal)");
-        }
-
-        _editingBaselineText = newText;
-        DbgLog($"Commit: baseline↑='{newText}'");
-    }
 
 
     /// <summary>
@@ -1291,7 +1241,6 @@ public partial class MainWindow : Window
             {
                 if (_translationTextBox != null && _translationTextBox.IsFocused)
                 {
-                    CommitCurrentEdit();
                     e.Handled = true;
                 }
             }
@@ -1310,15 +1259,12 @@ public partial class MainWindow : Window
             if (!RequireEditMode()) { e.Handled = true; return; }
             if (isShiftPressed)
             {
-                DbgLog($"KeyDn: Ctrl+Shift+Z→Redo baseline='{_editingBaselineText}'");
                 ViewModel.History.RedoCommand.Execute(null);
             }
             else
             {
-                DbgLog($"KeyDn: Ctrl+Z→Undo baseline='{_editingBaselineText}'");
                 ViewModel.History.UndoCommand.Execute(null);
             }
-            DbgLog($"KeyDn: after Undo/Redo baseline='{_editingBaselineText}'");
             e.Handled = true;
         }
         else if (isCtrlPressed && e.Key == Key.Y)
@@ -1352,7 +1298,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void ExecuteShortcutAction(ShortcutAction action)
     {
-        CommitCurrentEdit();
         switch (action)
         {
             case ShortcutAction.NavigateUp:
@@ -1416,7 +1361,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void SelectLabelByIndex(int labelIndex)
     {
-        CommitCurrentEdit();
         // 委托到 NavigationViewModel 执行核心选中逻辑
         Navigation.SelectLabelByIndex(labelIndex);
         
@@ -1566,7 +1510,6 @@ public partial class MainWindow : Window
         var labelToRemove = labels.FirstOrDefault(l => l.TextIndex == labelIndex);
         if (labelToRemove == null) return;
 
-        CommitCurrentEdit();
         var command = new DeleteLabelCommand(labels, labelToRemove);
         ViewModel.History.ExecuteCommand(command);
     }
@@ -1789,8 +1732,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnToggleGroup(object? sender, RoutedEventArgs e)
     {
-        // 切换分组前先提交当前正在编辑的文本
-        CommitCurrentEdit();
         if (!RequireEditMode()) return;
 
         var selectedItem = Navigation.SelectedItem;
@@ -1818,9 +1759,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void DeleteSelectedLabel()
     {
-        // 删除前先提交当前正在编辑的文本
-        CommitCurrentEdit();
-        
         var selectedItem = Navigation.SelectedItem;
         if (selectedItem is not TranslationTreeItem translationItem)
             return;
@@ -1845,8 +1783,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (!_isUpdatingUI)
-            CommitCurrentEdit();
         if (_isDragActive) return;
 
         var selectedItem = ImageTreeView.SelectedItem;
@@ -1870,9 +1806,11 @@ public partial class MainWindow : Window
 
         if (selectedItem is TranslationTreeItem targetChildItem)
         {
-            // 快照编辑基线——CommitCurrentEdit 据此判断是否产生了文本变更
-            _editingBaselineText = targetChildItem.Text;
-            DbgLog($"SelChg: baseline snap='{_editingBaselineText}' _isUpdatingUI={_isUpdatingUI}");
+            // 订阅/取消 TextChanged：当前选中项的文本变更直接推入历史栈
+            if (_subscribedTranslationItem != null)
+                _subscribedTranslationItem.TextChanged -= OnTranslationTextChanged;
+            _subscribedTranslationItem = targetChildItem;
+            _subscribedTranslationItem.TextChanged += OnTranslationTextChanged;
 
             CanvasControl.HighlightLabel(targetChildItem.Index);
 
@@ -1912,6 +1850,14 @@ public partial class MainWindow : Window
         {
             CanvasControl.HighlightLabel(-1);
         }
+    }
+
+    private void OnTranslationTextChanged(string oldText, string newText)
+    {
+        if (_isUpdatingUI) return;
+        var labelItem = Navigation.SelectedTranslationItem?.LabelItem;
+        if (labelItem == null) return;
+        ViewModel.History.ExecuteCommand(new ChangeTextCommand(labelItem, oldText, newText));
     }
     
     /// <summary>
@@ -2073,7 +2019,6 @@ public partial class MainWindow : Window
                 // 进入 DRAGGING 状态
                 _isTreeItemDragging = false;
                 _isDragActive = true;
-                CommitCurrentEdit();
                 e.Pointer.Capture((Control)sender!);
                 ShowTreePreview(_draggedTreeItem);
                 UpdateTreePreviewPos(e);

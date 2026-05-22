@@ -15,7 +15,6 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
 {
     private readonly HistoryViewModel _history;
     private readonly StatusBarViewModel _statusBar;
-    private readonly Action _commitCurrentEdit;
 
     // ========================
     // 视口状态属性（原 ImageViewportViewModel）
@@ -243,14 +242,12 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
     /// <summary>删除标签</summary>
     public void DeleteLabel(List<LabelItem> labels, LabelItem itemToDelete)
     {
-        _commitCurrentEdit();
         _history.ExecuteCommand(new DeleteLabelCommand(labels, itemToDelete));
     }
 
     /// <summary>切换标签分组</summary>
     public void ChangeGroup(LabelItem label, int oldGroupIndex, int newGroupIndex)
     {
-        _commitCurrentEdit();
         _history.ExecuteCommand(new ChangeGroupCommand(label, oldGroupIndex, newGroupIndex));
     }
 
@@ -319,11 +316,10 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
     // 构造函数
     // ========================
 
-    public CanvasWorkspaceViewModel(HistoryViewModel history, StatusBarViewModel statusBar, Action commitCurrentEdit)
+    public CanvasWorkspaceViewModel(HistoryViewModel history, StatusBarViewModel statusBar)
     {
         _history = history;
         _statusBar = statusBar;
-        _commitCurrentEdit = commitCurrentEdit;
     }
 
     // ========================
