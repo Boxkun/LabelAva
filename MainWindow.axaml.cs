@@ -63,6 +63,8 @@ public partial class MainWindow : Window
 
     private TranslationTreeItem? _subscribedTranslationItem;
 
+    private bool _isHandlingCtrlEnter;
+
     // 异步初始化标志：防止初始化完成前的空引用
     private bool _isInitialized = false;
 
@@ -223,7 +225,6 @@ public partial class MainWindow : Window
             _editPanel = this.FindControl<Border>("EditPanel");
             if (_translationTextBox != null)
             {
-                _translationTextBox.LostFocus += OnTranslationTextBoxLostFocus;
                 _translationTextBox.GotFocus += OnTranslationTextBoxGotFocus;
                 // Ctrl+Enter 提交：气泡阶段处理（handledEventsToo:true 确保即使事件已处理也触发）
                 _translationTextBox.AddHandler(InputElement.KeyDownEvent, OnTranslationTextBoxKeyDown,
@@ -1160,9 +1161,8 @@ public partial class MainWindow : Window
 
 
     /// <summary>
-    /// 文本框按键处理：Ctrl+Enter 提交当前编辑并取消文本框聚焦。
-    /// 设置 _isIntentionalBlur 标志，若后续任何代码试图重新聚焦文本框，
-    /// GotFocus 拦截器会立即踢走焦点。不依赖时序/优先级猜测。
+    /// <summary>
+    /// 文本框按键处理：Ctrl+Enter 取消文本框聚焦并阻止 Enter 插入换行。
     /// </summary>
     private void OnTranslationTextBoxKeyDown(object? sender, KeyEventArgs e)
     {
@@ -1172,33 +1172,28 @@ public partial class MainWindow : Window
         if (!isCtrlPressed || (e.Key != Key.Return && e.Key != Key.Enter))
             return;
         
-        // 1. 清除 TextBox 因 AcceptsReturn 自动插入的尾随换行符
-        if (_translationTextBox != null)
+        _isHandlingCtrlEnter = true;
+        try
         {
-            var text = _translationTextBox.Text ?? "";
+            var text = _translationTextBox?.Text ?? "";
             if (text.Length > 0 && text[^1] == '\n')
             {
-                _translationTextBox.Text = text[..^1]; // 移除 LF
+                _translationTextBox!.Text = text[..^1];
                 if (_translationTextBox.Text.Length > 0 && _translationTextBox.Text[^1] == '\r')
-                    _translationTextBox.Text = _translationTextBox.Text[..^1]; // 移除 CR
+                    _translationTextBox.Text = _translationTextBox.Text[..^1];
             }
         }
-        
-        // 2. 设置主动离焦标志（在提交前，确保标志先于任何 Post 入队）
+        finally { _isHandlingCtrlEnter = false; }
+
+        e.Handled = true;
         _isIntentionalBlur = true;
         
-        // 3. 提交当前编辑
-        e.Handled = true;
-        
-        // 4. 主动清除焦点（正常路径；若焦点被抢走，GotFocus 拦截器处理）
         Dispatcher.UIThread.Post(() =>
-        {
-            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
-            // StatusBar.UpdateStatus("已提交编辑", StatusBarViewModel.StatusType.Success);
-        }, DispatcherPriority.Loaded);
+            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus(),
+            DispatcherPriority.Loaded);
         
-        // 5. 兜底复位（若 RebuildCurrentView 未触发自动聚焦，由 Background 复位标志）
-        Dispatcher.UIThread.Post(() => _isIntentionalBlur = false, DispatcherPriority.Background);
+        Dispatcher.UIThread.Post(() => _isIntentionalBlur = false,
+            DispatcherPriority.Background);
     }
 
     /// <summary>
@@ -1214,13 +1209,6 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(
             () => TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus(),
             DispatcherPriority.Input);
-    }
-
-    /// <summary>
-    /// 文本框失去焦点时，直接结算当前文本
-    /// </summary>
-    private void OnTranslationTextBoxLostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
     }
 
     /// <summary>
@@ -1854,7 +1842,7 @@ public partial class MainWindow : Window
 
     private void OnTranslationTextChanged(string oldText, string newText)
     {
-        if (_isUpdatingUI) return;
+        if (_isUpdatingUI || _isHandlingCtrlEnter) return;
         var labelItem = Navigation.SelectedTranslationItem?.LabelItem;
         if (labelItem == null) return;
         ViewModel.History.ExecuteCommand(new ChangeTextCommand(labelItem, oldText, newText));
