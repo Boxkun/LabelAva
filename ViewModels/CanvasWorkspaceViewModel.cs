@@ -189,6 +189,7 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
     public void CenterOnLabel(double normalizedX, double normalizedY)
     {
         if (_imageSize.Width <= 0 || _imageSize.Height <= 0) return;
+        if (_containerSize.Width <= 0 || _containerSize.Height <= 0) return;
 
         double labelX = normalizedX * _imageSize.Width;
         double labelY = normalizedY * _imageSize.Height;
