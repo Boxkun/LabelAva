@@ -41,8 +41,7 @@ public partial class PreferencesWindow : Window
             Colors = source.Colors.Clone(),
             LabelSize = source.LabelSize,
             AutoFocusTextBox = source.AutoFocusTextBox,
-            AutoSaveEnabled = source.AutoSaveEnabled,
-            AutoSaveIntervalMinutes = source.AutoSaveIntervalMinutes,
+            RecoveryDebounceMs = source.RecoveryDebounceMs,
             ActiveDligConfig = source.ActiveDligConfig,
             DefaultQuickInputs = source.DefaultQuickInputs.Select(s => new QuickInputSlot { Label = s.Label, Character = s.Character }).ToList(),
             MouseConfig = source.MouseConfig,
@@ -84,13 +83,8 @@ public partial class PreferencesWindow : Window
             if (LabelSizeUpDown != null)
                 LabelSizeUpDown.Value = _settings.LabelSize;
 
-            if (AutoSaveCheckBox != null)
-            {
-                AutoSaveCheckBox.IsChecked = _settings.AutoSaveEnabled;
-                AutoSaveIntervalUpDown.IsEnabled = _settings.AutoSaveEnabled;
-            }
-            if (AutoSaveIntervalUpDown != null)
-                AutoSaveIntervalUpDown.Value = _settings.AutoSaveIntervalMinutes;
+            if (RecoveryDebounceUpDown != null)
+                RecoveryDebounceUpDown.Value = _settings.RecoveryDebounceMs;
 
             InitMouseConfigUI();
         }
@@ -212,21 +206,6 @@ public partial class PreferencesWindow : Window
         _changeKind |= SettingsChangeKind.LabelSize;
     }
 
-    private void OnAutoSaveEnabledChanged(object? sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingUI || AutoSaveCheckBox == null || AutoSaveIntervalUpDown == null) return;
-        _settings.AutoSaveEnabled = AutoSaveCheckBox.IsChecked == true;
-        AutoSaveIntervalUpDown.IsEnabled = _settings.AutoSaveEnabled;
-        _changeKind |= SettingsChangeKind.AutoSave;
-    }
-
-    private void OnAutoSaveIntervalChanged(object? sender, NumericUpDownValueChangedEventArgs e)
-    {
-        if (_isUpdatingUI || AutoSaveIntervalUpDown == null) return;
-        _settings.AutoSaveIntervalMinutes = (int)(AutoSaveIntervalUpDown.Value ?? 3);
-        _changeKind |= SettingsChangeKind.AutoSave;
-    }
-
     private void ApplyColorChange(TextBox? textBox, Border preview, Action<ColorSettings, string> applyAction)
     {
         if (_isUpdatingUI || textBox == null) return;
@@ -258,6 +237,12 @@ public partial class PreferencesWindow : Window
         {
             return false;
         }
+    }
+
+    private void OnRecoveryDebounceChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (_isUpdatingUI || RecoveryDebounceUpDown == null) return;
+        _settings.RecoveryDebounceMs = (int)(RecoveryDebounceUpDown.Value ?? 2000);
     }
 
     private void OnResetColorDefaults(object? sender, RoutedEventArgs e)

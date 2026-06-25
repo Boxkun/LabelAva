@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     
     // 编辑模式相关
     private TextBox? _translationTextBox;
+    private DispatcherTimer? _recoveryDebounce;
     private Border? _editPanel;
     
     // UI 锁：防止命令执行时触发 UI 事件污染历史栈
@@ -229,7 +230,21 @@ public partial class MainWindow : Window
                 // Ctrl+Enter 提交：气泡阶段处理（handledEventsToo:true 确保即使事件已处理也触发）
                 _translationTextBox.AddHandler(InputElement.KeyDownEvent, OnTranslationTextBoxKeyDown,
                     handledEventsToo: true);
+                // 崩溃恢复：逐字写入恢复文件（200ms 防抖）
+                _translationTextBox.TextChanged += OnTranslationTextBoxTextChanged;
             }
+
+            // 崩溃恢复防抖定时器
+            var debounceMs = Math.Clamp(_settingsProvider.Current.RecoveryDebounceMs, 100, 2000);
+            _recoveryDebounce = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(debounceMs)
+            };
+            _recoveryDebounce.Tick += (_, _) =>
+            {
+                _recoveryDebounce.Stop();
+                Document.WriteImmediateRecovery();
+            };
 
             _imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
 
@@ -254,6 +269,7 @@ public partial class MainWindow : Window
                 fileService, ViewModel.History, StatusBar,
                 ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync,
                 ShowImageAssociationDialogAsync,
+                ShowRecoveryDialogAsync,
                 _settingsProvider
             );
             ViewModel.Document.BeforeSave = null;
@@ -523,7 +539,11 @@ public partial class MainWindow : Window
         // 清空其他数据（TranslationData 由 DocumentViewModel 管理，无需手动清理）
         Navigation.ImageFolderPath = null;
         Navigation.ImageNames.Clear();
-        
+
+        // 崩溃恢复：正常退出时清理恢复文件
+        if (Document.HasDocument && !string.IsNullOrEmpty(Document.FilePath))
+            RecoveryService.Cleanup(Document.FilePath);
+
         // 强制退出整个进程
         Environment.Exit(0);
     }
@@ -617,6 +637,95 @@ public partial class MainWindow : Window
         dialog.Measure(new Size(420, 140));
         dialog.Arrange(new Rect(0, 0, 420, 140));
 
+        await dialog.ShowDialog(this);
+
+        return result;
+    }
+
+    /// <summary>
+    /// 崩溃恢复对话框（作为回调注入 DocumentViewModel）
+    /// </summary>
+    private async Task<RecoveryResult> ShowRecoveryDialogAsync(string message)
+    {
+        var result = RecoveryResult.Discard;
+
+        var dialog = new Window
+        {
+            Title = "崩溃恢复",
+            Width = 440,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            ShowInTaskbar = false,
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
+            Background = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Brushes.White
+        };
+
+        var rootGrid = new Grid();
+        rootGrid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        rootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+
+        var contentPanel = new DockPanel { Margin = new Thickness(24, 20, 24, 12) };
+
+        var warningIcon = new FluentIcons.Avalonia.FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.Warning,
+            IconVariant = FluentIcons.Common.IconVariant.Color,
+            FontSize = 48,
+            Margin = new Thickness(0, 0, 16, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+        };
+        DockPanel.SetDock(warningIcon, Dock.Left);
+        contentPanel.Children.Add(warningIcon);
+
+        var textBlock = new TextBlock
+        {
+            Text = message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 14,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            Margin = new Thickness(0, 12, 0, 0),
+        };
+        contentPanel.Children.Add(textBlock);
+
+        Grid.SetRow(contentPanel, 0);
+        rootGrid.Children.Add(contentPanel);
+
+        var buttonArea = new Border { Margin = new Thickness(16, 0, 16, 16) };
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            Spacing = 12,
+        };
+
+        var recoverButton = new Button
+        {
+            Content = "恢复",
+            Width = 80,
+            Height = 32,
+        };
+        recoverButton.Click += (_, _) =>
+        {
+            result = RecoveryResult.Recover;
+            dialog.Close();
+        };
+        buttonPanel.Children.Add(recoverButton);
+
+        var discardButton = new Button
+        {
+            Content = "丢弃",
+            Width = 80,
+            Height = 32,
+        };
+        discardButton.Click += (_, _) => { dialog.Close(); };
+        buttonPanel.Children.Add(discardButton);
+
+        buttonArea.Child = buttonPanel;
+        Grid.SetRow(buttonArea, 1);
+        rootGrid.Children.Add(buttonArea);
+
+        dialog.Content = rootGrid;
         await dialog.ShowDialog(this);
 
         return result;
@@ -859,6 +968,9 @@ public partial class MainWindow : Window
         if (Document.HasDocument)
         {
             Document.SetDirty(true);
+            // 崩溃恢复：打断 TextChanged 防抖，立即落盘
+            _recoveryDebounce?.Stop();
+            Document.WriteImmediateRecovery();
         }
 
         // 【核心修复】将视图重建推迟到更晚执行，确保 SelectionChanged 等事件完全处理完毕
@@ -1195,6 +1307,16 @@ public partial class MainWindow : Window
         
         Dispatcher.UIThread.Post(() => _isIntentionalBlur = false,
             DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// 崩溃恢复：TextBox 逐字变更时启动 200ms 防抖定时器。
+    /// </summary>
+    private void OnTranslationTextBoxTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_recoveryDebounce == null) return;
+        _recoveryDebounce.Stop();
+        _recoveryDebounce.Start();
     }
 
     /// <summary>

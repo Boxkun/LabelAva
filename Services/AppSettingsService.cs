@@ -99,10 +99,6 @@ public static class AppSettingsService
         // 鼠标配置（值类型）
         defaults.MouseConfig = oldSettings.MouseConfig;
 
-        // 自动保存
-        defaults.AutoSaveEnabled = oldSettings.AutoSaveEnabled;
-        defaults.AutoSaveIntervalMinutes = oldSettings.AutoSaveIntervalMinutes;
-
         // 默认快捷输入（仅旧版有此字段且非空时才拷贝）
         if (oldSettings.DefaultQuickInputs is { Count: > 0 })
             defaults.DefaultQuickInputs = oldSettings.DefaultQuickInputs
@@ -303,20 +299,19 @@ public class AppSettingsDto
     public string? Version { get; set; }
     public ShortcutBindingsDto? Shortcuts { get; set; }
     public ColorSettingsDto? Colors { get; set; }
-    public int LabelSize { get; set; } = 32;
-    public bool AutoFocusTextBox { get; set; } = true;
-    public double WindowWidth { get; set; } = 1200;
-    public double WindowHeight { get; set; } = 800;
-    public int WindowX { get; set; } = -1;
-    public int WindowY { get; set; } = -1;
-    public bool WindowMaximized { get; set; }
+    public int? LabelSize { get; set; }
+    public bool? AutoFocusTextBox { get; set; }
+    public double? WindowWidth { get; set; }
+    public double? WindowHeight { get; set; }
+    public int? WindowX { get; set; }
+    public int? WindowY { get; set; }
+    public bool? WindowMaximized { get; set; }
     public string? ActiveDligConfig { get; set; }
     public List<Models.QuickInputSlot>? DefaultQuickInputs { get; set; }
     public string? MouseLeftButton { get; set; }
     public string? MouseMiddleButton { get; set; }
     public string? MouseRightButton { get; set; }
-    public bool AutoSaveEnabled { get; set; } = true;
-    public int AutoSaveIntervalMinutes { get; set; } = 3;
+    public int? RecoveryDebounceMs { get; set; }
 
     public AppSettingsDto() { }
 
@@ -339,40 +334,37 @@ public class AppSettingsDto
         MouseLeftButton = settings.MouseConfig.LeftButton.ToString();
         MouseMiddleButton = settings.MouseConfig.MiddleButton.ToString();
         MouseRightButton = settings.MouseConfig.RightButton.ToString();
-        AutoSaveEnabled = settings.AutoSaveEnabled;
-        AutoSaveIntervalMinutes = settings.AutoSaveIntervalMinutes;
+        RecoveryDebounceMs = settings.RecoveryDebounceMs;
     }
 
     public Models.AppSettings ToSettings()
     {
-        var shortcuts = Shortcuts?.ToBindings() ?? Models.ShortcutBindings.CreateDefaults();
-        var colors = Colors?.ToSettings() ?? Models.ColorSettings.CreateDefaults();
+        var s = Models.AppSettings.CreateDefaults();
 
-        return new Models.AppSettings
+        if (Version != null) s.Version = Version;
+        if (Shortcuts != null) s.Shortcuts = Shortcuts.ToBindings();
+        if (Colors != null) s.Colors = Colors.ToSettings();
+        if (LabelSize.HasValue) s.LabelSize = LabelSize.Value;
+        if (AutoFocusTextBox.HasValue) s.AutoFocusTextBox = AutoFocusTextBox.Value;
+        if (WindowWidth.HasValue) s.WindowWidth = WindowWidth.Value;
+        if (WindowHeight.HasValue) s.WindowHeight = WindowHeight.Value;
+        if (WindowX.HasValue) s.WindowX = WindowX.Value;
+        if (WindowY.HasValue) s.WindowY = WindowY.Value;
+        if (WindowMaximized.HasValue) s.WindowMaximized = WindowMaximized.Value;
+        if (ActiveDligConfig != null) s.ActiveDligConfig = ActiveDligConfig;
+        if (DefaultQuickInputs is { Count: > 0 })
+            s.DefaultQuickInputs = DefaultQuickInputs
+                .Select(x => new Models.QuickInputSlot { Label = x.Label ?? "", Character = x.Character ?? "" })
+                .ToList();
+        s.MouseConfig = new Models.CanvasMouseConfig
         {
-            Version = Version ?? "0.3.0",
-            Shortcuts = shortcuts,
-            Colors = colors,
-            LabelSize = LabelSize,
-            AutoFocusTextBox = AutoFocusTextBox,
-            WindowWidth = WindowWidth,
-            WindowHeight = WindowHeight,
-            WindowX = WindowX,
-            WindowY = WindowY,
-            WindowMaximized = WindowMaximized,
-            ActiveDligConfig = ActiveDligConfig,
-            DefaultQuickInputs = DefaultQuickInputs?
-                .Select(s => new Models.QuickInputSlot { Label = s.Label ?? "", Character = s.Character ?? "" })
-                .ToList() ?? Models.AppSettings.CreateDefaultQuickInputs(),
-            MouseConfig = new Models.CanvasMouseConfig
-            {
-                LeftButton   = ParseMouseAction(MouseLeftButton,   Models.CanvasMouseAction.AddSelect),
-                MiddleButton = ParseMouseAction(MouseMiddleButton, Models.CanvasMouseAction.Pan),
-                RightButton  = ParseMouseAction(MouseRightButton,  Models.CanvasMouseAction.Pan),
-            },
-            AutoSaveEnabled = AutoSaveEnabled,
-            AutoSaveIntervalMinutes = AutoSaveIntervalMinutes,
+            LeftButton   = ParseMouseAction(MouseLeftButton,   Models.CanvasMouseAction.AddSelect),
+            MiddleButton = ParseMouseAction(MouseMiddleButton, Models.CanvasMouseAction.Pan),
+            RightButton  = ParseMouseAction(MouseRightButton,  Models.CanvasMouseAction.Pan),
         };
+        if (RecoveryDebounceMs.HasValue) s.RecoveryDebounceMs = RecoveryDebounceMs.Value;
+
+        return s;
     }
 
     private static Models.CanvasMouseAction ParseMouseAction(string? s, Models.CanvasMouseAction fallback)

@@ -54,8 +54,7 @@ public enum SettingsChangeKind
     AutoFocus  = 1 << 3,
     DligConfig = 1 << 4,
     CanvasMouse = 1 << 5,
-    AutoSave   = 1 << 6,
-    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig | CanvasMouse | AutoSave,
+    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig | CanvasMouse,
 }
 
 public class ShortcutBindings
@@ -324,8 +323,7 @@ public class AppSettings
     public ColorSettings Colors { get; set; } = ColorSettings.CreateDefaults();
     public int LabelSize { get; set; } = 32;
     public bool AutoFocusTextBox { get; set; } = true;
-    public bool AutoSaveEnabled { get; set; } = true;
-    public int AutoSaveIntervalMinutes { get; set; } = 3;
+    public int RecoveryDebounceMs { get; set; } = 2000;
     public double WindowWidth { get; set; } = 1200;
     public double WindowHeight { get; set; } = 800;
     public int WindowX { get; set; } = -1;
@@ -335,23 +333,13 @@ public class AppSettings
     public List<QuickInputSlot> DefaultQuickInputs { get; set; } = CreateDefaultQuickInputs();
     public CanvasMouseConfig MouseConfig { get; set; } = CanvasMouseConfig.CreateDefaults();
 
+    // 属性初始化器已覆盖值类型默认值，此处仅创建引用类型新实例以防共享
     public static AppSettings CreateDefaults()
     {
         return new AppSettings
         {
-            Version = "0.3.0",
             Shortcuts = ShortcutBindings.CreateDefaults(),
             Colors = ColorSettings.CreateDefaults(),
-            LabelSize = 32,
-            AutoFocusTextBox = true,
-            AutoSaveEnabled = true,
-            AutoSaveIntervalMinutes = 3,
-            WindowWidth = 1200,
-            WindowHeight = 800,
-            WindowX = -1,
-            WindowY = -1,
-            WindowMaximized = false,
-            ActiveDligConfig = null,
             DefaultQuickInputs = CreateDefaultQuickInputs(),
         };
     }

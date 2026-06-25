@@ -21,9 +21,8 @@
             <TabItem Header="通用">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
-                        <!-- 自动保存设置 -->
-                        <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold"/>
-                        <!-- <TextBlock Text="配置文档自动保存" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/> -->
+                        <!-- 崩溃恢复/自动保存设置 -->
+                        <TextBlock Text="自动保存" FontSize="16" FontWeight="SemiBold"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
                                 <Grid RowDefinitions="Auto">
@@ -32,27 +31,16 @@
                                         <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="自动保存" VerticalAlignment="Center"/>
-                                    <CheckBox x:Name="AutoSaveCheckBox" Grid.Row="0" Grid.Column="2"
-                                              IsChecked="True" VerticalAlignment="Center"
-                                              IsCheckedChanged="OnAutoSaveEnabledChanged"/>
-                                </Grid>
-                                <Grid RowDefinitions="Auto">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="80"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="保存间隔" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="防抖间隔" VerticalAlignment="Center"/>
                                     <DockPanel Grid.Row="0" Grid.Column="2" VerticalAlignment="Center">
-                                        <TextBlock DockPanel.Dock="Right" Text="分钟" VerticalAlignment="Center" FontSize="12"
+                                        <TextBlock DockPanel.Dock="Right" Text="毫秒" VerticalAlignment="Center" FontSize="12"
                                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="6,0,0,0"/>
-                                        <NumericUpDown x:Name="AutoSaveIntervalUpDown"
-                                                       Minimum="1" Maximum="60"
+                                        <NumericUpDown x:Name="RecoveryDebounceUpDown"
+                                                       Minimum="100" Maximum="2000"
                                                        FormatString="0"
-                                                       Increment="1"
-                                                       Value="3"
-                                                       ValueChanged="OnAutoSaveIntervalChanged"
+                                                       Increment="100"
+                                                       Value="2000"
+                                                       ValueChanged="OnRecoveryDebounceChanged"
                                                        BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
                                     </DockPanel>
                                 </Grid>

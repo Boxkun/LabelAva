@@ -20,6 +20,13 @@ public enum UnsavedChangesResult
     Cancel
 }
 
+/// <summary>崩溃恢复对话框结果</summary>
+public enum RecoveryResult
+{
+    Recover,
+    Discard
+}
+
 /// <summary>图片选择对话框结果</summary>
 public class ImageSelectionResult
 {
@@ -49,12 +56,10 @@ public partial class DocumentViewModel : ObservableObject
     private readonly Func<string, Task<UnsavedChangesResult>> _showUnsavedChangesDialog;
     private readonly Func<List<string>, string, Task<ImageSelectionResult?>> _showImageSelectionDialog;
     private readonly Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> _showImageAssociationDialog;
+    private readonly Func<string, Task<RecoveryResult>> _showRecoveryDialog;
 
     // Redirect 模式专用路径映射
     public Dictionary<string, string> ImagePathMapping { get; } = new();
-
-    // 自动保存定时器
-    private DispatcherTimer? _autoSaveTimer;
 
     // ========================
     // 状态属性
@@ -194,6 +199,16 @@ public partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 即时写入恢复文件（供 MainWindow 双钩子调用）。
+    /// TextChanged 路径经 200ms 防抖后调用；HistoryStateChanged 路径立即调用。
+    /// </summary>
+    public void WriteImmediateRecovery()
+    {
+        if (TranslationData == null || string.IsNullOrEmpty(FilePath)) return;
+        RecoveryService.Write(FilePath, TranslationData, _parser);
+    }
+
+    /// <summary>
     /// 强制关闭文档（跳过确认），用于窗口关闭场景
     /// </summary>
     public void ForceCloseDocument()
@@ -226,6 +241,7 @@ public partial class DocumentViewModel : ObservableObject
         {
             BeforeSave?.Invoke();
             _parser.Save(FilePath, TranslationData);
+            RecoveryService.Delete(FilePath);
             IsDirty = false;
             _statusBar.UpdateStatus($"已保存至: {FileName}", StatusBarViewModel.StatusType.Success);
             return true;
@@ -255,6 +271,7 @@ public partial class DocumentViewModel : ObservableObject
             FilePath = newPath;           // 先更新路径，让 BeforeSave 副作用基于新路径
             BeforeSave?.Invoke();         // 对话框返回后才提交，取消操作无副作用
             _parser.Save(newPath, TranslationData);
+            RecoveryService.Delete(newPath);
             IsDirty = false;
             _statusBar.UpdateStatus($"已保存至: {Path.GetFileName(newPath)}", StatusBarViewModel.StatusType.Success);
             return true;
@@ -320,10 +337,7 @@ public partial class DocumentViewModel : ObservableObject
             IsDirty = false;
             HasDocument = true;
 
-            // 6. 启动自动保存
-            StartAutoSaveTimer();
-
-            // 6.5 检查格式错误（Case 2）
+            // 6. 检查格式错误（Case 2）
             var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
             var items = _validationService.Validate(folderPath, imageNames);
             if (ImageValidationService.HasAnyFormatIssue(folderPath, items))
@@ -380,24 +394,47 @@ public partial class DocumentViewModel : ObservableObject
             if (filePath == null) return;
         }
 
-        try
+        // 检测崩溃恢复备份
+        var recovered = false;
+        if (RecoveryService.Exists(filePath))
         {
-            TranslationData = _parser.Parse(filePath);
+            var recoveryPath = RecoveryService.GetRecoveryFilePath(filePath);
+            var recoveryTime = File.GetLastWriteTime(recoveryPath);
+            var projectName = Path.GetFileName(Path.GetDirectoryName(filePath));
+            var message = $"检测到上一次编辑「{projectName}」时程序异常退出。\n" +
+                          $"最后编辑时间: {recoveryTime:yyyy-MM-dd HH:mm:ss}\n\n要加载此备份吗？";
+            var recoveryResult = await _showRecoveryDialog(message);
+            if (recoveryResult == RecoveryResult.Recover)
+            {
+                TranslationData = RecoveryService.Load(filePath, _parser);
+                recovered = true;
+            }
+            else
+            {
+                RecoveryService.Reject(filePath);
+            }
         }
-        catch (Exception ex)
+
+        // 未从备份恢复则正常解析主文件
+        if (!recovered)
         {
-            _statusBar.UpdateStatus($"解析翻译文件失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-            return;
+            try
+            {
+                TranslationData = _parser.Parse(filePath);
+            }
+            catch (Exception ex)
+            {
+                _statusBar.UpdateStatus($"解析翻译文件失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
+                return;
+            }
         }
 
         FilePath = filePath;
         ImageFolderPath = Path.GetDirectoryName(filePath);
-        IsDirty = false;
+        IsDirty = recovered;
         HasDocument = true;
 
-        StartAutoSaveTimer();
-
-        var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
+        var imageNames = new List<string>(TranslationData!.ImageLabels.Keys);
         if (imageNames.Count > 0)
         {
             var items = _validationService.Validate(ImageFolderPath!, imageNames);
@@ -453,14 +490,15 @@ public partial class DocumentViewModel : ObservableObject
 
     private void CloseDocumentInternal()
     {
-        StopAutoSaveTimer();
-
         TranslationData = null;
         FilePath = null;
         ImageFolderPath = null;
         IsDirty = false;
         HasDocument = false;
         ImagePathMapping.Clear();
+
+        if (!string.IsNullOrEmpty(FilePath))
+            RecoveryService.Cleanup(FilePath);
 
         _history.Clear();
 
@@ -565,64 +603,6 @@ public partial class DocumentViewModel : ObservableObject
     }
 
     // ========================
-    // 自动保存
-    // ========================
-
-    private void OnAppSettingsChanged(object? sender, (AppSettings settings, SettingsChangeKind changes) e)
-    {
-        if (e.changes.HasFlag(SettingsChangeKind.AutoSave) && HasDocument)
-        {
-            StartAutoSaveTimer();
-        }
-    }
-
-    private void StartAutoSaveTimer()
-    {
-        StopAutoSaveTimer();
-
-        var settings = _settingsProvider.Current;
-        if (!settings.AutoSaveEnabled)
-            return;
-
-        var interval = Math.Max(1, settings.AutoSaveIntervalMinutes);
-        _autoSaveTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMinutes(interval)
-        };
-        _autoSaveTimer.Tick += OnAutoSaveTimerTick;
-        _autoSaveTimer.Start();
-    }
-
-    private void StopAutoSaveTimer()
-    {
-        if (_autoSaveTimer != null)
-        {
-            _autoSaveTimer.Stop();
-            _autoSaveTimer.Tick -= OnAutoSaveTimerTick;
-            _autoSaveTimer = null;
-        }
-    }
-
-    private void OnAutoSaveTimerTick(object? sender, EventArgs e)
-    {
-        // 先提交再判断：CommitCurrentEdit 可能将 IsDirty 从 false 翻为 true
-        BeforeSave?.Invoke();
-        if (!IsDirty || string.IsNullOrEmpty(FilePath) || TranslationData == null)
-            return;
-
-        try
-        {
-            _parser.Save(FilePath, TranslationData);
-            IsDirty = false;
-            _statusBar.UpdateStatus("自动保存成功", StatusBarViewModel.StatusType.Success);
-        }
-        catch (Exception ex)
-        {
-            _statusBar.UpdateStatus($"自动保存失败: {ex.Message}", StatusBarViewModel.StatusType.Error);
-        }
-    }
-
-    // ========================
     // 属性变更通知
     // ========================
 
@@ -678,6 +658,7 @@ public partial class DocumentViewModel : ObservableObject
         Func<string, Task<UnsavedChangesResult>> showUnsavedChangesDialog,
         Func<List<string>, string, Task<ImageSelectionResult?>> showImageSelectionDialog,
         Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> showImageAssociationDialog,
+        Func<string, Task<RecoveryResult>> showRecoveryDialog,
         AppSettingsProvider settingsProvider)
     {
         _fileService = fileService;
@@ -686,7 +667,7 @@ public partial class DocumentViewModel : ObservableObject
         _showUnsavedChangesDialog = showUnsavedChangesDialog;
         _showImageSelectionDialog = showImageSelectionDialog;
         _showImageAssociationDialog = showImageAssociationDialog;
+        _showRecoveryDialog = showRecoveryDialog;
         _settingsProvider = settingsProvider;
-        _settingsProvider.SettingsChanged += OnAppSettingsChanged;
     }
 }
