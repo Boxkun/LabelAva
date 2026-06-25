@@ -54,7 +54,8 @@ public enum SettingsChangeKind
     AutoFocus  = 1 << 3,
     DligConfig = 1 << 4,
     CanvasMouse = 1 << 5,
-    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig | CanvasMouse,
+    AutoSave   = 1 << 6,
+    All        = Shortcuts | Colors | LabelSize | AutoFocus | DligConfig | CanvasMouse | AutoSave,
 }
 
 public class ShortcutBindings
@@ -323,6 +324,8 @@ public class AppSettings
     public ColorSettings Colors { get; set; } = ColorSettings.CreateDefaults();
     public int LabelSize { get; set; } = 32;
     public bool AutoFocusTextBox { get; set; } = true;
+    public bool AutoSaveEnabled { get; set; } = true;
+    public int AutoSaveIntervalMinutes { get; set; } = 3;
     public double WindowWidth { get; set; } = 1200;
     public double WindowHeight { get; set; } = 800;
     public int WindowX { get; set; } = -1;
@@ -341,6 +344,8 @@ public class AppSettings
             Colors = ColorSettings.CreateDefaults(),
             LabelSize = 32,
             AutoFocusTextBox = true,
+            AutoSaveEnabled = true,
+            AutoSaveIntervalMinutes = 3,
             WindowWidth = 1200,
             WindowHeight = 800,
             WindowX = -1,

@@ -17,6 +17,51 @@
 
         <!-- TabControl：快捷键页签 -->
         <TabControl>
+            <!-- 通用设置页签 -->
+            <TabItem Header="通用">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12" Spacing="12">
+                        <!-- 自动保存设置 -->
+                        <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold"/>
+                        <!-- <TextBlock Text="配置文档自动保存" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/> -->
+                        <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="10">
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="自动保存" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="AutoSaveCheckBox" Grid.Row="0" Grid.Column="2"
+                                              IsChecked="True" VerticalAlignment="Center"
+                                              IsCheckedChanged="OnAutoSaveEnabledChanged"/>
+                                </Grid>
+                                <Grid RowDefinitions="Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="保存间隔" VerticalAlignment="Center"/>
+                                    <DockPanel Grid.Row="0" Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock DockPanel.Dock="Right" Text="分钟" VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="6,0,0,0"/>
+                                        <NumericUpDown x:Name="AutoSaveIntervalUpDown"
+                                                       Minimum="1" Maximum="60"
+                                                       FormatString="0"
+                                                       Increment="1"
+                                                       Value="3"
+                                                       ValueChanged="OnAutoSaveIntervalChanged"
+                                                       BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
+                                    </DockPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- 快捷键页签 -->
             <TabItem Header="快捷键">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -316,7 +361,7 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
                         <!-- 标号大小设置 -->
-                        <TextBlock Text="标号显示设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="标号显示设置" FontSize="16" FontWeight="SemiBold"/>
                         
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <Grid RowDefinitions="Auto">
@@ -335,8 +380,8 @@
                                                BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}" BorderThickness="1"/>
                             </Grid>
                         </Border>
-                        
-                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,8"/>
+
+                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
                         <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,8"/>
 
                         <!-- 框内颜色设置 -->
@@ -413,7 +458,7 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12" Spacing="12">
                         <!-- 默认快捷输入 -->
-                        <TextBlock Text="快捷输入" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                        <TextBlock Text="快捷输入" FontSize="16" FontWeight="SemiBold"/>
                         <TextBlock Text="配置特殊字符/短语快捷输入，添加后始终显示在工具栏左侧" FontSize="12"
                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                    TextWrapping="Wrap" Margin="0,-4,0,4"/>
@@ -438,7 +483,7 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
                         <TextBlock Text="选择连字配置以启用编辑器专用字体和 OpenType 连字特性" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                         <!-- 配置选择 -->

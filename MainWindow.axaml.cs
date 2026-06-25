@@ -253,7 +253,8 @@ public partial class MainWindow : Window
             ViewModel.Document = new DocumentViewModel(
                 fileService, ViewModel.History, StatusBar,
                 ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync,
-                ShowImageAssociationDialogAsync
+                ShowImageAssociationDialogAsync,
+                _settingsProvider
             );
             ViewModel.Document.BeforeSave = null;
             ViewModel.Document.DocumentOpened += OnDocumentOpened;

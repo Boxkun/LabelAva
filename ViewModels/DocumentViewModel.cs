@@ -43,6 +43,7 @@ public partial class DocumentViewModel : ObservableObject
     private readonly StatusBarViewModel _statusBar;
     private readonly TranslationParser _parser = new();
     private readonly ImageValidationService _validationService = new();
+    private readonly AppSettingsProvider _settingsProvider;
 
     // 回调：自定义对话框（UI 层注入）
     private readonly Func<string, Task<UnsavedChangesResult>> _showUnsavedChangesDialog;
@@ -567,12 +568,26 @@ public partial class DocumentViewModel : ObservableObject
     // 自动保存
     // ========================
 
+    private void OnAppSettingsChanged(object? sender, (AppSettings settings, SettingsChangeKind changes) e)
+    {
+        if (e.changes.HasFlag(SettingsChangeKind.AutoSave) && HasDocument)
+        {
+            StartAutoSaveTimer();
+        }
+    }
+
     private void StartAutoSaveTimer()
     {
         StopAutoSaveTimer();
+
+        var settings = _settingsProvider.Current;
+        if (!settings.AutoSaveEnabled)
+            return;
+
+        var interval = Math.Max(1, settings.AutoSaveIntervalMinutes);
         _autoSaveTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMinutes(3)
+            Interval = TimeSpan.FromMinutes(interval)
         };
         _autoSaveTimer.Tick += OnAutoSaveTimerTick;
         _autoSaveTimer.Start();
@@ -662,7 +677,8 @@ public partial class DocumentViewModel : ObservableObject
         StatusBarViewModel statusBar,
         Func<string, Task<UnsavedChangesResult>> showUnsavedChangesDialog,
         Func<List<string>, string, Task<ImageSelectionResult?>> showImageSelectionDialog,
-        Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> showImageAssociationDialog)
+        Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> showImageAssociationDialog,
+        AppSettingsProvider settingsProvider)
     {
         _fileService = fileService;
         _history = history;
@@ -670,5 +686,7 @@ public partial class DocumentViewModel : ObservableObject
         _showUnsavedChangesDialog = showUnsavedChangesDialog;
         _showImageSelectionDialog = showImageSelectionDialog;
         _showImageAssociationDialog = showImageAssociationDialog;
+        _settingsProvider = settingsProvider;
+        _settingsProvider.SettingsChanged += OnAppSettingsChanged;
     }
 }

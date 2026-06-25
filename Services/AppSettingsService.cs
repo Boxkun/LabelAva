@@ -99,6 +99,10 @@ public static class AppSettingsService
         // 鼠标配置（值类型）
         defaults.MouseConfig = oldSettings.MouseConfig;
 
+        // 自动保存
+        defaults.AutoSaveEnabled = oldSettings.AutoSaveEnabled;
+        defaults.AutoSaveIntervalMinutes = oldSettings.AutoSaveIntervalMinutes;
+
         // 默认快捷输入（仅旧版有此字段且非空时才拷贝）
         if (oldSettings.DefaultQuickInputs is { Count: > 0 })
             defaults.DefaultQuickInputs = oldSettings.DefaultQuickInputs
@@ -311,6 +315,8 @@ public class AppSettingsDto
     public string? MouseLeftButton { get; set; }
     public string? MouseMiddleButton { get; set; }
     public string? MouseRightButton { get; set; }
+    public bool AutoSaveEnabled { get; set; } = true;
+    public int AutoSaveIntervalMinutes { get; set; } = 3;
 
     public AppSettingsDto() { }
 
@@ -333,6 +339,8 @@ public class AppSettingsDto
         MouseLeftButton = settings.MouseConfig.LeftButton.ToString();
         MouseMiddleButton = settings.MouseConfig.MiddleButton.ToString();
         MouseRightButton = settings.MouseConfig.RightButton.ToString();
+        AutoSaveEnabled = settings.AutoSaveEnabled;
+        AutoSaveIntervalMinutes = settings.AutoSaveIntervalMinutes;
     }
 
     public Models.AppSettings ToSettings()
@@ -362,6 +370,8 @@ public class AppSettingsDto
                 MiddleButton = ParseMouseAction(MouseMiddleButton, Models.CanvasMouseAction.Pan),
                 RightButton  = ParseMouseAction(MouseRightButton,  Models.CanvasMouseAction.Pan),
             },
+            AutoSaveEnabled = AutoSaveEnabled,
+            AutoSaveIntervalMinutes = AutoSaveIntervalMinutes,
         };
     }
 
