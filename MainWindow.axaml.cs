@@ -1315,6 +1315,7 @@ public partial class MainWindow : Window
     private void OnTranslationTextBoxTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_recoveryDebounce == null) return;
+        if (!Edit.IsEditMode) return;
         _recoveryDebounce.Stop();
         _recoveryDebounce.Start();
     }
@@ -1448,9 +1449,11 @@ public partial class MainWindow : Window
                 ViewModel.Document.SaveAsCommand.Execute(null);
                 break;
             case ShortcutAction.SwitchToGroup0:
+                if (!Edit.IsEditMode) break;
                 Edit.SwitchGroupCommand.Execute(0);
                 break;
             case ShortcutAction.SwitchToGroup1:
+                if (!Edit.IsEditMode) break;
                 Edit.SwitchGroupCommand.Execute(1);
                 break;
         }
