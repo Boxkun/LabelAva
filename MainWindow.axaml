@@ -12,6 +12,7 @@
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="LabelAva.MainWindow"
         Title="{Binding Document.WindowTitle}"
+        Icon="/Assets/128px.ico"
         Width="1200" Height="800"
         Background="{DynamicResource SystemChromeMediumLowBrush}"
         Opacity="0"
@@ -19,6 +20,7 @@
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
+        <local:SubtractConverter x:Key="SubtractConverter"/>
         <!-- 默认分组颜色资源 -->
         <SolidColorBrush x:Key="Group0ColorBrush" Color="#FFE6E6"/>
         <SolidColorBrush x:Key="Group1ColorBrush" Color="#E6E6FF"/>
@@ -63,19 +65,22 @@
         <!-- 状态栏 -->
         <Border DockPanel.Dock="Bottom" Classes="statusbar" Padding="4" DataContext="{Binding StatusBar}">
             <Grid x:Name="StatusBarGrid" ColumnDefinitions="2*,Auto,*">
-                <Border x:Name="_StatusBar" 
+                <Border x:Name="_StatusBar"
                         Classes="status-bar"
                         Classes.status-info="{Binding IsInfo}"
                         Classes.status-success="{Binding IsSuccess}"
                         Classes.status-warn="{Binding IsWarn}"
                         Classes.status-error="{Binding IsError}"
-                        HorizontalAlignment="Left" CornerRadius="4" Padding="8,2">
+                        HorizontalAlignment="Left" CornerRadius="4" Padding="8,2"
+                        MaxWidth="{Binding Bounds.Width, ElementName=StatusBarGrid, Converter={StaticResource SubtractConverter}, ConverterParameter=300}"
+                        ClipToBounds="True">
                      <TextBlock Text="{Binding StatusText}"
                                 Classes="status-text"
                                 Classes.status-info="{Binding IsInfo}"
                                 Classes.status-success="{Binding IsSuccess}"
                                 Classes.status-warn="{Binding IsWarn}"
                                 Classes.status-error="{Binding IsError}"
+                                TextTrimming="CharacterEllipsis"
                                 FontFamily="Sarasa Mono SC"/>
                 </Border>
                 <Grid x:Name="PageNavGrid" Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Center" Margin="0,0,77,0" IsVisible="False">

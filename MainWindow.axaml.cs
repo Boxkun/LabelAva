@@ -1430,7 +1430,7 @@ public partial class MainWindow : Window
                 if (Navigation.SelectedItem is TranslationTreeItem item)
                 {
                     CopyToClipboard(item.Text);
-                    StatusBar.UpdateStatus($"已复制: {item.Text}", StatusBarViewModel.StatusType.Info);
+                    StatusBar.UpdateStatus($"已复制: {SanitizeStatusText(item.Text)}", StatusBarViewModel.StatusType.Info);
                 }
                 break;
             case ShortcutAction.DeleteLabel:
@@ -1649,7 +1649,7 @@ public partial class MainWindow : Window
             if (Navigation.SelectedItem is TranslationTreeItem item)
             {
                 CopyToClipboard(item.Text);
-                StatusBar.UpdateStatus($"已复制: {item.Text}", StatusBarViewModel.StatusType.Info);
+                StatusBar.UpdateStatus($"已复制: {SanitizeStatusText(item.Text)}", StatusBarViewModel.StatusType.Info);
             }
         };
 
@@ -1813,8 +1813,19 @@ public partial class MainWindow : Window
     {
         var topLevel = GetTopLevel(this);
         if (topLevel?.Clipboard == null) return;
-        
+
         await topLevel.Clipboard.SetTextAsync(text);
+    }
+
+    /// <summary>
+    /// 清理状态栏显示的文本：换行→空格，超长截断加省略号。
+    /// </summary>
+    private static string SanitizeStatusText(string text, int maxLen = 60)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        var sanitized = text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ');
+        if (sanitized.Length <= maxLen) return sanitized;
+        return sanitized[..maxLen] + "…";
     }
     
     /// <summary>
@@ -1826,7 +1837,7 @@ public partial class MainWindow : Window
         if (selectedItem is TranslationTreeItem translationItem)
         {
             CopyToClipboard(translationItem.Text);
-            StatusBar.UpdateStatus($"已复制: {translationItem.Text}", StatusBarViewModel.StatusType.Info);
+            StatusBar.UpdateStatus($"已复制: {SanitizeStatusText(translationItem.Text)}", StatusBarViewModel.StatusType.Info);
         }
     }
     
