@@ -244,7 +244,7 @@
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="自动聚焦" VerticalAlignment="Center"/>
                                     <CheckBox x:Name="AutoFocusCheckBox" Grid.Row="0" Grid.Column="2"
                                               IsChecked="True" VerticalAlignment="Center"
-                                              Checked="OnAutoFocusChanged" Unchecked="OnAutoFocusChanged">
+                                              IsCheckedChanged="OnAutoFocusChanged">
                                         <TextBlock Text="选中标签后自动聚焦到文本框" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                     </CheckBox>
                                 </Grid>
@@ -384,7 +384,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="框内颜色" VerticalAlignment="Center"/>
                                 <TextBox x:Name="Group0ColorTextBox" Grid.Row="0" Grid.Column="2"
-                                         Watermark="#E74856" TextChanged="OnGroup0ColorChanged"
+                                         PlaceholderText="#E74856" TextChanged="OnGroup0ColorChanged"
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="Group0ColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
@@ -404,7 +404,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="框外颜色" VerticalAlignment="Center"/>
                                 <TextBox x:Name="Group1ColorTextBox" Grid.Row="0" Grid.Column="2"
-                                         Watermark="#1E90FF" TextChanged="OnGroup1ColorChanged"
+                                         PlaceholderText="#1E90FF" TextChanged="OnGroup1ColorChanged"
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="Group1ColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
@@ -424,7 +424,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="选中高亮" VerticalAlignment="Center"/>
                                 <TextBox x:Name="SelectedColorTextBox" Grid.Row="0" Grid.Column="2"
-                                         Watermark="#33BA90" TextChanged="OnSelectedColorChanged"
+                                         PlaceholderText="#33BA90" TextChanged="OnSelectedColorChanged"
                                          VerticalAlignment="Center"/>
                                 <Border x:Name="SelectedColorPreview" Grid.Row="0" Grid.Column="4"
                                         CornerRadius="4" Width="36" Height="24"
@@ -456,7 +456,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:QuickInputSlot">
                                             <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                                <TextBox Grid.Column="0" Text="{Binding Character}" Watermark="输入 Unicode 字符"/>
+                                                <TextBox Grid.Column="0" Text="{Binding Character}" PlaceholderText="输入 Unicode 字符"/>
                                                 <Button Grid.Column="1" Content="✕" Width="32" Height="32" Padding="0" FontSize="16"
                                                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                                                         VerticalAlignment="Center"
@@ -485,12 +485,12 @@
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="字体家族" VerticalAlignment="Center" Margin="0,8,0,0"/>
                                 <TextBox x:Name="DligFontFamilyTextBox" Grid.Row="1" Grid.Column="2"
-                                         Watermark="如 Source Han Sans"
+                                         PlaceholderText="如 Source Han Sans"
                                          Margin="0,8,0,0" VerticalAlignment="Center"/>
 
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="OpenType" VerticalAlignment="Center" Margin="0,8,0,0"/>
                                 <TextBox x:Name="DligFontFeaturesTextBox" Grid.Row="2" Grid.Column="2"
-                                         Watermark="dlig=1"
+                                         PlaceholderText="dlig=1"
                                          Margin="0,8,0,0" VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
@@ -507,8 +507,8 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:QuickInputSlot">
                                             <Grid ColumnDefinitions="*,*,Auto" Margin="0,2">
-                                                <TextBox Grid.Column="0" Text="{Binding Label}" Watermark="标签" Margin="0,0,4,0"/>
-                                                <TextBox Grid.Column="1" Text="{Binding Character}" Watermark="字符" Margin="4,0,0,0"/>
+                                                <TextBox Grid.Column="0" Text="{Binding Label}" PlaceholderText="标签" Margin="0,0,4,0"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Character}" PlaceholderText="字符" Margin="4,0,0,0"/>
                                                 <Button Grid.Column="2" Content="✕" Width="32" Height="32" Padding="0" FontSize="16"
                                                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                                                         VerticalAlignment="Center"

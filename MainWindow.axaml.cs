@@ -21,6 +21,7 @@ using LabelAva.Commands;
 using System.Linq;
 using LabelAva.ViewModels;
 using System.Diagnostics;
+using Avalonia.Input.Platform;
 
 
 namespace LabelAva;
@@ -879,7 +880,7 @@ public partial class MainWindow : Window
             else
             {
                 // 如果容器未准备好，退回到清除焦点
-                TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+                TopLevel.GetTopLevel(this)?.FocusManager?.Focus(null);
             }
         }, DispatcherPriority.Background);
     }
@@ -1302,7 +1303,7 @@ public partial class MainWindow : Window
         _isIntentionalBlur = true;
         
         Dispatcher.UIThread.Post(() =>
-            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus(),
+            TopLevel.GetTopLevel(this)?.FocusManager?.Focus(null),
             DispatcherPriority.Loaded);
         
         Dispatcher.UIThread.Post(() => _isIntentionalBlur = false,
@@ -1325,18 +1326,15 @@ public partial class MainWindow : Window
     /// 若处于"主动离焦"状态（_isIntentionalBlur），立即清除焦点并复位标志。
     /// 正常情况下（用户点击文本框、AutoFocusTextBox 触发）不受影响。
     /// </summary>
-    private void OnTranslationTextBoxGotFocus(object? sender, GotFocusEventArgs e)
+    private void OnTranslationTextBoxGotFocus(object? sender, FocusChangedEventArgs e)
     {
         if (!_isIntentionalBlur) return;
 
         _isIntentionalBlur = false;
         Dispatcher.UIThread.Post(
-            () => TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus(),
+            () => TopLevel.GetTopLevel(this)?.FocusManager?.Focus(null),
             DispatcherPriority.Input);
     }
-
-    /// <summary>
-
 
     /// <summary>
     /// 全局快捷键拦截（隧道路由，在子控件处理前触发）
@@ -1481,7 +1479,7 @@ public partial class MainWindow : Window
         // UI 层补充操作
         if (Navigation.SelectedItem != null)
         {
-            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+            TopLevel.GetTopLevel(this)?.FocusManager?.Focus(null);
             StatusBar.UpdateStatus($"已选中标注 #{labelIndex}", StatusBarViewModel.StatusType.Info);
         }
     }
