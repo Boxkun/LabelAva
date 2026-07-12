@@ -61,7 +61,7 @@
         </Menu>
         
         <!-- 状态栏 -->
-        <Border DockPanel.Dock="Bottom" Classes="statusbar" Padding="4" DataContext="{Binding StatusBar}" x:DataType="vm:StatusBarViewModel">
+        <Border DockPanel.Dock="Bottom" Classes="statusbar" Padding="4" DataContext="{Binding StatusBar}">
             <Grid x:Name="StatusBarGrid" ColumnDefinitions="2*,Auto,*">
                 <Border x:Name="_StatusBar" 
                         Classes="status-bar"
@@ -249,7 +249,7 @@
                                          IsEnabled="{Binding IsTextEditable}"
                                          FontFamily="{Binding Edit.ActiveDligFontFamily}"
                                          FontFeatures="{Binding Edit.ActiveDligFontFeatures}"
-                                         Watermark="选中文本节点以编辑"
+                                         PlaceholderText="选中文本节点以编辑"
                                          Text="{Binding Navigation.SelectedTranslationItem.Text,
                                                         Mode=TwoWay,
                                                         UpdateSourceTrigger=PropertyChanged}"
