@@ -53,29 +53,12 @@
             <!-- 快捷键页签 -->
             <TabItem Header="快捷键">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="12" Spacing="8">
-                        <!-- 列标题 -->
-                        <!-- <Border Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,0">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="设置项" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="2" Text="主要" HorizontalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="次要" HorizontalAlignment="Center" />
-                            </Grid>
-                        </Border> -->
-
+                    <StackPanel Margin="12" Spacing="12">
                         <!-- 画布设置组 -->
+                        <TextBlock Text="画布" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="调整鼠标按键在画布上的行为" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="画布" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="调整鼠标按键在画布上的行为" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="80"/>
@@ -121,11 +104,10 @@
                         </Border>
 
                         <!-- 导航设置组 -->
+                        <TextBlock Text="导航" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="切换标记选择与图片翻页" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="导航" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="切换标记选择与图片翻页" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-
                                 <!-- 上导航 -->
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
@@ -201,11 +183,10 @@
                         </Border>
 
                         <!-- 复制设置组 -->
+                        <TextBlock Text="编辑" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="对翻译文本进行操作" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="编辑" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="对翻译文本进行操作" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="80"/>
@@ -253,11 +234,10 @@
                         </Border>
 
                         <!-- 文件设置组 -->
+                        <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="打开和保存翻译文件" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="打开和保存翻译文件" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="80"/>
@@ -303,11 +283,10 @@
                         </Border>
 
                         <!-- 分组切换设置组 -->
+                        <TextBlock Text="分组切换" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="切换当前激活的分组（框内/框外）" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="分组切换" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="切换当前激活的分组（框内/框外）" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
-
                                 <Grid RowDefinitions="Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="80"/>
@@ -339,7 +318,7 @@
                         </Border>
 
                         <!-- 重置按钮 -->
-                        <Button Content="恢复默认设置" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetDefaults"/>
+                        <Button Content="恢复默认设置" HorizontalAlignment="Left" Click="OnResetDefaults"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -369,8 +348,8 @@
                             </Grid>
                         </Border>
 
-                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                        <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,8"/>
+                        <TextBlock Text="标号颜色设置" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="自定义树状视图中标号的背景颜色和选中高亮颜色" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                         <!-- 框内颜色设置 -->
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
@@ -433,10 +412,10 @@
                         </Border>
 
                         <!-- 颜色格式提示 -->
-                        <TextBlock Text="提示：使用十六进制颜色代码" FontSize="11"  Margin="0,4,0,0"/>
+                        <TextBlock Text="提示：使用十六进制颜色代码" FontSize="11"/>
 
                         <!-- 重置按钮 -->
-                        <Button Content="恢复默认颜色" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetColorDefaults"/>
+                        <Button Content="恢复默认颜色" HorizontalAlignment="Left" Click="OnResetColorDefaults"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -471,7 +450,7 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock Text="连字配置" FontSize="16" FontWeight="SemiBold"/>
                         <TextBlock Text="选择连字配置以启用编辑器专用字体和 OpenType 连字特性" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" Margin="0,-4,0,4"/>
 
                         <!-- 配置选择 -->
@@ -496,7 +475,7 @@
                         </Border>
 
                         <!-- 快捷输入按钮 -->
-                        <TextBlock Text="连字快捷输入按钮" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock Text="连字快捷输入按钮" FontSize="14" FontWeight="SemiBold"/>
                         <Border Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}" CornerRadius="8" Padding="12">
                             <StackPanel Spacing="4">
                                 <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,4">
@@ -524,7 +503,7 @@
                         </Border>
 
                         <!-- 操作按钮 -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="NewDligConfigButton" Content="新建配置" Click="OnNewDligConfig"/>
                             <Button x:Name="DeleteDligConfigButton" Content="删除配置" Click="OnDeleteDligConfig"/>
                             <Button x:Name="OpenDligConfFolderButton" Content="打开配置目录" Click="OnOpenDligConfFolder"/>
