@@ -6,13 +6,13 @@
         x:Class="LabelAva.Views.AboutWindow"
         Title="关于"
         SizeToContent="WidthAndHeight"
-        MaxWidth="500"
+        MaxWidth="640"
         Background="{DynamicResource SystemChromeMediumLowBrush}"
         TransparencyLevelHint="None"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
 
-    <DockPanel Margin="16">
+    <DockPanel Margin="72,24">
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button Content="仓库" Width="80" Padding="6,6" Click="OnOpenRepo" FontSize="13"
                     Background="{DynamicResource SystemControlPageBackgroundAltHighBrush}" BorderBrush="{DynamicResource SystemControlHighlightChromeHighBrush}"/>
@@ -27,8 +27,11 @@
             <TextBlock Text="开发中版本，请注意备份数据。" FontWeight="Bold" FontSize="13" Foreground="#AF323D" HorizontalAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0"/>
 
             <StackPanel Margin="0,8,0,0">
-                <TextBlock Text="LabelAva 是由 Avalonia 驱动的现代跨平台 LabelPlus 实现" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
-                <TextBlock Text="Boxkun 2026 / Licensed under AGPL v3" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="LabelAva 是由 Avalonia 驱动的现代跨平台 LabelPlus 实现" FontSize="13" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="Licensed under AGPL v3" FontSize="13" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+
+                <TextBlock Text="开发者" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                <TextBlock Text="Boxkun, arcanix601" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
             </StackPanel>
         </StackPanel>
     </DockPanel>
