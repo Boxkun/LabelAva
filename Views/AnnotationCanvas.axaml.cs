@@ -659,7 +659,7 @@ public partial class AnnotationCanvas : UserControl
             if (DataContext is CanvasWorkspaceViewModel CanvasWorkspace)
             {
                 CanvasWorkspace.StartPan(e.GetPosition(ImageContainer));
-                ImageContainer.Cursor = new Cursor(StandardCursorType.Hand);
+                ImageContainer.Cursor = new Cursor(StandardCursorType.DragMove);
             }
             e.Handled = true;
         }
