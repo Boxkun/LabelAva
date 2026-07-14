@@ -490,6 +490,8 @@ public partial class DocumentViewModel : ObservableObject
 
     private void CloseDocumentInternal()
     {
+        var capturedPath = FilePath;
+
         TranslationData = null;
         FilePath = null;
         ImageFolderPath = null;
@@ -497,8 +499,8 @@ public partial class DocumentViewModel : ObservableObject
         HasDocument = false;
         ImagePathMapping.Clear();
 
-        if (!string.IsNullOrEmpty(FilePath))
-            RecoveryService.Cleanup(FilePath);
+        if (!string.IsNullOrEmpty(capturedPath))
+            RecoveryService.Cleanup(capturedPath);
 
         _history.Clear();
 
