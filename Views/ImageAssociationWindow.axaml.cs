@@ -3,6 +3,7 @@ using Avalonia.Animation;
 using Avalonia.Styling;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Layout;
@@ -46,6 +47,10 @@ public partial class ImageAssociationWindow : Window
     private ObservableCollection<ImageAssociationItem> _items = new();
     private string _imageFolderPath = string.Empty;
     private List<MatchEntry>? _matchEntries;
+    private ListBoxDragReorderHelper<ImageAssociationItem>? _dragHelper;
+    private List<string> _removedImageNames = new();
+    private Dictionary<string, string> _addedImages = new();
+    private int _flashVersion;
 
     private sealed record MatchEntry(
         string ImageName,
@@ -77,7 +82,13 @@ public partial class ImageAssociationWindow : Window
         _items = new ObservableCollection<ImageAssociationItem>(items);
 
         AssociationList.ItemsSource = _items;
-        FolderPathBox.Text = imageFolderPath;
+
+        // 创建拖拽排序辅助
+        _dragHelper = new ListBoxDragReorderHelper<ImageAssociationItem>(
+            AssociationList, _items, item => item.ImageName);
+
+        // TextBox 始终为空，Placeholder 始终显示 _imageFolderPath
+        FolderPathBox.PlaceholderText = imageFolderPath;
 
         foreach (var item in _items)
         {
@@ -97,8 +108,17 @@ public partial class ImageAssociationWindow : Window
         }
     }
 
+    private bool _isPathInvalid;
+
     private void UpdateStatusSummary()
     {
+        if (_isPathInvalid)
+        {
+            StatusSummary.Text = "路径不存在";
+            StatusSummary.Foreground = ErrorBrush;
+            return;
+        }
+
         var missingCount = _items.Count(i => i.Status == ImageValidationStatus.Missing);
         if (missingCount > 0)
         {
@@ -111,18 +131,17 @@ public partial class ImageAssociationWindow : Window
         }
     }
 
-    private void RevalidateAllItems()
+    /// <param name="folderPath">要验证的路径；为 null 时使用已提交的 _imageFolderPath</param>
+    private void RevalidateAllItems(string? folderPath = null)
     {
-        var folderPath = FolderPathBox.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(folderPath)) return;
-
-        _imageFolderPath = folderPath;
+        var path = folderPath ?? _imageFolderPath;
+        if (string.IsNullOrEmpty(path)) return;
 
         foreach (var item in _items)
         {
             if (string.IsNullOrEmpty(item.NewPath))
             {
-                var (status, statusText) = _validationService.ValidateSingleWithText(folderPath, item.ImageName);
+                var (status, statusText) = _validationService.ValidateSingleWithText(path, item.ImageName);
                 item.Status = status;
                 item.StatusText = statusText;
             }
@@ -144,17 +163,61 @@ public partial class ImageAssociationWindow : Window
 
         if (folders.Count > 0)
         {
-            FolderPathBox.Text = folders[0].Path.LocalPath;
+            var newPath = folders[0].Path.LocalPath;
+            _imageFolderPath = newPath;
+            FolderPathBox.PlaceholderText = newPath;
+            FolderPathBox.Text = "";
+            _isPathInvalid = false;
+            _addedImages.Clear();
+            _removedImageNames.Clear();
+            SaveApplyButton.IsEnabled = true;
+            ApplyOnlyButton.IsEnabled = true;
+            AutoMatchBanner.Opacity = 0;
+            _matchEntries = null;
+            AutoMatchBanner.IsVisible = false;
+            RevalidateAllItems();
+            CheckAutoMatch();
         }
     }
 
     private void OnFolderPathTextChanged(object? sender, TextChangedEventArgs e)
     {
+        var text = FolderPathBox.Text?.Trim();
         AutoMatchBanner.Opacity = 0;
         _matchEntries = null;
         AutoMatchBanner.IsVisible = false;
-        RevalidateAllItems();
-        CheckAutoMatch();
+
+        if (string.IsNullOrEmpty(text))
+        {
+            // 清空 → 回退到已提交路径
+            _isPathInvalid = false;
+            SaveApplyButton.IsEnabled = true;
+            ApplyOnlyButton.IsEnabled = true;
+            RevalidateAllItems();
+            CheckAutoMatch();
+        }
+        else if (Directory.Exists(text))
+        {
+            // 有效 → 预览验证
+            _isPathInvalid = false;
+            SaveApplyButton.IsEnabled = true;
+            ApplyOnlyButton.IsEnabled = true;
+            RevalidateAllItems(text);
+            CheckAutoMatch();
+        }
+        else
+        {
+            // 非法 → 全部标 Missing，禁用按钮
+            _isPathInvalid = true;
+            SaveApplyButton.IsEnabled = false;
+            ApplyOnlyButton.IsEnabled = false;
+            foreach (var item in _items)
+            {
+                item.Status = ImageValidationStatus.Missing;
+                item.StatusText = "✗ 缺失";
+            }
+            UpdateStatusSummary();
+        }
     }
 
     private async void OnSelectFile(object? sender, RoutedEventArgs e)
@@ -191,6 +254,92 @@ public partial class ImageAssociationWindow : Window
         }
     }
 
+    private async void OnDeleteImage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        if (button.DataContext is not ImageAssociationItem item) return;
+
+        var dialog = new Dialogs.DeleteImageConfirmDialog(item.ImageName, item.LabelCount);
+        await dialog.ShowDialog(this);
+        if (!dialog.IsConfirmed) return;
+
+        _removedImageNames.Add(item.ImageName);
+        _items.Remove(item);
+        UpdateStatusSummary();
+    }
+
+    private async void OnAddImage(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var imageFilter = new[]
+        {
+            new FilePickerFileType("图片文件") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.tif", "*.tiff", "*.webp"} },
+            new FilePickerFileType("所有文件") { Patterns = new[] { "*.*" } }
+        };
+
+        var startFolder = !string.IsNullOrEmpty(_imageFolderPath) && Directory.Exists(_imageFolderPath)
+            ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(_imageFolderPath)
+            : null;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "选择要添加的图片",
+            AllowMultiple = true,
+            FileTypeFilter = imageFilter,
+            SuggestedStartLocation = startFolder
+        });
+
+        if (files.Count == 0) return;
+
+        foreach (var file in files)
+        {
+            var sourcePath = file.Path.LocalPath;
+            var fileName = Path.GetFileName(sourcePath);
+
+            // 跳过列表中已存在的图片
+            if (_items.Any(i => i.ImageName == fileName))
+                continue;
+
+            var destPath = Path.Combine(_imageFolderPath, fileName);
+
+            // 增量校验：仅对新增图片做格式检测
+            var (isConsistent, actualExt) = ImageValidationService.CheckFormatConsistency(sourcePath);
+            var status = isConsistent ? ImageValidationStatus.OK : ImageValidationStatus.FormatMismatch;
+            var statusText = isConsistent
+                ? "✓ 正常"
+                : $"⚠ 格式不符 ({actualExt})";
+
+            // 复制到项目路径
+            try
+            {
+                if (!string.Equals(sourcePath, destPath, StringComparison.OrdinalIgnoreCase))
+                    File.Copy(sourcePath, destPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[OnAddImage] File.Copy FAILED: {ex.Message}");
+                continue;
+            }
+
+            var newItem = new ImageAssociationItem
+            {
+                ImageName = fileName,
+                Status = status,
+                StatusText = statusText,
+                NewPath = destPath,
+                LabelCount = 0,
+            };
+            newItem.PropertyChanged += OnItemPropertyChanged;
+            _items.Add(newItem);
+
+            _addedImages[fileName] = destPath;
+        }
+
+        UpdateStatusSummary();
+    }
+
     private void RevalidateItem(ImageAssociationItem item)
     {
         if (!string.IsNullOrEmpty(item.NewPath))
@@ -207,19 +356,50 @@ public partial class ImageAssociationWindow : Window
         }
     }
 
-    private void OnConfirm(object? sender, RoutedEventArgs e)
-    {
-        var folderPath = FolderPathBox.Text?.Trim() ?? string.Empty;
-        var writeToFile = WriteToFileCheckBox.IsChecked == true;
+    private bool _lastChosenWriteToFile = true;
 
-        var missingItems = _items.Where(i => i.Status != ImageValidationStatus.OK && string.IsNullOrEmpty(i.NewPath)).ToList();
+    /// <summary>确认时提交 TextBox 中的有效路径到 _imageFolderPath 和水印</summary>
+    private void CommitFolderPath()
+    {
+        var text = FolderPathBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(text) && Directory.Exists(text) &&
+            !string.Equals(_imageFolderPath, text, StringComparison.OrdinalIgnoreCase))
+        {
+            _imageFolderPath = text;
+            FolderPathBox.PlaceholderText = text;
+            _addedImages.Clear();
+            _removedImageNames.Clear();
+        }
+    }
+
+    private void OnSaveApply(object? sender, RoutedEventArgs e)
+    {
+        _lastChosenWriteToFile = true;
+        CommitFolderPath();
+
+        var missingItems = _items.Where(i => i.Status == ImageValidationStatus.Missing && string.IsNullOrEmpty(i.NewPath)).ToList();
         if (missingItems.Count > 0)
         {
             ShowWarningDialog(missingItems.Count);
             return;
         }
 
-        ConfirmInternal(folderPath, writeToFile);
+        ConfirmInternal(_imageFolderPath, writeToFile: true);
+    }
+
+    private void OnApplyOnly(object? sender, RoutedEventArgs e)
+    {
+        _lastChosenWriteToFile = false;
+        CommitFolderPath();
+
+        var missingItems = _items.Where(i => i.Status == ImageValidationStatus.Missing && string.IsNullOrEmpty(i.NewPath)).ToList();
+        if (missingItems.Count > 0)
+        {
+            ShowWarningDialog(missingItems.Count);
+            return;
+        }
+
+        ConfirmInternal(_imageFolderPath, writeToFile: false);
     }
 
     private async void ShowWarningDialog(int missingCount)
@@ -294,9 +474,8 @@ public partial class ImageAssociationWindow : Window
 
         if (result)
         {
-            var folderPath = FolderPathBox.Text?.Trim() ?? string.Empty;
-            var writeToFile = WriteToFileCheckBox.IsChecked == true;
-            ConfirmInternal(folderPath, writeToFile);
+            var folderPath = _imageFolderPath;
+            ConfirmInternal(folderPath, _lastChosenWriteToFile);
         }
     }
 
@@ -311,11 +490,17 @@ public partial class ImageAssociationWindow : Window
             }
         }
 
+        // 从 _items 的当前顺序投影最终图片顺序
+        var orderedNames = _items.Select(i => i.ImageName).ToList();
+
         Result = new ImageAssociationResult
         {
             FolderPath = folderPath,
             WriteToFile = writeToFile,
-            Remappings = remappings
+            Remappings = remappings,
+            OrderedImageNames = orderedNames,
+            AddedImages = _addedImages.Count > 0 ? _addedImages : null,
+            RemovedImageNames = _removedImageNames.Count > 0 ? _removedImageNames : null,
         };
 
         Close(true);
@@ -327,8 +512,23 @@ public partial class ImageAssociationWindow : Window
         Close(false);
     }
 
+    // ========================
+    // 拖拽排序事件处理器（委托给 ListBoxDragReorderHelper）
+    // ========================
+
+    private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
+        => _dragHelper?.OnPointerPressed(sender, e);
+
+    private void OnItemPointerMoved(object? sender, PointerEventArgs e)
+        => _dragHelper?.OnPointerMoved(sender, e);
+
+    private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
+        => _dragHelper?.OnPointerReleased(sender, e);
+
     private async void FlashBanner(Avalonia.Media.IBrush flashColor, Avalonia.Media.IBrush softBg, Avalonia.Media.IBrush softBorder)
     {
+        var version = ++_flashVersion;
+
         AutoMatchBanner.Transitions = new Transitions
         {
             new BrushTransition { Property = Border.BackgroundProperty, Duration = TimeSpan.Zero },
@@ -341,6 +541,8 @@ public partial class ImageAssociationWindow : Window
         AutoMatchBanner.IsVisible = true;
 
         await Task.Delay(80);
+
+        if (version != _flashVersion) return;
 
         AutoMatchBanner.Transitions = new Transitions
         {
@@ -458,6 +660,10 @@ public partial class ImageAssociationWindow : Window
                     HasExtensionMismatch: false,
                     HasFormatError: true,
                     actualExt));
+
+                // 同步更新列表项状态，确保 Banner 与列表语义一致
+                item.Status = ImageValidationStatus.FormatMismatch;
+                item.StatusText = $"⚠ 格式不符 ({actualExt})";
             }
         }
 
@@ -573,14 +779,14 @@ public partial class ImageAssociationWindow : Window
         {
             CheckAutoMatch();
             if (AutoMatchBanner.IsVisible)
-                WriteToFileCheckBox.IsChecked = true;
+                _lastChosenWriteToFile = true;
             UpdateStatusSummary();
         }
         else
         {
-            WriteToFileCheckBox.IsChecked = true;
+            _lastChosenWriteToFile = true;
             UpdateStatusSummary();
-            OnConfirm(null, null!);
+            ConfirmInternal(_imageFolderPath, writeToFile: true);
             return;
         }
     }

@@ -528,6 +528,32 @@ public partial class DocumentViewModel : ObservableObject
             }
         }
 
+        // 1. 删除图片（级联删除其标注数据）
+        if (result.RemovedImageNames is { Count: > 0 })
+        {
+            foreach (var name in result.RemovedImageNames)
+            {
+                TranslationData!.ImageLabels.Remove(name);
+            }
+            IsDirty = true;
+        }
+
+        // 2. 添加新图片
+        if (result.AddedImages is { Count: > 0 })
+        {
+            foreach (var kvp in result.AddedImages)
+            {
+                var imageName = kvp.Key;
+                if (!TranslationData!.ImageLabels.ContainsKey(imageName))
+                {
+                    TranslationData.ImageLabels[imageName] = new List<LabelItem>();
+                }
+            }
+            IsDirty = true;
+        }
+
+        // 3. 应用路径重映射（先于排序，确保 OrderedImageNames 中已用新名）
+        var nameTranslation = new Dictionary<string, string>();
         foreach (var kvp in result.Remappings)
         {
             var imageName = kvp.Key;
@@ -545,7 +571,10 @@ public partial class DocumentViewModel : ObservableObject
                         label.ImageName = newImageName;
                     }
                     TranslationData.ImageLabels[newImageName] = labels;
+                    nameTranslation[imageName] = newImageName;
                 }
+                // 清理对应的 Redirect 残留
+                ImagePathMapping.Remove(imageName);
                 IsDirty = true;
             }
             else
@@ -553,6 +582,26 @@ public partial class DocumentViewModel : ObservableObject
                 // Redirect 模式：存入 ImagePathMapping
                 ImagePathMapping[imageName] = newPath;
             }
+        }
+
+        // 4. 按新顺序重建 ImageLabels 字典（重映射已改名，需翻译排序列表）
+        if (result.OrderedImageNames is { Count: > 0 })
+        {
+            var newDict = new Dictionary<string, List<LabelItem>>();
+            foreach (var name in result.OrderedImageNames)
+            {
+                var translatedName = nameTranslation.GetValueOrDefault(name, name);
+                if (TranslationData!.ImageLabels.TryGetValue(translatedName, out var labels))
+                    newDict[translatedName] = labels;
+            }
+            // 兜底：保留不在排序列表中的 key
+            foreach (var kvp in TranslationData!.ImageLabels)
+            {
+                if (!newDict.ContainsKey(kvp.Key))
+                    newDict[kvp.Key] = kvp.Value;
+            }
+            TranslationData.ImageLabels = newDict;
+            IsDirty = true;
         }
     }
 
@@ -565,9 +614,12 @@ public partial class DocumentViewModel : ObservableObject
         var imageNames = new List<string>(TranslationData.ImageLabels.Keys);
         var items = _validationService.Validate(ImageFolderPath, imageNames);
 
-        // 将已有的 ImagePathMapping 回填到列表项
+        // 将已有的 ImagePathMapping 回填到列表项，并填充标注数量
         foreach (var item in items)
         {
+            if (TranslationData!.ImageLabels.TryGetValue(item.ImageName, out var labels))
+                item.LabelCount = labels.Count;
+
             if (ImagePathMapping.TryGetValue(item.ImageName, out var mappedPath))
             {
                 item.NewPath = mappedPath;

@@ -71,17 +71,8 @@
                     </ListBox>
                 </Border>
 
-                <Canvas x:Name="DropIndicatorCanvas" IsHitTestVisible="False">
-                    <Rectangle x:Name="DropLine" Height="2" Fill="DodgerBlue" IsVisible="False"/>
-                </Canvas>
-
-                <Canvas x:Name="DragPreviewCanvas" IsHitTestVisible="False">
-                    <Border x:Name="DragPreview" IsVisible="False" Opacity="0.7" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="2" Padding="4,2">
-                        <TextBlock x:Name="DragPreviewText" FontSize="14"/>
-                    </Border>
-                </Canvas>
             </Panel>
-            
+
             <!-- 右栏：图片预览 -->
             <Border Grid.Column="1" BorderBrush="{DynamicResource SystemControlForegroundChromeHighBrush}" BorderThickness="1" CornerRadius="4" Background="Transparent">
                 <Panel>

@@ -18,52 +18,6 @@ using System.Threading.Tasks;
 namespace LabelAva.Views;
 
 /// <summary>
-/// 自然排序：数字段按数值比较，非数字段按字符比较。避免文件系统 inode 序影响列表顺序。
-/// </summary>
-internal static class NaturalSort
-{
-    public static int Compare(string? x, string? y)
-    {
-        if (ReferenceEquals(x, y)) return 0;
-        if (x is null) return -1;
-        if (y is null) return 1;
-
-        int ix = 0, iy = 0;
-        while (ix < x.Length && iy < y.Length)
-        {
-            if (char.IsDigit(x[ix]) && char.IsDigit(y[iy]))
-            {
-                while (ix < x.Length && x[ix] == '0') ix++;
-                while (iy < y.Length && y[iy] == '0') iy++;
-
-                int startX = ix, startY = iy;
-                while (ix < x.Length && char.IsDigit(x[ix])) ix++;
-                while (iy < y.Length && char.IsDigit(y[iy])) iy++;
-
-                int lenX = ix - startX;
-                int lenY = iy - startY;
-                if (lenX != lenY) return lenX.CompareTo(lenY);
-
-                for (int k = 0; k < lenX; k++)
-                {
-                    int cmp = x[startX + k].CompareTo(y[startY + k]);
-                    if (cmp != 0) return cmp;
-                }
-            }
-            else
-            {
-                int cmp = x[ix].CompareTo(y[iy]);
-                if (cmp != 0) return cmp;
-                ix++;
-                iy++;
-            }
-        }
-
-        return (x.Length - ix).CompareTo(y.Length - iy);
-    }
-}
-
-/// <summary>
 /// 图片选择项数据模型
 /// </summary>
 public class ImageSelectionItem : INotifyPropertyChanged
@@ -112,11 +66,7 @@ public partial class ImageSelectionWindow : Window
     public string FileName { get; private set; } = string.Empty;
 
     private ObservableCollection<ImageSelectionItem>? _items;
-    private ImageSelectionItem? _dragItem;
-    private bool _isPending;
-    private bool _isDragging;
-    private Point _dragStartPos;
-    private const double DragThreshold = 4.0;
+    private ListBoxDragReorderHelper<ImageSelectionItem>? _dragHelper;
     
     public ImageSelectionWindow()
     {
@@ -138,7 +88,11 @@ public partial class ImageSelectionWindow : Window
             }));
         
         ImageListControl.ItemsSource = _items;
-        
+
+        // 创建拖拽排序辅助
+        _dragHelper = new ListBoxDragReorderHelper<ImageSelectionItem>(
+            ImageListControl, _items, item => item.FileName);
+
         // 直接赋值
         FileNameTextBox.Text = defaultFileName;
         
@@ -205,7 +159,7 @@ public partial class ImageSelectionWindow : Window
 
     private async void OnImageSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_isDragging) return;
+        if (_dragHelper is { IsDragging: true }) return;
 
         if (ImageListControl.SelectedItem is ImageSelectionItem selectedItem)
         {
@@ -235,163 +189,13 @@ public partial class ImageSelectionWindow : Window
     }
 
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (sender is not Avalonia.Controls.Border border) return;
-        if (border.DataContext is not ImageSelectionItem item) return;
-
-        _dragItem = item;
-        _dragStartPos = e.GetPosition(ImageListControl);
-        _isPending = true;
-        _isDragging = false;
-    }
-
-    private void OnDragPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-    {
-        CleanupDragState();
-        if (sender is Avalonia.Controls.Border border)
-            border.PointerCaptureLost -= OnDragPointerCaptureLost;
-    }
+        => _dragHelper?.OnPointerPressed(sender, e);
 
     private void OnItemPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_isPending && !_isDragging) return;
-        if (_dragItem == null) return;
-
-        var pos = e.GetPosition(ImageListControl);
-
-        if (_isPending)
-        {
-            var delta = pos - _dragStartPos;
-            if (Math.Abs(delta.Y) < DragThreshold) return;
-            _isPending = false;
-            _isDragging = true;
-            if (sender is Avalonia.Controls.Border border)
-            {
-                border.PointerCaptureLost += OnDragPointerCaptureLost;
-                e.Pointer.Capture(border);
-            }
-            ShowPreview(_dragItem);
-        }
-
-        if (_isDragging)
-        {
-            UpdatePreviewPos(e);
-            UpdateDropLine(pos);
-        }
-
-        e.Handled = true;
-    }
+        => _dragHelper?.OnPointerMoved(sender, e);
 
     private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (_isDragging && _dragItem != null)
-        {
-            var pos = e.GetPosition(ImageListControl);
-            int targetIndex = GetDropIndex(pos);
-            PerformReorder(_dragItem, targetIndex);
-        }
-
-        CleanupDragState();
-        e.Pointer.Capture(null);
-        e.Handled = true;
-    }
-
-    private void CleanupDragState()
-    {
-        _isPending = false;
-        _isDragging = false;
-        _dragItem = null;
-        if (DragPreview != null) DragPreview.IsVisible = false;
-        if (DropLine != null) DropLine.IsVisible = false;
-    }
-
-    private void ShowPreview(ImageSelectionItem item)
-    {
-        DragPreviewText.Text = item.FileName;
-        DragPreview.IsVisible = true;
-    }
-
-    private void UpdatePreviewPos(PointerEventArgs e)
-    {
-        var canvasPos = e.GetPosition(DragPreviewCanvas);
-        Canvas.SetLeft(DragPreview, canvasPos.X);
-        Canvas.SetTop(DragPreview, canvasPos.Y);
-    }
-
-    private int GetDropIndex(Point posInList)
-    {
-        if (_items is not { Count: > 0 } items) return 0;
-
-        for (int i = 0; i < items.Count; i++)
-        {
-            var container = ImageListControl.ContainerFromIndex(i) as ListBoxItem;
-            if (container == null) continue;
-
-            var bounds = container.TranslatePoint(new Point(0, 0), ImageListControl);
-            if (!bounds.HasValue) continue;
-
-            double midY = bounds.Value.Y + container.Bounds.Height / 2;
-            if (posInList.Y < midY) return i;
-        }
-        return items.Count;
-    }
-
-    private void UpdateDropLine(Point posInList)
-    {
-        int targetIndex = GetDropIndex(posInList);
-
-        if (targetIndex < (_items?.Count ?? 0))
-        {
-            var container = ImageListControl.ContainerFromIndex(targetIndex) as ListBoxItem;
-            if (container != null)
-            {
-                var bounds = container.TranslatePoint(new Point(0, 0), DropIndicatorCanvas);
-                if (bounds.HasValue)
-                {
-                    Canvas.SetLeft(DropLine, bounds.Value.X);
-                    Canvas.SetTop(DropLine, bounds.Value.Y);
-                    DropLine.Width = container.Bounds.Width;
-                    DropLine.IsVisible = true;
-                    return;
-                }
-            }
-        }
-        else if (_items is { Count: > 0 } items)
-        {
-            // 末尾：放在最后一项的下方
-            var container = ImageListControl.ContainerFromIndex(items.Count - 1) as ListBoxItem;
-            if (container != null)
-            {
-                var bounds = container.TranslatePoint(new Point(0, container.Bounds.Height), DropIndicatorCanvas);
-                if (bounds.HasValue)
-                {
-                    Canvas.SetLeft(DropLine, bounds.Value.X);
-                    Canvas.SetTop(DropLine, bounds.Value.Y);
-                    DropLine.Width = container.Bounds.Width;
-                    DropLine.IsVisible = true;
-                    return;
-                }
-            }
-        }
-
-        DropLine.IsVisible = false;
-    }
-
-    private void PerformReorder(ImageSelectionItem item, int targetIndex)
-    {
-        if (_items == null) return;
-
-        int fromIndex = _items.IndexOf(item);
-        if (fromIndex < 0) return;
-
-        // 调整目标索引：如果向后拖，实际索引需要 -1
-        if (fromIndex < targetIndex) targetIndex--;
-
-        if (fromIndex == targetIndex) return;
-
-        _items.Move(fromIndex, targetIndex);
-    }
+        => _dragHelper?.OnPointerReleased(sender, e);
 
     /// <summary>
     /// 加载图片并进行重采样（缩放到最大尺寸限制）
