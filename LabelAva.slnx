@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="LabelAva.csproj" />
+  <Project Path="tests/LabelAva.Tests/LabelAva.Tests.csproj" />
 </Solution>

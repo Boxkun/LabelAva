@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -32,6 +32,15 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 测试工程位于主工程目录之下，必须排除：
+         主工程默认的 **/*.cs 通配会把 tests/ 下的测试源码（连同其 obj/ 生成文件）一起编译进来。 -->
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <AvaloniaResource Remove="tests\**" />
   </ItemGroup>
 
   <ItemGroup>

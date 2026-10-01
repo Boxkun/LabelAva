@@ -1,0 +1,1776 @@
+### 01-初始化完成
+{
+  "canvas": {
+    "currentFitScale": 1,
+    "currentImagePath": null,
+    "hasImage": false,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": false,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 1,
+      "m12": 0,
+      "m21": 0,
+      "m22": 1,
+      "m31": 0,
+      "m32": 0
+    },
+    "zoomPercent": 100
+  },
+  "document": {
+    "filePath": null,
+    "hasDocument": false,
+    "imageFolderPath": null,
+    "imagePathMapping": {},
+    "isDirty": false,
+    "translationData": null
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": false,
+    "currentGroupIndex": 0,
+    "isEditMode": false,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": false,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500(_U)"
+  },
+  "navigation": {
+    "currentImageIndex": -1,
+    "currentTreeItem": null,
+    "hasDocument": false,
+    "imageFolderPath": null,
+    "imageNames": [],
+    "lastFocusedRootItem": null,
+    "selectedItemKind": null,
+    "selectedTranslationIndex": null,
+    "tree": []
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5C31\u7EEA",
+    "zoomText": "\u7F29\u653E: 100%"
+  },
+  "textBox": {
+    "caretIndex": 0,
+    "isEnabled": false,
+    "isFocused": false,
+    "selectionEnd": 0,
+    "selectionStart": 0,
+    "text": null
+  }
+}
+### 02-打开文档
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 30.5,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": false,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 0,
+    "isEditMode": false,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": false,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500(_U)"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "ImageTreeItem",
+    "selectedTranslationIndex": null,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5DF2\u52A0\u8F7D 2 \u5F20\u56FE\u7247",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 0,
+    "isEnabled": false,
+    "isFocused": false,
+    "selectionEnd": 0,
+    "selectionStart": 0,
+    "text": null
+  }
+}
+### 03-选中标记1
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 30.5,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": false,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 0,
+    "isEditMode": false,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": false,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500(_U)"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5DF2\u52A0\u8F7D 2 \u5F20\u56FE\u7247",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 0,
+    "isEnabled": false,
+    "isFocused": false,
+    "selectionEnd": 0,
+    "selectionStart": 0,
+    "text": "\u7B2C\u4E00\u53E5"
+  }
+}
+### 04-进入编辑模式
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 30.5,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": false,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 0,
+    "isEditMode": true,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": false,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500(_U)"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u7F16\u8F91\u6A21\u5F0F",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 0,
+    "isEnabled": true,
+    "isFocused": false,
+    "selectionEnd": 0,
+    "selectionStart": 0,
+    "text": "\u7B2C\u4E00\u53E5"
+  }
+}
+### 05-切到分组2
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 30.5,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": false,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 2,
+    "isEditMode": true,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": false,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500(_U)"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 0,
+    "isEnabled": true,
+    "isFocused": false,
+    "selectionEnd": 0,
+    "selectionStart": 0,
+    "text": "\u7B2C\u4E00\u53E5"
+  }
+}
+### 06-快捷输入追加
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 61,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": true,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "~~\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 2,
+    "isEditMode": true,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": true,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500 \u4FEE\u6539\u6587\u672C"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 2,
+    "isEnabled": true,
+    "isFocused": true,
+    "selectionEnd": 2,
+    "selectionStart": 2,
+    "text": "~~\u7B2C\u4E00\u53E5"
+  }
+}
+### 07-快捷输入替换选区
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 61,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": true,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "~~",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 2,
+    "isEditMode": true,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": true,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500 \u4FEE\u6539\u6587\u672C"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 2,
+    "isEnabled": true,
+    "isFocused": true,
+    "selectionEnd": 2,
+    "selectionStart": 2,
+    "text": "~~"
+  }
+}
+### 08-快捷键切回分组1
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/01.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 61,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": true,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "~~",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 0,
+    "isEditMode": true,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": true,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500 \u4FEE\u6539\u6587\u672C"
+  },
+  "navigation": {
+    "currentImageIndex": 0,
+    "currentTreeItem": "01.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5185",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 2,
+    "isEnabled": true,
+    "isFocused": true,
+    "selectionEnd": 2,
+    "selectionStart": 2,
+    "text": "~~"
+  }
+}
+### 09-切到第二张图
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": "\u003Croot\u003E/02.png",
+    "hasImage": true,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": true,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 739,
+      "m12": 0,
+      "m21": 0,
+      "m22": 739,
+      "m31": 30.5,
+      "m32": 0
+    },
+    "zoomPercent": 73900
+  },
+  "document": {
+    "filePath": "\u003Croot\u003E/test.txt",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imagePathMapping": {},
+    "isDirty": true,
+    "translationData": {
+      "comments": [
+        "Default Comment"
+      ],
+      "groups": [
+        {
+          "index": 1,
+          "name": "\u6846\u5185"
+        },
+        {
+          "index": 2,
+          "name": "\u6846\u5916"
+        }
+      ],
+      "imageLabels": {
+        "01.png": [
+          {
+            "groupIndex": 1,
+            "text": "~~",
+            "textIndex": 1,
+            "x": 0.25,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 1,
+            "text": "\u7B2C\u4E8C\u53E5\uFF0C\u5E26\u6807\u70B9\uFF01",
+            "textIndex": 2,
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "textIndex": 3,
+            "x": 0.75,
+            "y": 0.9
+          }
+        ],
+        "02.png": [
+          {
+            "groupIndex": 1,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E00\u53E5",
+            "textIndex": 1,
+            "x": 0.1,
+            "y": 0.1
+          },
+          {
+            "groupIndex": 2,
+            "text": "\u4E8C\u53F7\u56FE\u7B2C\u4E8C\u53E5",
+            "textIndex": 2,
+            "x": 0.9,
+            "y": 0.9
+          }
+        ]
+      },
+      "unknownParam": "1,0"
+    }
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": true,
+    "currentGroupIndex": 0,
+    "isEditMode": true,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": true,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500 \u4FEE\u6539\u6587\u672C"
+  },
+  "navigation": {
+    "currentImageIndex": 1,
+    "currentTreeItem": "02.png",
+    "hasDocument": true,
+    "imageFolderPath": "\u003Croot\u003E",
+    "imageNames": [
+      "01.png",
+      "02.png"
+    ],
+    "lastFocusedRootItem": "01.png",
+    "selectedItemKind": "TranslationTreeItem",
+    "selectedTranslationIndex": 1,
+    "tree": [
+      {
+        "imageName": "01.png",
+        "translationCount": 3,
+        "translationIndexes": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "imageName": "02.png",
+        "translationCount": 2,
+        "translationIndexes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "[2/2] 02.png",
+    "zoomText": "\u7F29\u653E: 73900%"
+  },
+  "textBox": {
+    "caretIndex": 2,
+    "isEnabled": true,
+    "isFocused": true,
+    "selectionEnd": 2,
+    "selectionStart": 2,
+    "text": "~~"
+  }
+}
+### 10-关闭文档
+{
+  "canvas": {
+    "currentFitScale": 739,
+    "currentImagePath": null,
+    "hasImage": false,
+    "highlightedLabelIndex": -1,
+    "isFirstImageLoaded": false,
+    "isPanning": false,
+    "pendingNewLabelIndex": null,
+    "transform": {
+      "m11": 1,
+      "m12": 0,
+      "m21": 0,
+      "m22": 1,
+      "m31": 0,
+      "m32": 0
+    },
+    "zoomPercent": 100
+  },
+  "document": {
+    "filePath": null,
+    "hasDocument": false,
+    "imageFolderPath": null,
+    "imagePathMapping": {},
+    "isDirty": false,
+    "translationData": null
+  },
+  "edit": {
+    "activeDligFontFamily": null,
+    "activeDligFontFeatures": null,
+    "canToggleEditMode": false,
+    "currentGroupIndex": 0,
+    "isEditMode": false,
+    "quickInputSlots": [
+      {
+        "character": "\u25CF",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u25CB",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2665",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u2661",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u203B",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "\u266A",
+        "fromDlig": false,
+        "label": ""
+      },
+      {
+        "character": "~~",
+        "fromDlig": true,
+        "label": "~~"
+      },
+      {
+        "character": "#02",
+        "fromDlig": true,
+        "label": "#02"
+      },
+      {
+        "character": "@01",
+        "fromDlig": true,
+        "label": "@01"
+      }
+    ]
+  },
+  "history": {
+    "canRedo": false,
+    "canUndo": false,
+    "redoHeader": "\u91CD\u505A(_R)",
+    "undoHeader": "\u64A4\u9500(_U)"
+  },
+  "navigation": {
+    "currentImageIndex": -1,
+    "currentTreeItem": null,
+    "hasDocument": false,
+    "imageFolderPath": null,
+    "imageNames": [],
+    "lastFocusedRootItem": null,
+    "selectedItemKind": null,
+    "selectedTranslationIndex": null,
+    "tree": []
+  },
+  "resources": {
+    "dligFontFamily": null,
+    "hasDligFontFeatures": false
+  },
+  "statusBar": {
+    "statusText": "\u5C31\u7EEA",
+    "zoomText": "\u7F29\u653E: 100%"
+  },
+  "textBox": {
+    "caretIndex": 0,
+    "isEnabled": false,
+    "isFocused": false,
+    "selectionEnd": 0,
+    "selectionStart": 0,
+    "text": null
+  }
+}
