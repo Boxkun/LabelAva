@@ -1148,8 +1148,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 快捷输入按钮点击事件（占位处理函数）
-    /// 后续可在此实现插入预设文本或特殊符号的功能
+    /// 快捷输入工具栏滚轮：把纵向滚轮换算成工具栏的横向平移。
     /// </summary>
     private void OnToolbarScrollWheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
     {
@@ -1163,19 +1162,34 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 快捷输入按钮点击事件：把按钮对应的字符写入当前选中标记的文本。
+    /// 文本框有选区时替换选中内容，无选区时在光标处插入（对齐 TextBox 的原生输入行为）。
+    /// </summary>
     private void OnQuickInputButtonClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button button) return;
         if (button.DataContext is not QuickInputSlot slot) return;
         if (string.IsNullOrEmpty(slot.Character)) return;
+        if (!RequireEditMode()) return;
         if (Navigation.SelectedTranslationItem is not { } item) return;
         if (_translationTextBox is not { IsEnabled: true }) return;
 
-        var caretIndex = _translationTextBox.CaretIndex;
         var current = item.Text ?? "";
-        item.Text = current.Insert(caretIndex, slot.Character);
 
-        var newCaretPos = caretIndex + slot.Character.Length;
+        // 取选区范围；无选区（起点等于终点）时退化为光标处插入
+        var selStart = Math.Min(_translationTextBox.SelectionStart, _translationTextBox.SelectionEnd);
+        var selEnd = Math.Max(_translationTextBox.SelectionStart, _translationTextBox.SelectionEnd);
+        if (selEnd <= selStart)
+            selStart = selEnd = _translationTextBox.CaretIndex;
+
+        // 防御：与模型文本长度不一致时收敛到合法区间，避免 Remove/Insert 越界
+        selStart = Math.Clamp(selStart, 0, current.Length);
+        selEnd = Math.Clamp(selEnd, 0, current.Length);
+
+        item.Text = current.Remove(selStart, selEnd - selStart).Insert(selStart, slot.Character);
+
+        var newCaretPos = selStart + slot.Character.Length;
         _translationTextBox.CaretIndex = newCaretPos;
         _translationTextBox.Focus();
         // TextChanged 事件已推入历史栈并触发 RebuildCurrentView；Background 修复光标位置
