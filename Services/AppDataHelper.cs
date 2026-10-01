@@ -7,13 +7,27 @@ public static class AppDataHelper
 {
     private static readonly string AppName = "LabelAva";
 
+    /// <summary>
+    /// 测试注入点：非 null 时把漫游 AppData 根目录重定向到该路径。
+    /// 生产代码保持 null，此时行为与引入该接缝之前完全一致。
+    /// </summary>
+    public static string? AppDataRootOverride { get; set; }
+
+    /// <summary>
+    /// 测试注入点：非 null 时把本地 AppData 根目录重定向到该路径。
+    /// 生产代码保持 null。
+    /// </summary>
+    public static string? LocalDataRootOverride { get; set; }
+
     public static string AppDataFolder
     {
         get
         {
-            var folder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                AppName);
+            var folder = AppDataRootOverride is { Length: > 0 } root
+                ? root
+                : Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    AppName);
             Directory.CreateDirectory(folder);
             return folder;
         }
@@ -26,6 +40,12 @@ public static class AppDataHelper
     {
         get
         {
+            if (LocalDataRootOverride is { Length: > 0 } localRoot)
+            {
+                Directory.CreateDirectory(localRoot);
+                return localRoot;
+            }
+
             string basePath;
             if (PlatformHelper.IsMacOS)
             {

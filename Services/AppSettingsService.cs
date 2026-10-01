@@ -16,7 +16,9 @@ public partial class AppSettingsContext : JsonSerializerContext { }
 
 public static class AppSettingsService
 {
-    private static readonly string SettingsFile = AppDataHelper.SettingsFilePath;
+    // 必须是计算属性而非 static readonly 字段：测试通过 AppDataHelper.AppDataRootOverride
+    // 重定向根目录后才读取路径，字段式初始化会在类型首次使用时就把真实用户路径固化下来。
+    private static string SettingsFile => AppDataHelper.SettingsFilePath;
 
     public static void Save(Models.AppSettings settings)
     {

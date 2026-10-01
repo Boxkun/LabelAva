@@ -18,7 +18,8 @@ internal partial class DligConfigContext : JsonSerializerContext { }
 
 public static class DligConfigService
 {
-    private static readonly string ConfigDir = AppDataHelper.DligConfigFolder;
+    // 同 AppSettingsService：计算属性，保证测试重定向 AppData 根之后生效
+    private static string ConfigDir => AppDataHelper.DligConfigFolder;
 
     public static void EnsureDirectory()
     {
