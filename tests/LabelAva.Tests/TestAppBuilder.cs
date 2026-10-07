@@ -8,13 +8,21 @@ namespace LabelAva.Tests;
 
 /// <summary>
 /// headless 测试用的 Avalonia 应用构建器。
-/// 与 <see cref="Program.BuildAvaloniaApp"/> 的差异只有一处：用 UseHeadless 取代 UsePlatformDetect
-/// （以及不启用开发者工具），其余保持一致，避免测试环境与真实运行环境出现无关偏差。
+///
+/// 关键点是 <c>UseSkia()</c> + <c>UseHeadlessDrawing = false</c>：
+/// 若只用 <c>UseHeadless(UseHeadlessDrawing = true)</c>，平台会自带一个**桩字体管理器** ——
+/// 任何按家族名的系统字体查询都会「成功」但返回内置最小字体（FamilyName = BareMinimum），
+/// 于是依赖真实字体的代码（例如连字字体校验）在测试里永远走不到成功分支。
+/// 交给 Skia 提供字体与文本度量后，系统字体查询才是真实结果。
+///
+/// 与 <see cref="Program.BuildAvaloniaApp"/> 的其余差异只有：用 UseHeadless 取代 UsePlatformDetect、
+/// 不启用开发者工具。
 /// </summary>
 public static class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true })
+            .UseSkia()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
             .WithInterFont();
 }
