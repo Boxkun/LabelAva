@@ -146,8 +146,6 @@ public partial class MainWindow : Window
                 Document.WriteImmediateRecovery();
             };
 
-            _imageTreeView = this.FindControl<TreeView>("ImageTreeView")!;
-
             // ---- Phase 3: VM 创建（有依赖顺序） ----
             var historyManager = new HistoryManager();
             ViewModel.History = new HistoryViewModel(historyManager, StatusBar);
@@ -173,6 +171,9 @@ public partial class MainWindow : Window
             ViewModel.Document.BeforeSave = null;
             ViewModel.Document.DocumentOpened += OnDocumentOpened;
             ViewModel.Document.DocumentClosed += OnDocumentClosed;
+
+            // 拖拽控制器依赖 Navigation / Document / CanvasWorkspace，必须在 Phase 3 之后创建
+            InitializeTreeDragDrop();
 
             // ---- Phase 4: Canvas 初始化 ----
             CanvasControl.SettingsProvider = _settingsProvider;

@@ -38,7 +38,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_isDragActive) return;
+        if (_treeDragDrop?.IsDragging == true) return;
 
         var selectedItem = ImageTreeView.SelectedItem;
 

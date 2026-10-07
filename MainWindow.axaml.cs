@@ -45,14 +45,9 @@ public partial class MainWindow : Window
     // 主动失焦标志：Ctrl+Enter 提交时置 true，GotFocus 拦截器据此踢走焦点
     private bool _isIntentionalBlur = false;
     
-    // 树视图拖拽交互状态
-    private Point _treeDragStartPoint;
-    private bool _isTreeItemDragging = false;   // PENDING 状态：按下但未超过阈值
-    private bool _isDragActive = false;          // DRAGGING 状态：正在拖拽中
-    private TranslationTreeItem? _draggedTreeItem;
-    private TranslationTreeItem? _currentDropTarget; // 当前放置目标
-    private TreeView? _imageTreeView;           // TreeView 引用缓存
-    private const double TreeDragThreshold = 4.0;
+    // 树视图拖拽交互：状态机与全部字段都搬进了 TreeDragDropController，
+    // 这里只保留引用；在 InitializeAsync 里、ViewModel 就绪之后创建。
+    private TreeDragDropController? _treeDragDrop;
     
     // 选中项同步防重入标志
     private bool _isSyncingSelection = false;
