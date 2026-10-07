@@ -404,6 +404,18 @@ public partial class DocumentViewModel : ObservableObject
             }
         }
 
+        // 换文档前先把当前文档彻底关掉（走既有的关闭清理链）。
+        // 否则画布不会 ClearCanvas、Navigation 不会清（CurrentTreeItem/LastFocusedRootItem 会留在上一个文档），
+        // 而且 CurrentImageIndex 若仍是 0，InitializeNavigation 里的 `= 0` 不产生变更通知，
+        // 新文档的图片就不会加载 —— 现象：打开第二个翻译文件后图片不刷新，手动翻页后才生效。
+        // 两点注意：
+        //  1. CloseDocumentInternal 会清空 TranslationData，所以先把刚解析出来的结果握在手里；
+        //  2. 传 cleanupRecovery:false —— 切换文档时不能删上一个文档的崩溃恢复文件（未保存内容的唯一兜底）。
+        var parsedData = TranslationData;
+        if (HasDocument)
+            CloseDocumentInternal(cleanupRecovery: false);
+        TranslationData = parsedData;
+
         FilePath = filePath;
         ImageFolderPath = Path.GetDirectoryName(filePath);
         IsDirty = recovered;
@@ -463,7 +475,7 @@ public partial class DocumentViewModel : ObservableObject
         }
     }
 
-    private void CloseDocumentInternal()
+    private void CloseDocumentInternal(bool cleanupRecovery = true)
     {
         var capturedPath = FilePath;
 
@@ -474,7 +486,8 @@ public partial class DocumentViewModel : ObservableObject
         HasDocument = false;
         ImagePathMapping.Clear();
 
-        if (!string.IsNullOrEmpty(capturedPath))
+        // cleanupRecovery=false 用于「切换文档」：上一个文档若有未保存内容，只靠恢复文件兜底，不能删
+        if (cleanupRecovery && !string.IsNullOrEmpty(capturedPath))
             RecoveryService.Cleanup(capturedPath);
 
         _history.Clear();
