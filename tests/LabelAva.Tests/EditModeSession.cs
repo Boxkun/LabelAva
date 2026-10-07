@@ -39,8 +39,9 @@ internal sealed class EditModeSession : IDisposable
         TextBox = Harness.Window.FindControl<TextBox>("TranslationTextBox")
             ?? throw new InvalidOperationException("找不到 TranslationTextBox");
 
-        // 文本框通过绑定拿到选中标记的文本；拿不到说明夹具或时序有问题，直接报错而不是静默降级
-        // （这条在 macOS/Linux CI 上曾超时，故附上诊断信息：绑定源、可编辑性、文本框自身状态）
+        // 文本框通过绑定拿到选中标记的文本。
+        // 刻意**不带重试**：应用侧已保证树重建不会清掉选中项（见 MainWindow.OnTreeViewSelectionChanged
+        // 的存活判定）。拿不到就是真出问题，应当直接失败并打出诊断现场，而不是自动重试盖过去。
         HeadlessPump.Until(
             () => !string.IsNullOrEmpty(TextBox.Text),
             "文本框已绑定选中标记的文本",
@@ -48,6 +49,30 @@ internal sealed class EditModeSession : IDisposable
 
         // 快捷输入工具栏的按钮要等一次布局 pass 才会实例化
         HeadlessPump.Until(() => UiDriver.HasDligQuickInputButton(Harness.Window), "快捷输入按钮完成布局");
+
+        // 会话的**最后**一步再确认一次选中项：上面每一次泵都可能触发树重建、把选中项清掉
+        // （见 EnsureLabelSelected 的说明）。放在最后，才能保证把控制权交给测试时前置条件成立。
+        EnsureLabelSelected();
+    }
+
+    /// <summary>
+    /// 确认「标记 1 处于选中状态」，必要时重新选中。
+    ///
+    /// 应用侧已经保证树重建不会清掉选中项（`MainWindow.OnTreeViewSelectionChanged` 会忽略
+    /// 重建造成的 null 回写）。这里保留成一次**显式的前置条件检查**：
+    /// 会话交给测试时必须处于「已选中标记」状态，丢了就当场补上，
+    /// 免得后续断言报出与根因无关的失败。真正的不变量由 TreeSelectionTests 严格守着。
+    /// </summary>
+    public void EnsureLabelSelected(int labelIndex = 1)
+    {
+        if (Harness.Vm.Navigation.SelectedTranslationItem is not null)
+            return;
+
+        Harness.Vm.Navigation.SelectLabelByIndex(labelIndex);
+        HeadlessPump.Until(
+            () => Harness.Vm.Navigation.SelectedTranslationItem is not null,
+            $"重新选中标记 {labelIndex}");
+        HeadlessPump.Drain();
     }
 
     public ProjectFixture Project { get; }
