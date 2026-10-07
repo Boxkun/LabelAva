@@ -1,0 +1,50 @@
+name: Test
+
+# 触发策略：只认版本 tag（与 Publish 一致），另留手动触发。
+#
+# 刻意**不**监听 push / pull_request：那会让每一次开发推送都产生一次运行，
+# 运行失败又会给仓库所有者发通知邮件 —— 调试期连推十几轮就会把邮箱淹掉。
+# 需要跨平台验证时用 `gh workflow run test.yml` 手动触发，一次触发覆盖三个平台；
+# 本地能验的先在本地验完再触发。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      # 一个平台挂了不影响其它平台跑完，便于一次看清全部结果
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          # ubuntu-latest 是 x64；macos-latest 默认已是 Apple Silicon（arm64），
+          # 所以这个组合覆盖了 Windows x64 / Linux x64 / macOS arm64。
+          - ubuntu-latest
+          - macos-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # 刻意用 Debug（默认配置）：行为轨迹基线是在 Debug 下录制并验证的。
+      #
+      # 行为轨迹基线是**跨平台共用**的：轨迹里只记录与环境无关的状态与关系
+      # （例如「缩放是否符合适应容器的规则」「变换是否等比且居中」「历史栈是什么」），
+      # 不记录 fitScale / 变换矩阵 / 缩放百分比这类绝对像素值 —— 那些随布局与 DPI 变化，
+      # 一旦入轨迹就会逼着每个平台各维护一份基线。所以这里不需要按平台分基线。
+      #
+      # 测试工程用 Avalonia.Headless + Skia 驱动真实控件与真实指针事件。
+      #
+      # 用 detailed 日志：诊断类测试通过 Skip 的原因输出跨平台现场信息（Screens/窗口尺寸/选中态），
+      # 那些内容只有在详细级别下才会出现在日志里。
+      - name: Run tests
+        run: dotnet test tests/LabelAva.Tests/LabelAva.Tests.csproj --nologo --logger "console;verbosity=detailed"
