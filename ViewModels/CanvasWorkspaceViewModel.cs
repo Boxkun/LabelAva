@@ -106,6 +106,16 @@ public partial class CanvasWorkspaceViewModel : ObservableObject
         _containerSize = size;
     }
 
+    /// <summary>
+    /// 画布容器尺寸 —— 即 fit 变换实际使用的那个值（由 View 通过 <see cref="UpdateContainerSize"/> 传入）。
+    /// 只读暴露出来是为了让诊断与测试能核对「缩放是否符合适应容器的规则」，
+    /// 而不是去猜某个活动控件的当前尺寸。
+    /// </summary>
+    public Size ContainerSize => _containerSize;
+
+    /// <summary>当前图片的像素尺寸 —— 即 fit 变换实际使用的那个值。</summary>
+    public Size ImageSize => _imageSize;
+
     /// <summary>更新图片尺寸（在图片加载后调用）</summary>
     public void UpdateImageSize(Size size)
     {
