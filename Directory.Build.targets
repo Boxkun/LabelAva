@@ -1,0 +1,30 @@
+<Project>
+
+  <!--
+    裁掉本地（未指定 RID 的）构建里被整体拷进输出目录的原生库调试符号。
+
+    背景：SkiaSharp / HarfBuzzSharp 的 NuGet 包在 runtimes/<rid>/native/ 下同时提供
+    原生库和它的 .pdb，而不指定 RID 的构建会把**所有平台**的 runtimes/** 一起拷出来：
+
+        bin\Debug\net10.0\runtimes                 约 550 MB（本地构建输出里最大的一块）
+          runtimes\win-x86\native\libSkiaSharp.pdb        82.7 MB
+          runtimes\win-arm64\native\libSkiaSharp.pdb      81.0 MB
+          runtimes\win-x64\native\libSkiaSharp.pdb        80.1 MB
+          runtimes\win-*\native\libHarfBuzzSharp.pdb      ~20 MB × 3
+          （其余是别的平台的 .so/.dylib）
+
+    三个 Windows 架构的原生符号就有 ~340 MB，占了一大半；它们对调试本项目的托管代码没用，
+    也正好与 csproj 里既有的 <DebugType>none</DebugType> 意图一致。这里在拷贝前裁掉。
+
+    范围仅限 runtimes/** 下的 .pdb（都是 NuGet 原生资产），托管程序集的符号不受影响；
+    显式指定 RID 的构建与 AOT 发布同样受益（发布资产里那 ~100 MB 的 Windows 原生 PDB 也会消失）。
+  -->
+  <Target Name="TrimNativeSymbolsFromCopyLocal" BeforeTargets="_CopyFilesMarkedCopyLocal">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="$([System.String]::Copy('%(ReferenceCopyLocalPaths.Identity)').Contains('runtimes'))
+                                          and $([System.String]::Copy('%(ReferenceCopyLocalPaths.Identity)').EndsWith('.pdb'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>
