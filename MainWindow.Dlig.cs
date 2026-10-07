@@ -28,8 +28,8 @@ namespace LabelAva;
 
 /// <summary>
 /// MainWindow 的「Dlig」部分。
-/// 连字（dlig）配置的应用：字体家族/OpenType 特性、快捷输入槽装载、按钮强调色。
-/// <para>由 code-behind 机械拆分而来：成员体逐字节未改，只换了文件位置。</para>
+/// 只负责把 <see cref="DligConfigResolver"/> 的结果推给 ViewModel 与窗口资源，
+/// 以及给连字快捷输入按钮加强调色 —— 策略本身在解析器里，视图层不再持有它。
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -41,76 +41,24 @@ public partial class MainWindow : Window
         if (_translationTextBox == null)
             return;
 
-        // 始终加载默认快捷输入
+        var result = DligConfigResolver.Resolve(_settingsProvider.Current);
+
         Edit.QuickInputSlots.Clear();
-        foreach (var slot in _settingsProvider.Current.DefaultQuickInputs)
+        foreach (var slot in result.Slots)
             Edit.QuickInputSlots.Add(slot);
 
-        var configName = _settingsProvider.Current.ActiveDligConfig;
+        Edit.ActiveDligFontFamily = result.FontFamily;
+        Edit.ActiveDligFontFeatures = result.Features;
 
-        if (string.IsNullOrWhiteSpace(configName))
+        // 解析器只在完全成功时要求写窗口资源，失败分支刻意保留上一次的值
+        if (result.WritesWindowResources)
         {
-            Edit.ActiveDligFontFamily = null;
-            Edit.ActiveDligFontFeatures = null;
-            return;
+            Resources["DligFontFamily"] = result.FontFamily;
+            Resources["DligFontFeatures"] = result.Features;
         }
 
-        var config = DligConfigService.LoadConfig(configName);
-        if (config == null)
-        {
-            Edit.ActiveDligFontFamily = null;
-            Edit.ActiveDligFontFeatures = null;
-            StatusBar.UpdateStatus(
-                $"连字配置 '{configName}' 加载失败，已回退到默认",
-                StatusBarViewModel.StatusType.Warn);
-            return;
-        }
-
-        // 追加载连字配置的快捷输入按钮
-        if (config.QuickInputs != null)
-        {
-            foreach (var slot in config.QuickInputs)
-            {
-                slot.IsFromDligConfig = true;
-                Edit.QuickInputSlots.Add(slot);
-            }
-        }
-
-        // 应用字体和 OpenType 特性
-        if (string.IsNullOrWhiteSpace(config.FontFamily))
-        {
-            Edit.ActiveDligFontFamily = null;
-            Edit.ActiveDligFontFeatures = null;
-            return;
-        }
-
-        var fontFamily = new FontFamily(config.FontFamily);
-        var typeface = new Typeface(fontFamily);
-        var fontInstalled = FontManager.Current.TryGetGlyphTypeface(typeface, out var glyphTypeface)
-            && string.Equals(glyphTypeface.FamilyName, config.FontFamily, StringComparison.OrdinalIgnoreCase);
-
-        if (!fontInstalled)
-        {
-            Edit.ActiveDligFontFamily = null;
-            Edit.ActiveDligFontFeatures = null;
-            StatusBar.UpdateStatus(
-                $"字体 '{config.FontFamily}' 未安装，连字功能不可用",
-                StatusBarViewModel.StatusType.Warn);
-            return;
-        }
-
-        FontFeatureCollection? features = null;
-        if (!string.IsNullOrWhiteSpace(config.FontFeatures))
-        {
-            features = new FontFeatureCollection();
-            foreach (var part in config.FontFeatures.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                features.Add(FontFeature.Parse(part));
-        }
-
-        Edit.ActiveDligFontFamily = fontFamily;
-        Edit.ActiveDligFontFeatures = features;
-        Resources["DligFontFamily"] = fontFamily;
-        Resources["DligFontFeatures"] = features;
+        if (result.Warning != null)
+            StatusBar.UpdateStatus(result.Warning, StatusBarViewModel.StatusType.Warn);
     }
 
     private void ApplyDligButtonAccentBackground()
