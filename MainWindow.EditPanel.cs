@@ -24,17 +24,19 @@ public partial class MainWindow : Window
         if (Document.TranslationData == null)
             return;
         
-        // 在重建前记住当前选中的标签索引
-        int? previouslySelectedLabelIndex = null;
-        if (Navigation.SelectedItem is TranslationTreeItem currentItem)
-        {
-            previouslySelectedLabelIndex = currentItem.Index;
-        }
-        
-        // 【新增】如果有待选中的新标签（添加标签操作），优先使用它
+        // 在重建前记住当前选中的标签：既要记住**对象引用**，也要记住索引。
+        //  - 对象引用：重建只替换视图实例，数据层的 LabelItem 还是同一批对象，
+        //    所以按引用能把同一个标记选回来（重排会重编号索引，按索引会选到别的标记）。
+        //  - 索引：原标记被删除时，用它选「原索引位置的邻居」。
+        var previouslySelectedLabel = (Navigation.SelectedItem as TranslationTreeItem)?.LabelItem;
+        int? previouslySelectedLabelIndex = (Navigation.SelectedItem as TranslationTreeItem)?.Index;
+
+        // 添加标签时会指定要选中的新标记：那是一次明确的「按索引选」，不适用上面的引用恢复
+        var selectNewLabelByIndex = false;
         if (CanvasWorkspace.PendingNewLabelIndex.HasValue)
         {
             previouslySelectedLabelIndex = CanvasWorkspace.PendingNewLabelIndex;
+            selectNewLabelByIndex = true;
         }
         
         // 重新构建树视图
@@ -73,16 +75,23 @@ public partial class MainWindow : Window
 
                 if (previouslySelectedLabelIndex.HasValue)
                 {
-                    // 恢复焦点到特定的标签项
-                    var labelItem = treeItem.Translations.FirstOrDefault(t => t.Index == previouslySelectedLabelIndex.Value);
-                    if (labelItem != null)
+                    TranslationTreeItem? restored = null;
+
+                    if (!selectNewLabelByIndex && previouslySelectedLabel != null)
                     {
-                        Navigation.SelectedItem = labelItem;
+                        // 同一个标记（文本变更 / 分组 / 重排）：按对象引用找回
+                        restored = treeItem.Translations
+                            .FirstOrDefault(t => ReferenceEquals(t.LabelItem, previouslySelectedLabel));
                     }
-                    else
-                    {
-                        Navigation.SelectedItem = treeItem;
-                    }
+
+                    // 引用找不回（标记被删除）或本来就是按索引选：
+                    // 原索引位置 → 退一格 → 都没有（标记被删空）则落到图片节点
+                    restored ??= treeItem.Translations
+                            .FirstOrDefault(t => t.Index == previouslySelectedLabelIndex.Value)
+                        ?? treeItem.Translations
+                            .FirstOrDefault(t => t.Index == previouslySelectedLabelIndex.Value - 1);
+
+                    Navigation.SelectedItem = restored ?? (object)treeItem;
                 }
                 else
                 {
