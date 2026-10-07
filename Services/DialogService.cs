@@ -24,19 +24,25 @@ using System.Diagnostics;
 using Avalonia.Input.Platform;
 
 
-namespace LabelAva;
+
+namespace LabelAva.Services;
 
 /// <summary>
-/// MainWindow 的对话框编排部分：未保存确认 / 崩溃恢复 / 图片选择 / 文件关联管理器。
-/// 这些方法不依赖任何窗口私有状态（只用 this 作为 Owner），所以单独成文件便于定位，
-/// 也为后续抽成独立的对话框服务留出位置。
+/// IDialogService 的默认实现：用代码即时构造四个对话框窗口。
+///
+/// 这些方法只依赖构造时传入的 owner 窗口，不持有任何窗口私有状态，
+/// 因此可以从 MainWindow 里独立出来、被单独审视或替换。
 /// </summary>
-public partial class MainWindow : Window
+public sealed class DialogService : IDialogService
 {
+    private readonly Window _owner;
+
+    public DialogService(Window owner) => _owner = owner;
+
     /// <summary>
-    /// 未保存更改确认对话框（作为回调注入 DocumentViewModel）
+    /// 未保存更改确认对话框（IDialogService 实现）
     /// </summary>
-    private async Task<UnsavedChangesResult> ShowUnsavedChangesDialogAsync(string message)
+    public async Task<UnsavedChangesResult> ShowUnsavedChangesAsync(string message)
     {
         var result = UnsavedChangesResult.Cancel;
 
@@ -49,7 +55,7 @@ public partial class MainWindow : Window
             CanResize = false,
             ShowInTaskbar = false,
             TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
-            Background = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Brushes.White
+            Background = ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Brushes.White
         };
 
         // 根布局：上方内容区（*）+ 下方按钮栏（Auto）
@@ -122,15 +128,15 @@ public partial class MainWindow : Window
         dialog.Measure(new Size(420, 140));
         dialog.Arrange(new Rect(0, 0, 420, 140));
 
-        await dialog.ShowDialog(this);
+        await dialog.ShowDialog(_owner);
 
         return result;
     }
 
     /// <summary>
-    /// 崩溃恢复对话框（作为回调注入 DocumentViewModel）
+    /// 崩溃恢复对话框（IDialogService 实现）
     /// </summary>
-    private async Task<RecoveryResult> ShowRecoveryDialogAsync(string message)
+    public async Task<RecoveryResult> ShowRecoveryAsync(string message)
     {
         var result = RecoveryResult.Discard;
 
@@ -143,7 +149,7 @@ public partial class MainWindow : Window
             CanResize = false,
             ShowInTaskbar = false,
             TransparencyLevelHint = new[] { WindowTransparencyLevel.None },
-            Background = Services.ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Brushes.White
+            Background = ThemeHelper.GetBrush("SystemControlPageBackgroundAltHighBrush") ?? Brushes.White
         };
 
         var rootGrid = new Grid();
@@ -211,21 +217,21 @@ public partial class MainWindow : Window
         rootGrid.Children.Add(buttonArea);
 
         dialog.Content = rootGrid;
-        await dialog.ShowDialog(this);
+        await dialog.ShowDialog(_owner);
 
         return result;
     }
 
     /// <summary>
-    /// 图片选择对话框（作为回调注入 DocumentViewModel）
+    /// 图片选择对话框（IDialogService 实现）
     /// </summary>
-    private async Task<ImageSelectionResult?> ShowImageSelectionDialogAsync(
+    public async Task<ImageSelectionResult?> ShowImageSelectionAsync(
         List<string> imageFiles, string defaultFileName)
     {
         var selectionWindow = new Views.ImageSelectionWindow(imageFiles, defaultFileName);
-        selectionWindow.Owner = this;
+        selectionWindow.Owner = _owner;
 
-        var dialogResult = await selectionWindow.ShowDialog<bool>(this);
+        var dialogResult = await selectionWindow.ShowDialog<bool>(_owner);
 
         if (!dialogResult || selectionWindow.SelectedImagePaths.Count == 0)
             return null;
@@ -238,13 +244,13 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 文件关联管理器对话框（作为回调注入 DocumentViewModel）
+    /// 文件关联管理器对话框（IDialogService 实现）
     /// </summary>
-    private async Task<ImageAssociationResult?> ShowImageAssociationDialogAsync(
+    public async Task<ImageAssociationResult?> ShowImageAssociationAsync(
         List<ImageAssociationItem> items, string imageFolderPath)
     {
         var associationWindow = new ImageAssociationWindow(items, imageFolderPath);
-        var dialogResult = await associationWindow.ShowDialog<bool>(this);
+        var dialogResult = await associationWindow.ShowDialog<bool>(_owner);
         return dialogResult ? associationWindow.Result : null;
     }
 

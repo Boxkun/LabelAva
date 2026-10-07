@@ -12,28 +12,6 @@ using System.Threading.Tasks;
 
 namespace LabelAva.ViewModels;
 
-/// <summary>未保存更改对话框结果</summary>
-public enum UnsavedChangesResult
-{
-    Save,
-    Discard,
-    Cancel
-}
-
-/// <summary>崩溃恢复对话框结果</summary>
-public enum RecoveryResult
-{
-    Recover,
-    Discard
-}
-
-/// <summary>图片选择对话框结果</summary>
-public class ImageSelectionResult
-{
-    public List<string> SelectedImagePaths { get; set; } = new();
-    public string FileName { get; set; } = string.Empty;
-}
-
 /// <summary>文档打开事件参数</summary>
 public class DocumentOpenedEventArgs : EventArgs
 {
@@ -52,11 +30,8 @@ public partial class DocumentViewModel : ObservableObject
     private readonly ImageValidationService _validationService = new();
     private readonly AppSettingsProvider _settingsProvider;
 
-    // 回调：自定义对话框（UI 层注入）
-    private readonly Func<string, Task<UnsavedChangesResult>> _showUnsavedChangesDialog;
-    private readonly Func<List<string>, string, Task<ImageSelectionResult?>> _showImageSelectionDialog;
-    private readonly Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> _showImageAssociationDialog;
-    private readonly Func<string, Task<RecoveryResult>> _showRecoveryDialog;
+    /// <summary>需要用户决策的对话框（生产注入 DialogService，测试可注入假实现）</summary>
+    private readonly IDialogService _dialogService;
 
     // Redirect 模式专用路径映射
     public Dictionary<string, string> ImagePathMapping { get; } = new();
@@ -175,7 +150,7 @@ public partial class DocumentViewModel : ObservableObject
     {
         if (!IsDirty || TranslationData == null) return true;
 
-        var result = await _showUnsavedChangesDialog("项目有尚未保存的更改。是否保存？");
+        var result = await _dialogService.ShowUnsavedChangesAsync("项目有尚未保存的更改。是否保存？");
 
         if (result == UnsavedChangesResult.Save)
         {
@@ -305,7 +280,7 @@ public partial class DocumentViewModel : ObservableObject
 
             // 3. 弹出图片选择对话框
             var folderName = new DirectoryInfo(folderPath).Name;
-            var selectionResult = await _showImageSelectionDialog(imageFiles, folderName);
+            var selectionResult = await _dialogService.ShowImageSelectionAsync(imageFiles, folderName);
 
             if (selectionResult == null || selectionResult.SelectedImagePaths.Count == 0)
                 return;
@@ -342,7 +317,7 @@ public partial class DocumentViewModel : ObservableObject
             var items = _validationService.Validate(folderPath, imageNames);
             if (ImageValidationService.HasAnyFormatIssue(folderPath, items))
             {
-                var associationResult = await _showImageAssociationDialog(items, folderPath);
+                var associationResult = await _dialogService.ShowImageAssociationAsync(items, folderPath);
                 if (associationResult != null)
                 {
                     ApplyAssociationResult(associationResult);
@@ -403,7 +378,7 @@ public partial class DocumentViewModel : ObservableObject
             var projectName = Path.GetFileName(Path.GetDirectoryName(filePath));
             var message = $"检测到上一次编辑「{projectName}」时程序异常退出。\n" +
                           $"最后编辑时间: {recoveryTime:yyyy-MM-dd HH:mm:ss}\n\n要加载此备份吗？";
-            var recoveryResult = await _showRecoveryDialog(message);
+            var recoveryResult = await _dialogService.ShowRecoveryAsync(message);
             if (recoveryResult == RecoveryResult.Recover)
             {
                 TranslationData = RecoveryService.Load(filePath, _parser);
@@ -443,7 +418,7 @@ public partial class DocumentViewModel : ObservableObject
 
             if (hasMissing || hasFormatIssue)
             {
-                var associationResult = await _showImageAssociationDialog(items, ImageFolderPath!);
+                var associationResult = await _dialogService.ShowImageAssociationAsync(items, ImageFolderPath!);
 
                 if (associationResult == null)
                 {
@@ -629,7 +604,7 @@ public partial class DocumentViewModel : ObservableObject
             }
         }
 
-        return await _showImageAssociationDialog(items, ImageFolderPath);
+        return await _dialogService.ShowImageAssociationAsync(items, ImageFolderPath);
     }
 
     /// <summary>生成翻译文件模板内容</summary>
@@ -709,19 +684,13 @@ public partial class DocumentViewModel : ObservableObject
         IFileService fileService,
         HistoryViewModel history,
         StatusBarViewModel statusBar,
-        Func<string, Task<UnsavedChangesResult>> showUnsavedChangesDialog,
-        Func<List<string>, string, Task<ImageSelectionResult?>> showImageSelectionDialog,
-        Func<List<ImageAssociationItem>, string, Task<ImageAssociationResult?>> showImageAssociationDialog,
-        Func<string, Task<RecoveryResult>> showRecoveryDialog,
+        IDialogService dialogService,
         AppSettingsProvider settingsProvider)
     {
         _fileService = fileService;
         _history = history;
         _statusBar = statusBar;
-        _showUnsavedChangesDialog = showUnsavedChangesDialog;
-        _showImageSelectionDialog = showImageSelectionDialog;
-        _showImageAssociationDialog = showImageAssociationDialog;
-        _showRecoveryDialog = showRecoveryDialog;
+        _dialogService = dialogService;
         _settingsProvider = settingsProvider;
     }
 }

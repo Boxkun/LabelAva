@@ -167,9 +167,7 @@ public partial class MainWindow : Window
             var fileService = new FileDialogService(() => GetTopLevel(this));
             ViewModel.Document = new DocumentViewModel(
                 fileService, ViewModel.History, StatusBar,
-                ShowUnsavedChangesDialogAsync, ShowImageSelectionDialogAsync,
-                ShowImageAssociationDialogAsync,
-                ShowRecoveryDialogAsync,
+                new DialogService(this),
                 _settingsProvider
             );
             ViewModel.Document.BeforeSave = null;
