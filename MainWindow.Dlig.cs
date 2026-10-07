@@ -1,27 +1,9 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using FluentIcons.Avalonia;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Threading.Tasks;
-using Avalonia.Layout;
 using LabelAva.Services;
 using LabelAva.Models;
-using LabelAva.Views;
-using LabelAva.Commands;
-using System.Linq;
 using LabelAva.ViewModels;
-using System.Diagnostics;
-using Avalonia.Input.Platform;
 
 
 namespace LabelAva;
