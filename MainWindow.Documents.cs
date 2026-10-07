@@ -103,26 +103,34 @@ public partial class MainWindow : Window
         // 延迟一段时间以确保菜单关闭完成
         await Task.Delay(100);
         
-        FocusFirstTreeViewItem();
+        FocusTreeSelection();
     }
     
     /// <summary>
-    /// 聚焦到第一个 TreeViewItem
+    /// 把键盘焦点移进树视图。
+    ///
+    /// 这里**只负责焦点，不负责改选中项**。原来它无条件把选中项设成第一个节点：
+    /// 这段逻辑延迟 100ms 执行，用户（或自动化操作）在这 100ms 内选好的标记会被顶掉 ——
+    /// 选中项一变，SelectedTranslationItem 就变 null，翻译文本框随之变空、被禁用。
+    /// 仅当当前确实没有任何选中项时（例如刚打开文档），才顺手选中第一个节点。
     /// </summary>
-    private void FocusFirstTreeViewItem()
+    private void FocusTreeSelection()
     {
         if (Navigation.TreeItems.Count == 0) return;
 
-        // 展开第一个项（如果需要）
-        Navigation.TreeItems[0].IsExpanded = true;
+        var target = Navigation.SelectedItem ?? Navigation.TreeItems[0];
 
-        // 选中第一个项
-        ImageTreeView.SelectedItem = Navigation.TreeItems[0];
+        if (Navigation.SelectedItem is null)
+        {
+            // 还没有选中项：展开并选中第一个节点，好让焦点有落处
+            Navigation.TreeItems[0].IsExpanded = true;
+            ImageTreeView.SelectedItem = target;
+        }
 
         // 等待布局，再获取容器并设置焦点
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var container = ImageTreeView.ContainerFromItem(Navigation.TreeItems[0]);
+            var container = ImageTreeView.ContainerFromItem(target);
             if (container != null)
             {
                 (container as Control)?.Focus();
