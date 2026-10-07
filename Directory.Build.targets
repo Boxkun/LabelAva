@@ -1,7 +1,26 @@
 <Project>
 
   <!--
-    裁掉本地（未指定 RID 的）构建里被整体拷进输出目录的原生库调试符号。
+    本地构建默认按**本机平台**解析运行时资产。
+
+    不指定 RID 的构建会把所有平台的 runtimes/** 原生库一起拷进输出目录
+    （约 250 MB，而本机其实只需要其中十几 MB）。把 RID 默认成 SDK 所在平台的 RID 后，
+    输出里只剩本机那一份。
+
+    为什么放在 targets 而不是 Directory.Build.props：props 在 SDK props **之前**求值，
+    那时 $(NETCoreSdkRuntimeIdentifier) 还是空的；targets 在项目体之后求值，SDK 已导入，值可用。
+
+    只影响「没有显式指定 RID」的构建：
+      · CI 三个测试平台各自用自己的 RID（Windows→win-x64、Linux→linux-x64、macOS→osx-arm64）；
+      · Publish 工作流显式传 -r <rid>，不受影响；
+      · 要为别的平台构建时照旧 `dotnet build -r <rid>` / `dotnet publish -r <rid>`。
+  -->
+  <PropertyGroup>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <!--
+    再裁掉本地构建里被整体拷进输出目录的原生库调试符号。
 
     背景：SkiaSharp / HarfBuzzSharp 的 NuGet 包在 runtimes/<rid>/native/ 下同时提供
     原生库和它的 .pdb，而不指定 RID 的构建会把**所有平台**的 runtimes/** 一起拷出来：
