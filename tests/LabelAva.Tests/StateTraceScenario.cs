@@ -9,6 +9,8 @@ using Avalonia.VisualTree;
 using LabelAva.Models;
 using LabelAva.Tests.Fixtures;
 
+using LabelAva.Services;
+
 namespace LabelAva.Tests;
 
 /// <summary>轨迹中的一步：步骤名 + 该步之后的状态快照。</summary>
@@ -42,6 +44,10 @@ public static class StateTraceScenario
         var openTask = vm.Document.OpenTranslationFileAsync(project.TranslationPath);
         HeadlessPump.Until(() => openTask.IsCompleted, "打开翻译文件完成");
         openTask.GetAwaiter().GetResult();
+
+        // 首图加载是异步的（解码完才置位 IsFirstImageLoaded）。不能靠固定泵轮次碰运气：
+        // 泵得够不够随平台/机器变化，会让这一步的快照在「已加载」与「未加载」之间摆动。
+        HeadlessPump.Until(() => window.CanvasControl.IsFirstImageLoaded, "首图加载完成");
         Step("02-打开文档");
 
         vm.Navigation.SelectLabelByIndex(1);
@@ -67,8 +73,13 @@ public static class StateTraceScenario
         UiDriver.Click(dligButton);
         Step("07-快捷输入替换选区");
 
-        // 真实键盘事件，覆盖 ShortcutRouter + 全局快捷键路由（Ctrl+D1 → 切回分组 1）
-        window.KeyPress(Key.D1, RawInputModifiers.Control, PhysicalKey.Digit1, "1");
+        // 真实键盘事件，覆盖 ShortcutRouter + 全局快捷键路由（Ctrl/Cmd+D1 → 切回分组 1）
+        // 修饰键必须按平台来：应用默认快捷键在 macOS 上是 Cmd(Meta)，见 AppSettings.CreateDefaults。
+        // 这里复用应用自己的平台判定，免得测试里再抄一份规则。
+        var primaryModifier = PlatformHelper.IsMacOS
+            ? RawInputModifiers.Meta
+            : RawInputModifiers.Control;
+        window.KeyPress(Key.D1, primaryModifier, PhysicalKey.Digit1, "1");
         Step("08-快捷键切回分组1");
 
         vm.Navigation.TrySwitchToImage("02.png");
