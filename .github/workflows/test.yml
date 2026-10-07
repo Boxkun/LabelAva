@@ -1,16 +1,39 @@
 name: Test
 
-# 触发策略：只认版本 tag（与 Publish 一致），另留手动触发。
+# 触发策略：
+#   · 版本 tag（与 Publish 一致）→ 发布前的门禁；
+#   · pull_request → 社区 PR 自动跑，贡献者在自己的 PR 页面就能看到结果，维护者不必手动拉下来跑；
+#   · 手动触发 → 需要跨平台验证时用 `gh workflow run test.yml`，一次覆盖三个平台。
 #
-# 刻意**不**监听 push / pull_request：那会让每一次开发推送都产生一次运行，
-# 运行失败又会给仓库所有者发通知邮件 —— 调试期连推十几轮就会把邮箱淹掉。
-# 需要跨平台验证时用 `gh workflow run test.yml` 手动触发，一次触发覆盖三个平台；
-# 本地能验的先在本地验完再触发。
+# 刻意**不**监听分支 push：维护者直接推 main，那会让每次开发推送都产生一次运行，
+# 而失败通知会进邮箱 —— 调试期连推十几轮就会把邮箱淹掉。
+# pull_request 不带来这个问题：它只被 PR 触发，贡献者的 PR 失败时通知的是**他**（这正是我们要的），
+# 维护者日常推 main 不产生任何运行。
 on:
   push:
     tags:
       - 'v*'
+  pull_request:
   workflow_dispatch:
+
+# 同一个 PR 连续推几个提交时取消被取代的旧运行：省额度，也少几条重复通知。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# fork 来的 PR 默认只拿只读 token，这里显式收窄给最小权限。
+# 注意：不要改用 pull_request_target —— 那会把写权限与 secrets 暴露给 fork 代码。
+permissions:
+  contents: read
+
+# 关于通知量：pull_request 引发的失败运行**也会**产生通知，只是主要收件人是 PR 作者。
+# 若维护者自己在通知设置里开了 Actions，仍可能收到所关注仓库的失败邮件。控制手段都在设置里，不在本文件：
+#   1. 账号侧：Settings → Notifications → Actions 关掉（唯一能真正保证邮箱干净的一步）；
+#   2. 仓库侧：Settings → Actions → Fork pull request workflows 设为
+#      「Require approval for all outside collaborators」——fork PR 在你批准前不会运行，
+#      代价是每个外部 PR 需要你点一次批准，好处是不会有意外运行与意外邮件。
+# 另外别用 paths-ignore 来减量：将来若把本工作流设成必需检查，被路径过滤跳过的工作流
+# 会让 PR 卡在「等待检查」状态。
 
 jobs:
   test:
