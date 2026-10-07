@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -62,5 +64,27 @@ internal static class UiDriver
         textBox.CaretIndex = position;
         textBox.SelectionStart = position;
         textBox.SelectionEnd = position;
+    }
+
+    /// <summary>
+    /// 列出树视图里已实例化的「翻译节点」容器，按屏幕 Y 排序，
+    /// 并给出各容器在窗口坐标系里的中心点（用于投递真实指针事件）。
+    /// </summary>
+    public static List<(TreeViewItem Container, TranslationTreeItem Item, Point Center)> TranslationItemBoxes(
+        Window window, TreeView treeView)
+    {
+        var result = new List<(TreeViewItem, TranslationTreeItem, Point)>();
+        foreach (var container in treeView.GetVisualDescendants().OfType<TreeViewItem>())
+        {
+            if (container.DataContext is not TranslationTreeItem item) continue;
+
+            var center = container.TranslatePoint(
+                new Point(container.Bounds.Width / 2, container.Bounds.Height / 2), window);
+            if (center is null) continue;
+
+            result.Add((container, item, center.Value));
+        }
+
+        return result.OrderBy(b => b.Item3.Y).ToList();
     }
 }
