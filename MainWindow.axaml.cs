@@ -77,12 +77,10 @@ public partial class MainWindow : Window
     // ==================== AnnotationCanvas 便捷属性 ====================
     public AnnotationCanvas CanvasControl => this.FindControl<AnnotationCanvas>("AnnotationCanvasControl")!;
 
-    // 内存追踪正常态窗口尺寸（最大化时用于保存恢复尺寸）
-    private double _normalWidth;
-    private double _normalHeight;
-    private PixelPoint _normalPosition;
+    // 窗口尺寸/位置的状态与持久化策略都在 WindowStateTracker 里；
+    // 这里只保留视图侧的防抖定时器（何时触发属于视时序）。
+    private readonly WindowStateTracker _windowState;
     private DispatcherTimer? _sizeDebounce;
-    private bool _savedMaximized;
 
     public MainWindow()
     {
@@ -93,17 +91,14 @@ public partial class MainWindow : Window
 
         // 恢复上次窗口尺寸/位置（不立即最大化，让 OS 先记录 Normal 尺寸）
         _settingsProvider.Load();
-        var s = _settingsProvider.Current;
-        _savedMaximized = s.WindowMaximized;
-        if (s.WindowX >= 0 && s.WindowY >= 0)
+        _windowState = new WindowStateTracker(_settingsProvider);
+
+        var screenBounds = Screens?.All.Select(screen => screen.Bounds).ToList() ?? new List<PixelRect>();
+        if (_windowState.HasUsableSavedPosition(screenBounds))
         {
-            var pos = new PixelPoint(s.WindowX, s.WindowY);
-            if (IsPositionValid(pos, s.WindowWidth, s.WindowHeight))
-            {
-                Position = pos;
-                Width = s.WindowWidth;
-                Height = s.WindowHeight;
-            }
+            Position = _windowState.NormalBounds.Position;
+            Width = _windowState.NormalBounds.Width;
+            Height = _windowState.NormalBounds.Height;
         }
 
         // ===== 仅保留窗口级事件订阅（不依赖任何 VM） =====

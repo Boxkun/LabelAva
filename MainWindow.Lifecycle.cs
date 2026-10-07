@@ -34,21 +34,6 @@ namespace LabelAva;
 public partial class MainWindow : Window
 {
     /// <summary>
-    /// 校验保存的窗口位置在当前屏幕配置下是否至少标题栏可见
-    /// </summary>
-    private bool IsPositionValid(PixelPoint pos, double w, double h)
-    {
-        if (Screens is null) return false;
-        var titleArea = new PixelRect(pos, new PixelSize((int)w, 60));
-        foreach (var screen in Screens.All)
-        {
-            if (screen.Bounds.Intersects(titleArea))
-                return true;
-        }
-        return false;
-    }
-    
-    /// <summary>
     /// 首次打开窗口时的处理：等待首帧渲染完成后显示窗口
     /// </summary>
     private async void OnWindowFirstOpened(object? sender, EventArgs e)
@@ -59,7 +44,7 @@ public partial class MainWindow : Window
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
         // 延迟最大化：先以 Normal 尺寸呈现，让 OS 记录 Normal 尺寸后最大化
-        if (_savedMaximized)
+        if (_windowState.RestoreMaximized)
             WindowState = WindowState.Maximized;
 
         // 首帧已上屏，安全地显示窗口
@@ -68,14 +53,8 @@ public partial class MainWindow : Window
         // 异步执行重工作
         await InitializeAsync();
 
-        // 初始化正常态尺寸追踪（从 settings 读取，避免最大化状态下读到膨胀值）
-        {
-            var s = _settingsProvider.Current;
-            _normalWidth = s.WindowWidth;
-            _normalHeight = s.WindowHeight;
-            _normalPosition = new PixelPoint(s.WindowX, s.WindowY);
-        }
-
+        // Normal 尺寸的初值由 WindowStateTracker 在构造时从 settings 读入，
+        // 避免最大化状态下把膨胀后的尺寸当成 Normal 尺寸记下来。
         _sizeDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
         _sizeDebounce.Tick += (_, _) =>
         {
@@ -85,9 +64,7 @@ public partial class MainWindow : Window
                 System.Diagnostics.Debug.WriteLine($"[Debounce] SKIPPED, state={WindowState}");
                 return;
             }
-            _normalWidth = Width;
-            _normalHeight = Height;
-            _normalPosition = Position;
+            _windowState.RememberNormalBounds(new WindowBounds(Width, Height, Position));
             System.Diagnostics.Debug.WriteLine($"[Debounce] saved normal: {Width}x{Height} @ {Position}");
         };
 
@@ -211,26 +188,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            var s = _settingsProvider.Current;
-            if (WindowState == WindowState.Maximized)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Save] Maximized, saving _normal*: {_normalWidth}x{_normalHeight} @ ({_normalPosition.X},{_normalPosition.Y})");
-                s.WindowMaximized = true;
-                s.WindowWidth = _normalWidth;
-                s.WindowHeight = _normalHeight;
-                s.WindowX = _normalPosition.X;
-                s.WindowY = _normalPosition.Y;
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[Save] Normal, saving current: {Width}x{Height} @ {Position}");
-                s.WindowMaximized = false;
-                s.WindowWidth = Width;
-                s.WindowHeight = Height;
-                s.WindowX = Position.X;
-                s.WindowY = Position.Y;
-            }
-            _settingsProvider.Save();
+            var current = new WindowBounds(Width, Height, Position);
+            var isMaximized = WindowState == WindowState.Maximized;
+            var toPersist = _windowState.ResolveBoundsToPersist(current, isMaximized);
+            System.Diagnostics.Debug.WriteLine(
+                $"[Save] {(isMaximized ? "Maximized, saving normal" : "Normal, saving current")}: " +
+                $"{toPersist.Width}x{toPersist.Height} @ ({toPersist.Position.X},{toPersist.Position.Y})");
+            _windowState.Persist(current, isMaximized);
         }
         catch
         {
