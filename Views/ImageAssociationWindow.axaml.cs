@@ -305,11 +305,13 @@ public partial class ImageAssociationWindow : Window
             var destPath = Path.Combine(_imageFolderPath, fileName);
 
             // 增量校验：仅对新增图片做格式检测
-            var (isConsistent, actualExt) = ImageValidationService.CheckFormatConsistency(sourcePath);
+            var (isConsistent, _) = ImageValidationService.CheckFormatConsistency(sourcePath);
             var status = isConsistent ? ImageValidationStatus.OK : ImageValidationStatus.FormatMismatch;
+            // 这里只给「格式不符」这个短标记：扩展名等详情统一由 Banner 的详情按钮提供，
+            // 状态列宽度有限（Width=80），塞进扩展名会被裁掉。
             var statusText = isConsistent
                 ? "✓ 正常"
-                : $"⚠ 格式不符 ({actualExt})";
+                : "⚠ 格式不符";
 
             // 复制到项目路径
             try
@@ -663,7 +665,8 @@ public partial class ImageAssociationWindow : Window
 
                 // 同步更新列表项状态，确保 Banner 与列表语义一致
                 item.Status = ImageValidationStatus.FormatMismatch;
-                item.StatusText = $"⚠ 格式不符 ({actualExt})";
+                // 同 OnAddImage：状态列只放短标记，扩展名详情交给 Banner 的详情按钮
+                item.StatusText = "⚠ 格式不符";
             }
         }
 
