@@ -1,22 +1,13 @@
 ### 01-初始化完成
 {
   "canvas": {
-    "currentFitScale": 1,
     "currentImagePath": null,
+    "geometry": null,
     "hasImage": false,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": false,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 1,
-      "m12": 0,
-      "m21": 0,
-      "m22": 1,
-      "m31": 0,
-      "m32": 0
-    },
-    "zoomPercent": 100
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": null,
@@ -102,8 +93,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5C31\u7EEA",
-    "zoomText": "\u7F29\u653E: 100%"
+    "statusText": "\u5C31\u7EEA"
   },
   "textBox": {
     "caretIndex": 0,
@@ -117,22 +107,17 @@
 ### 02-打开文档
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 30.5,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -172,7 +157,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -295,8 +280,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5DF2\u52A0\u8F7D 2 \u5F20\u56FE\u7247",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u5DF2\u52A0\u8F7D 2 \u5F20\u56FE\u7247"
   },
   "textBox": {
     "caretIndex": 0,
@@ -310,22 +294,17 @@
 ### 03-选中标记1
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 30.5,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -365,7 +344,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -488,8 +467,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5DF2\u52A0\u8F7D 2 \u5F20\u56FE\u7247",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u5DF2\u52A0\u8F7D 2 \u5F20\u56FE\u7247"
   },
   "textBox": {
     "caretIndex": 0,
@@ -503,22 +481,17 @@
 ### 04-进入编辑模式
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 30.5,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -558,7 +531,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -681,8 +654,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u7F16\u8F91\u6A21\u5F0F",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u7F16\u8F91\u6A21\u5F0F"
   },
   "textBox": {
     "caretIndex": 0,
@@ -696,22 +668,17 @@
 ### 05-切到分组2
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 30.5,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -751,7 +718,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -874,8 +841,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916"
   },
   "textBox": {
     "caretIndex": 0,
@@ -889,22 +855,17 @@
 ### 06-快捷输入追加
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 61,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -944,7 +905,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -1067,8 +1028,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916"
   },
   "textBox": {
     "caretIndex": 2,
@@ -1082,22 +1042,17 @@
 ### 07-快捷输入替换选区
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 61,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -1137,7 +1092,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -1260,8 +1215,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5916"
   },
   "textBox": {
     "caretIndex": 2,
@@ -1275,22 +1229,17 @@
 ### 08-快捷键切回分组1
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/01.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 61,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -1330,7 +1279,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -1453,8 +1402,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5185",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "\u5F53\u524D\u5206\u7EC4\uFF1A\u6846\u5185"
   },
   "textBox": {
     "caretIndex": 2,
@@ -1468,22 +1416,17 @@
 ### 09-切到第二张图
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": "\u003Croot\u003E/02.png",
+    "geometry": {
+      "imageSizeMatchesDecodedBitmap": true,
+      "isUniformScale": true,
+      "zoomPercentMatchesFitScale": true
+    },
     "hasImage": true,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": true,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 46.1875,
-      "m12": 0,
-      "m21": 0,
-      "m22": 46.1875,
-      "m31": 30.5,
-      "m32": 0
-    },
-    "zoomPercent": 4618.75
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": "\u003Croot\u003E/test.txt",
@@ -1523,7 +1466,7 @@
           },
           {
             "groupIndex": 2,
-            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\r\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
+            "text": "\u7B2C\u4E09\u53E5\u7B2C\u4E00\u884C\n\u7B2C\u4E09\u53E5\u7B2C\u4E8C\u884C",
             "textIndex": 3,
             "x": 0.75,
             "y": 0.9
@@ -1646,8 +1589,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "[2/2] 02.png",
-    "zoomText": "\u7F29\u653E: 4619%"
+    "statusText": "[2/2] 02.png"
   },
   "textBox": {
     "caretIndex": 2,
@@ -1661,22 +1603,13 @@
 ### 10-关闭文档
 {
   "canvas": {
-    "currentFitScale": 46.1875,
     "currentImagePath": null,
+    "geometry": null,
     "hasImage": false,
     "highlightedLabelIndex": -1,
     "isFirstImageLoaded": false,
     "isPanning": false,
-    "pendingNewLabelIndex": null,
-    "transform": {
-      "m11": 1,
-      "m12": 0,
-      "m21": 0,
-      "m22": 1,
-      "m31": 0,
-      "m32": 0
-    },
-    "zoomPercent": 100
+    "pendingNewLabelIndex": null
   },
   "document": {
     "filePath": null,
@@ -1762,8 +1695,7 @@
     "hasDligFontFeatures": false
   },
   "statusBar": {
-    "statusText": "\u5C31\u7EEA",
-    "zoomText": "\u7F29\u653E: 100%"
+    "statusText": "\u5C31\u7EEA"
   },
   "textBox": {
     "caretIndex": 0,

@@ -17,7 +17,15 @@ namespace LabelAva.Tests;
 /// </summary>
 public static class HeadlessPump
 {
-    public static void Until(Func<bool> condition, string description, int timeoutMs = 15000)
+    /// <summary>
+    /// 泵调度器直到条件成立。超时信息里可以附带一段诊断文本 ——
+    /// 平台相关的问题本地往往复现不了，只能靠 CI 上的失败信息定位。
+    /// </summary>
+    public static void Until(
+        Func<bool> condition,
+        string description,
+        int timeoutMs = 15000,
+        Func<string>? diagnostics = null)
     {
         if (condition()) return;
 
@@ -25,7 +33,13 @@ public static class HeadlessPump
         while (!condition())
         {
             if (sw.ElapsedMilliseconds > timeoutMs)
-                throw new TimeoutException($"等待「{description}」超时（{timeoutMs}ms）");
+            {
+                var extra = diagnostics?.Invoke();
+                var detail = string.IsNullOrEmpty(extra)
+                    ? string.Empty
+                    : $"{Environment.NewLine}诊断: {extra}";
+                throw new TimeoutException($"等待「{description}」超时（{timeoutMs}ms）{detail}");
+            }
 
             // 执行 UI 线程上排队的工作（初始化续体、Dispatcher.UIThread.Post 的光标修复等）
             Dispatcher.UIThread.RunJobs();

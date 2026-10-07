@@ -40,7 +40,11 @@ internal sealed class EditModeSession : IDisposable
             ?? throw new InvalidOperationException("找不到 TranslationTextBox");
 
         // 文本框通过绑定拿到选中标记的文本；拿不到说明夹具或时序有问题，直接报错而不是静默降级
-        HeadlessPump.Until(() => !string.IsNullOrEmpty(TextBox.Text), "文本框已绑定选中标记的文本");
+        // （这条在 macOS/Linux CI 上曾超时，故附上诊断信息：绑定源、可编辑性、文本框自身状态）
+        HeadlessPump.Until(
+            () => !string.IsNullOrEmpty(TextBox.Text),
+            "文本框已绑定选中标记的文本",
+            diagnostics: () => DescribeTextBoxState());
 
         // 快捷输入工具栏的按钮要等一次布局 pass 才会实例化
         HeadlessPump.Until(() => UiDriver.HasDligQuickInputButton(Harness.Window), "快捷输入按钮完成布局");
@@ -53,6 +57,27 @@ internal sealed class EditModeSession : IDisposable
     public TextBox TextBox { get; }
 
     public Button DligQuickInputButton => UiDriver.FindDligQuickInputButton(Harness.Window);
+
+    /// <summary>文本框没拿到文本时的现场信息（用于定位平台相关差异）。</summary>
+    private string DescribeTextBoxState()
+    {
+        var vm = Harness.Vm;
+        var selected = vm.Navigation.SelectedTranslationItem;
+        return string.Join("; ", new[]
+        {
+            $"选中项Index={selected?.Index.ToString() ?? "<null>"}",
+            $"选中项Text长度={selected?.Text?.Length.ToString() ?? "<null>"}",
+            $"选中项Text={selected?.Text ?? "<null>"}",
+            $"Edit.IsEditMode={vm.Edit.IsEditMode}",
+            $"IsTextEditable={vm.IsTextEditable}",
+            $"TextBox.Text={TextBox.Text ?? "<null>"}",
+            $"TextBox.IsEnabled={TextBox.IsEnabled}",
+            $"TextBox.IsVisible={TextBox.IsVisible}",
+            $"TextBox.IsFocused={TextBox.IsFocused}",
+            $"TextBox.DataContext={TextBox.DataContext?.GetType().Name ?? "<null>"}",
+            $"状态栏={vm.StatusBar.StatusText}",
+        });
+    }
 
     public void Dispose()
     {
